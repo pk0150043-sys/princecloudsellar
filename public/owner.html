@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PrinceCloudSellar - Owner Control Center</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="/css/owner.css">
+  <link rel="stylesheet" href="/css/user.css">
+</head>
+<body>
+
+  <!-- Toast Notification Container -->
+  <div id="toast-container"></div>
+
+  <!-- 1. OWNER LOGIN VIEW -->
+  <div id="owner-login-view" class="owner-login-wrapper">
+    <div class="glass-card login-card">
+      <div class="login-brand">
+        <div style="font-size:3.2rem; margin-bottom:12px;">👑</div>
+        <h1>Owner Control Center</h1>
+        <p>Enter your credentials to access your seller platform</p>
+      </div>
+
+      <form id="owner-login-form">
+        <div class="form-group" style="text-align:left;">
+          <label>Username</label>
+          <input type="text" id="login-username" class="form-control" placeholder="Enter Username (SELLAR)" value="SELLAR" required>
+        </div>
+
+        <div class="form-group" style="text-align:left;">
+          <label>Password</label>
+          <input type="password" id="login-password" class="form-control" placeholder="Enter Password" value="PRINCE@9507325" required>
+        </div>
+
+        <button type="submit" class="btn btn-primary" style="width:100%; padding:15px; font-size:1.05rem; margin-top:10px;">
+          🚀 Authenticate & Enter Dashboard
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- 2. OWNER DASHBOARD VIEW (AFTER LOGIN) -->
+  <div id="owner-dashboard-view" style="display:none;">
+    
+    <!-- OWNER HEADER WITH 3-DOT DROPDOWN MENU -->
+    <header class="owner-header">
+      <div class="container header-inner">
+        <div class="owner-brand-title">
+          <div class="logo-badge">👑</div>
+          <div>
+            <h2>PrinceCloudSellar</h2>
+            <span style="font-size:0.75rem; color:var(--yellow-primary); font-weight:800;">● OWNER CONTROL SYSTEM</span>
+          </div>
+        </div>
+
+        <div class="owner-nav-actions">
+          <!-- DUAL CURRENCY TOGGLE SWITCH (INR ₹ / USD $) -->
+          <div class="currency-toggle-wrapper">
+            <button id="owner-curr-btn-inr" class="currency-btn active" onclick="setOwnerStoreCurrency('INR')">🇮🇳 ₹ INR</button>
+            <button id="owner-curr-btn-usd" class="currency-btn" onclick="setOwnerStoreCurrency('USD')">🇺🇸 $ USD</button>
+          </div>
+
+          <!-- 3-DOT MENU BUTTON -->
+          <button id="three-dots-btn" class="three-dots-btn" title="Owner Menu">
+            ⋮
+          </button>
+
+          <!-- 3-DOT NAVIGATION DROPDOWN MENU -->
+          <div id="owner-dropdown-menu" class="owner-dropdown-menu">
+            <div class="nav-menu-item active" data-tab="dashboard">
+              <span>📊</span> Overview & Live KPIs
+            </div>
+            <div class="nav-menu-item" data-tab="products">
+              <span>📦</span> Products Management
+            </div>
+            <div class="nav-menu-item" data-tab="orders">
+              <span>🚚</span> Customer Orders List
+            </div>
+            <div class="nav-menu-item" data-tab="stocks">
+              <span>🔑</span> Stock & Auto-Fetch Sync
+            </div>
+            <div class="nav-menu-item" data-tab="customers">
+              <span>👥</span> Customer Details & Accounts
+            </div>
+            <div class="nav-menu-item" data-tab="payment-methods">
+              <span>💳</span> Payment Methods (BEP20 USDT)
+            </div>
+            <div class="nav-menu-item" data-tab="settings">
+              <span>⚙️</span> Owner Support Settings
+            </div>
+            <div style="border-top:1px solid var(--glass-border); margin:4px 0;"></div>
+            <div id="logout-btn" class="nav-menu-item" style="color:#fca5a5;">
+              <span>🚪</span> Logout
+            </div>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <main class="container" style="padding-top:30px; padding-bottom:60px;">
+      
+      <!-- TAB 1: OVERVIEW & LIVE KPIS + RECENT TRANSACTIONS -->
+      <div id="panel-dashboard" class="tab-panel active">
+        
+        <!-- REALTIME LIVE IST DATE & TIME BANNER -->
+        <div class="glass-card" style="padding: 16px 24px; margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center; border-color: var(--yellow-primary); background: rgba(250,204,21,0.06); flex-wrap: wrap; gap: 12px;">
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <div style="font-size: 1.8rem;">🇮🇳</div>
+            <div>
+              <div style="font-size: 0.78rem; font-weight: 800; color: var(--yellow-primary); text-transform: uppercase; letter-spacing: 1px;">
+                ● REALTIME INDIA TIME (IST) & DATE
+              </div>
+              <div id="live-ist-date" style="font-size: 1.05rem; font-weight: 800; color: #ffffff;">
+                Loading India Date...
+              </div>
+            </div>
+          </div>
+
+          <div style="background: rgba(0,0,0,0.6); padding: 8px 20px; border-radius: 50px; border: 1px solid var(--yellow-primary); display: flex; align-items: center; gap: 10px;">
+            <span class="live-dot" style="width:10px; height:10px; background:#10b981; border-radius:50%; box-shadow:0 0 10px #10b981;"></span>
+            <span id="live-ist-clock" style="font-family: 'JetBrains Mono', monospace; font-size: 1.25rem; font-weight: 900; color: var(--yellow-primary);">
+              00:00:00 AM IST
+            </span>
+          </div>
+        </div>
+
+        <!-- 4 EQUAL-HEIGHT PERFECTLY ALIGNED LIVE KPI METRIC BOXES -->
+        <div class="kpi-grid">
+          <div class="glass-card kpi-card">
+            <div class="kpi-header">
+              <span class="kpi-title">REGISTERED CUSTOMERS</span>
+              <div class="kpi-icon kpi-icon-1">👥</div>
+            </div>
+            <div id="kpi-users-val" class="kpi-value">0</div>
+            <div class="kpi-subtext">
+              <span class="live-dot"></span> Active Store Accounts
+            </div>
+          </div>
+
+          <div class="glass-card kpi-card">
+            <div class="kpi-header">
+              <span class="kpi-title">TODAY'S PRODUCTS SOLD</span>
+              <div class="kpi-icon kpi-icon-2">🛍️</div>
+            </div>
+            <div id="kpi-sold-val" class="kpi-value" style="color:var(--pink-accent);">0</div>
+            <div class="kpi-subtext">
+              <span class="live-dot" style="background:var(--pink-accent); box-shadow:0 0 10px var(--pink-accent);"></span> Units Delivered Today
+            </div>
+          </div>
+
+          <div class="glass-card kpi-card">
+            <div class="kpi-header">
+              <span class="kpi-title">TODAY'S TOTAL REVENUE</span>
+              <div class="kpi-icon kpi-icon-3">💰</div>
+            </div>
+            <div id="kpi-revenue-val" class="kpi-value" style="color:var(--green-bright);">₹0</div>
+            <div class="kpi-subtext">
+              <span class="live-dot" style="background:var(--green-bright); box-shadow:0 0 10px var(--green-bright);"></span> On-Chain Verified (BEP20)
+            </div>
+          </div>
+
+          <div class="glass-card kpi-card">
+            <div class="kpi-header">
+              <span class="kpi-title">STOCK INVENTORY POOL</span>
+              <div class="kpi-icon kpi-icon-4">🔑</div>
+            </div>
+            <div id="kpi-stock-val" class="kpi-value" style="color:var(--yellow-primary);">0 Items</div>
+            <div class="kpi-subtext">
+              <span class="live-dot"></span> Ready For Auto-Fetch
+            </div>
+          </div>
+        </div>
+
+        <!-- RECENT TRANSACTIONS TABLE WITH BSC SCAN AUDIT LINK -->
+        <div class="glass-card" style="padding:24px;">
+          <div class="section-header">
+            <h3>⚡ Recent Verified Customer Transactions</h3>
+            <span class="badge badge-success">REALTIME ON-CHAIN VERIFIED</span>
+          </div>
+
+          <div class="table-responsive">
+            <table class="custom-table">
+              <thead>
+                <tr>
+                  <th>Customer Name & Phone</th>
+                  <th>Product & Variant</th>
+                  <th>Country Target</th>
+                  <th>Quantity</th>
+                  <th>Amount Paid</th>
+                  <th>Payment Status</th>
+                  <th>Delivery Status</th>
+                </tr>
+              </thead>
+              <tbody id="recent-transactions-tbody">
+                <!-- Recent orders populated dynamically -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 2: PRODUCTS MANAGEMENT -->
+      <div id="panel-products" class="tab-panel">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+          <h2>📦 Store Products Management</h2>
+          <button class="btn btn-primary" onclick="openModal('add-product-modal')">
+            ➕ Add New Store Product
+          </button>
+        </div>
+
+        <div id="admin-products-container" class="admin-products-grid">
+          <!-- Admin products list rendered dynamically -->
+        </div>
+      </div>
+
+      <!-- TAB 3: CUSTOMER ORDERS LIST -->
+      <div id="panel-orders" class="tab-panel">
+        <div class="glass-card" style="padding:24px;">
+          <div class="section-header">
+            <h3>🚚 Customer Orders Directory</h3>
+            <span class="badge badge-yellow">REALTIME ORDER AUDIT</span>
+          </div>
+
+          <div class="table-responsive">
+            <table class="custom-table">
+              <thead>
+                <tr>
+                  <th>Order ID</th>
+                  <th>Customer Name & Phone</th>
+                  <th>Product & Variant</th>
+                  <th>Country Target</th>
+                  <th>Total Paid</th>
+                  <th>Status</th>
+                  <th>Delivered Key</th>
+                  <th>Order Date</th>
+                </tr>
+              </thead>
+              <tbody id="orders-table-tbody">
+                <!-- Orders populated dynamically -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 4: STOCK & AUTO-FETCH SYNC -->
+      <div id="panel-stocks" class="tab-panel">
+        <div class="grid-2-col" style="margin-bottom:30px;">
+          
+          <!-- Add Stock Keys Form -->
+          <div class="glass-card" style="padding:24px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+              <h3>🔑 Add Stock Keys To Product</h3>
+              <span id="stock-live-counter" class="badge badge-pink">Live Keys: 0</span>
+            </div>
+
+            <form id="add-stock-form">
+              <!-- SELECT CREATED PRODUCT / PRESET CATEGORY MODE -->
+              <div class="form-group">
+                <label>Select Product Type / Mode</label>
+                <select id="stock-mode-select" class="form-control" onchange="onStockModeChange(this.value)">
+                  <option value="EXISTING" selected>📦 Choose From Created Products List</option>
+                  <option value="PRESET">✨ Pick Preset Product (Azure, Gmail, GCP, AWS, etc.)</option>
+                </select>
+              </div>
+
+              <!-- Container 1: Preset Product Picker -->
+              <div id="stock-preset-container" style="display:none;">
+                <div class="form-group">
+                  <label>Select Main Product</label>
+                  <select id="stock-main-select" class="form-control" onchange="onStockMainProductChange(this.value)">
+                    <option value="Azure">Azure</option>
+                    <option value="Gmail">Gmail</option>
+                    <option value="WhatsApp Numbers">WhatsApp Numbers</option>
+                    <option value="Telegram Numbers">Telegram Numbers</option>
+                    <option value="GCP">GCP (Google Cloud Platform)</option>
+                    <option value="Windows 365">Windows 365</option>
+                    <option value="Microsoft 365">Microsoft 365</option>
+                    <option value="AWS">AWS</option>
+                    <option value="Vultr Account">Vultr Account</option>
+                  </select>
+                </div>
+
+                <div class="form-group">
+                  <label>Select Sub-Product Variant</label>
+                  <select id="stock-sub-select" class="form-control">
+                    <!-- Populated dynamically -->
+                  </select>
+                </div>
+
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:14px;">
+                  <div class="form-group">
+                    <label>Country Target</label>
+                    <select id="stock-country-select" class="form-control">
+                      <!-- Populated dynamically -->
+                    </select>
+                  </div>
+                  <div class="form-group">
+                    <label>Price per unit (₹)</label>
+                    <input type="number" id="stock-price-input" class="form-control" value="299">
+                  </div>
+                </div>
+              </div>
+
+              <!-- Container 2: Existing Product Picker -->
+              <div id="stock-existing-container">
+                <div class="form-group">
+                  <label style="color:var(--yellow-primary); font-weight:800;">Select Product From Store List <span class="required-star">*</span></label>
+                  <select id="stock-product-select" class="form-control" style="border-color:var(--yellow-primary);">
+                    <!-- Populated dynamically -->
+                  </select>
+                </div>
+              </div>
+
+              <!-- Stock Keys Textarea -->
+              <div class="form-group">
+                <label>Stock Items / Keys (1 key per line - Multi-line supported) <span class="required-star">*</span></label>
+                <textarea id="stock-raw-content" class="form-control" rows="6" placeholder="KEY-AZURE-8821&#10;KEY-AZURE-8822&#10;KEY-AZURE-8823" required></textarea>
+              </div>
+
+              <button type="submit" class="btn btn-primary" style="width:100%; padding:14px;">
+                ⚡ Add Stock Keys & Auto-Sync Product Storefront
+              </button>
+            </form>
+          </div>
+
+          <!-- Available Stock Table with Edit & Delete Options -->
+          <div class="glass-card" style="padding:24px;">
+            <h3 style="margin-bottom:16px; color:#ffffff;">📦 Available Inventory Pool</h3>
+            <div class="table-responsive" style="max-height:450px; overflow-y:auto;">
+              <table class="custom-table">
+                <thead>
+                  <tr>
+                    <th>Product & Variant</th>
+                    <th>Stock Key</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="available-stocks-tbody">
+                  <!-- Available stock items -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- SOLD PRODUCTS HISTORY SECTION -->
+        <div class="glass-card" style="padding:24px;">
+          <div class="section-header">
+            <h3>🏷️ Sold Products History</h3>
+            <span class="badge badge-pink">AUTOMATICALLY ARCHIVED ON PURCHASE</span>
+          </div>
+
+          <div class="table-responsive">
+            <table class="custom-table">
+              <thead>
+                <tr>
+                  <th>Product Name & Sub-Product</th>
+                  <th>Delivered Key</th>
+                  <th>Buyer Name & Phone</th>
+                  <th>Sold Date & Time</th>
+                </tr>
+              </thead>
+              <tbody id="sold-stocks-tbody">
+                <!-- Sold stocks history -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- TAB 5: CUSTOMER DETAILS & ACCOUNT MANAGEMENT (BLOCK/UNBLOCK/DELETE) -->
+      <div id="panel-customers" class="tab-panel">
+        <div class="glass-card" style="padding:24px;">
+          <div class="section-header">
+            <h3>👥 Customer Details & Registered Accounts</h3>
+            <span class="badge badge-yellow">REGISTERED CUSTOMER DIRECTORY</span>
+          </div>
+
+          <div class="table-responsive">
+            <table class="custom-table">
+              <thead>
+                <tr>
+                  <th>User ID</th>
+                  <th>Customer Name</th>
+                  <th>Mobile Number</th>
+                  <th>Registered Gmail</th>
+                  <th>Password</th>
+                  <th>Account Status</th>
+                  <th>Total Orders</th>
+                  <th>Total Spent</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="customers-table-tbody">
+                <!-- Customers populated dynamically -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 6: PAYMENT METHODS SETTINGS (BEP20 USDT ADDRESS) -->
+      <div id="panel-payment-methods" class="tab-panel">
+        <div class="glass-card" style="padding:24px; max-width:640px; margin:0 auto;">
+          <div class="section-header">
+            <h3>💳 Payment Method Settings</h3>
+            <span class="badge badge-yellow">BEP20 USDT WALLET ADDRESS</span>
+          </div>
+
+          <form id="payment-method-form">
+            <div class="form-group">
+              <label>Owner Official BEP20 USDT Wallet Address <span class="required-star">*</span></label>
+              <input type="text" id="pm-bep20-address" class="form-control" style="font-family:monospace; color:var(--yellow-primary); font-weight:700;" value="0xD3D65940718F769E66E1e5c425AcFf76C2D9bFf2" required>
+              <small style="color:var(--text-dim); display:block; margin-top:4px;">
+                * All customer USDT payments will land directly into this Trust Wallet / Web3 address.
+              </small>
+            </div>
+
+            <button type="submit" class="btn btn-primary" style="width:100%; padding:12px;">
+              💾 Save Wallet Address
+            </button>
+          </form>
+        </div>
+      </div>
+
+      <!-- TAB 7: OWNER SUPPORT SETTINGS -->
+      <div id="panel-settings" class="tab-panel">
+        <div class="glass-card" style="padding:24px; max-width:640px; margin:0 auto;">
+          <div class="section-header">
+            <h3>⚙️ Platform & Direct Support Settings</h3>
+            <span class="badge badge-pink">WHATSAPP SUPPORT CONFIG</span>
+          </div>
+
+          <form id="settings-form">
+            <div class="form-group">
+              <label>Owner Official Mobile / Support Number</label>
+              <input type="text" id="setting-owner-phone" class="form-control" value="+91 9507325000">
+            </div>
+
+            <div class="form-group">
+              <label>Direct WhatsApp Support Link</label>
+              <input type="text" id="setting-support-url" class="form-control" value="https://wa.me/919507325000?text=Hello%20Owner%20I%20need%20support%20for%20PrinceCloudSellar">
+            </div>
+
+            <button type="submit" class="btn btn-primary" style="width:100%; padding:12px;">
+              💾 Save Support Settings
+            </button>
+          </form>
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+  <!-- ADD PRODUCT MODAL -->
+  <div id="add-product-modal" class="modal-overlay">
+    <div class="modal-container glass-card" style="max-width:550px;">
+      <button class="modal-close-btn" onclick="closeModal('add-product-modal')">&times;</button>
+      
+      <h3 style="color:var(--yellow-primary); margin-bottom:16px;">📦 Create New Store Product</h3>
+
+      <form id="add-product-form">
+        <div class="form-group">
+          <label>Select Main Category / Product <span class="required-star">*</span></label>
+          <select id="prod-main-select" class="form-control" onchange="onMainProductChange(this.value)">
+            <option value="Azure">Azure</option>
+            <option value="Gmail">Gmail</option>
+            <option value="WhatsApp Numbers">WhatsApp Numbers</option>
+            <option value="Telegram Numbers">Telegram Numbers</option>
+            <option value="GCP">GCP (Google Cloud Platform)</option>
+            <option value="Windows 365">Windows 365</option>
+            <option value="Microsoft 365">Microsoft 365</option>
+            <option value="AWS">AWS</option>
+            <option value="Vultr Account">Vultr Account</option>
+            <option value="__CUSTOM__">➕ Add Custom Product Category...</option>
+          </select>
+        </div>
+
+        <div id="custom-main-group" class="form-group" style="display:none;">
+          <label>Enter Custom Category Name <span class="required-star">*</span></label>
+          <input type="text" id="prod-custom-main" class="form-control" placeholder="e.g. Digital Ocean">
+        </div>
+
+        <div class="form-group">
+          <label>Select Sub-Product Variant</label>
+          <select id="prod-sub-select" class="form-control" onchange="onSubProductChange(this.value)">
+            <!-- Dynamic sub options -->
+          </select>
+        </div>
+
+        <div id="custom-sub-group" class="form-group" style="display:none;">
+          <label>Enter Custom Sub-Product Name</label>
+          <input type="text" id="prod-custom-sub" class="form-control" placeholder="e.g. $100 Credit Acc">
+        </div>
+
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:14px;">
+          <div class="form-group">
+            <label>Target Country Target <span class="required-star">*</span></label>
+            <select id="prod-country-select" class="form-control">
+              <!-- Populated dynamically -->
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Price per unit (₹) <span class="required-star">*</span></label>
+            <input type="number" id="prod-price" class="form-control" placeholder="299" required>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Initial Available Stock Count</label>
+          <input type="number" id="prod-stock" class="form-control" value="0" min="0">
+        </div>
+
+        <div class="form-group">
+          <label>Offer Badge (Optional)</label>
+          <input type="text" id="prod-offer" class="form-control" placeholder="e.g. 🔥 HOT DEAL 20% OFF">
+        </div>
+
+        <div class="form-group">
+          <label>Product Description</label>
+          <textarea id="prod-desc" class="form-control" rows="3" placeholder="Enter details about account, warranty, etc."></textarea>
+        </div>
+
+        <button type="submit" class="btn btn-primary" style="width:100%; padding:14px; font-weight:800;">
+          🚀 Create Product & Auto-Add To Storefront
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- EDIT STOCK ITEM MODAL -->
+  <div id="edit-stock-modal" class="modal-overlay">
+    <div class="modal-container glass-card" style="max-width:480px;">
+      <button class="modal-close-btn" onclick="closeModal('edit-stock-modal')">&times;</button>
+      <h3 style="color:var(--yellow-primary); margin-bottom:16px;">✏️ Edit Stock Key Content</h3>
+
+      <input type="hidden" id="edit-stock-id">
+      <div class="form-group">
+        <label>Stock Key Payload</label>
+        <textarea id="edit-stock-content" class="form-control" rows="4" required></textarea>
+      </div>
+
+      <button type="button" class="btn btn-success" style="width:100%; padding:12px;" onclick="handleEditStockSubmit()">
+        ✅ Save Key Update
+      </button>
+    </div>
+  </div>
+
+  <!-- Application Logic -->
+  <script src="/js/owner.js"></script>
+</body>
+</html>

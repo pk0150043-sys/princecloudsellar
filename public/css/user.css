@@ -1,0 +1,311 @@
+/* Customer Storefront Rich Premium Custom CSS */
+
+/* Top Navigation Bar */
+.user-navbar {
+  position: sticky;
+  top: 0;
+  z-index: 500;
+  background: rgba(8, 3, 18, 0.95);
+  backdrop-filter: blur(25px);
+  border-bottom: 1px solid var(--glass-border);
+  padding: 16px 0;
+}
+
+.user-nav-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.user-brand {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  text-decoration: none;
+}
+
+.user-brand .logo-icon {
+  width: 46px;
+  height: 46px;
+  background: linear-gradient(135deg, #facc15 0%, #ec4899 100%);
+  color: #090214;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  font-weight: 900;
+  box-shadow: 0 4px 20px rgba(250, 204, 21, 0.5);
+}
+
+.user-brand span {
+  font-size: 1.4rem;
+  font-weight: 900;
+  background: linear-gradient(135deg, #ffffff 0%, #facc15 50%, #ec4899 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.user-nav-links {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+/* CURRENCY TOGGLE SWITCH BUTTONS (INR ₹ / USD $) */
+.currency-toggle-wrapper {
+  display: flex;
+  align-items: center;
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid var(--glass-border);
+  border-radius: 50px;
+  padding: 3px;
+  gap: 2px;
+}
+
+.currency-btn {
+  padding: 5px 12px;
+  border-radius: 50px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.currency-btn:hover {
+  color: #ffffff;
+}
+
+.currency-btn.active {
+  background: linear-gradient(135deg, #facc15 0%, #ec4899 100%);
+  color: #0d041a;
+  box-shadow: 0 2px 10px rgba(250, 204, 21, 0.4);
+}
+
+/* Hero Section */
+.hero-section {
+  padding: 50px 0 30px 0;
+  text-align: center;
+  position: relative;
+}
+
+.hero-title {
+  font-size: 3.2rem;
+  font-weight: 900;
+  line-height: 1.15;
+  background: linear-gradient(135deg, #ffffff 0%, #facc15 45%, #ec4899 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  margin-bottom: 18px;
+}
+
+.hero-subtitle {
+  font-size: 1.15rem;
+  color: var(--text-muted);
+  max-width: 720px;
+  margin: 0 auto 28px auto;
+  line-height: 1.6;
+}
+
+/* Category Navigation Filter Bar */
+.category-nav-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  overflow-x: auto;
+  padding: 10px 4px 18px 4px;
+  margin-bottom: 24px;
+  scrollbar-width: thin;
+  -webkit-overflow-scrolling: touch;
+}
+
+.category-tab-btn {
+  padding: 10px 22px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--glass-border);
+  border-radius: 50px;
+  font-size: 0.9rem;
+  font-weight: 800;
+  color: var(--text-muted);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: var(--transition);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.category-tab-btn:hover {
+  border-color: var(--yellow-primary);
+  color: #ffffff;
+  background: rgba(250, 204, 21, 0.12);
+  transform: translateY(-2px);
+}
+
+.category-tab-btn.active {
+  background: linear-gradient(135deg, #facc15 0%, #ec4899 100%);
+  color: #0d041a;
+  border-color: transparent;
+  box-shadow: 0 6px 22px rgba(250, 204, 21, 0.45);
+}
+
+.category-count {
+  background: rgba(0, 0, 0, 0.35);
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 0.78rem;
+  font-weight: 900;
+}
+
+/* Product Cards Grid & Rich Card Styling */
+.store-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(310px, 1fr));
+  gap: 28px;
+}
+
+.product-store-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 26px;
+  border: 1px solid var(--glass-border);
+  background: rgba(18, 7, 36, 0.7);
+  border-radius: var(--radius-lg);
+  position: relative;
+  overflow: hidden;
+  transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.product-store-card:hover {
+  transform: translateY(-6px);
+  border-color: var(--yellow-primary);
+  box-shadow: 0 12px 35px rgba(250, 204, 21, 0.25), 0 0 20px rgba(236, 72, 153, 0.2);
+}
+
+.product-card-title {
+  font-size: 1.4rem;
+  font-weight: 900;
+  color: #ffffff;
+  letter-spacing: -0.5px;
+}
+
+.product-price-tag {
+  font-size: 1.85rem;
+  font-weight: 900;
+  background: linear-gradient(135deg, #facc15 0%, #34d399 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  margin: 12px 0 10px 0;
+  display: inline-block;
+}
+
+/* High Converting Gradient Buy Button */
+.btn-primary.btn-block {
+  background: linear-gradient(135deg, #facc15 0%, #ec4899 100%);
+  color: #0d041a;
+  font-size: 1rem;
+  font-weight: 900;
+  padding: 14px 20px;
+  border-radius: var(--radius-md);
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 6px 25px rgba(250, 204, 21, 0.4);
+  transition: all 0.25s ease;
+  letter-spacing: 0.3px;
+}
+
+.btn-primary.btn-block:hover {
+  transform: scale(1.02);
+  box-shadow: 0 8px 30px rgba(236, 72, 153, 0.6);
+  background: linear-gradient(135deg, #ffffff 0%, #facc15 50%, #ec4899 100%);
+}
+
+.btn-primary.btn-block:disabled {
+  background: #334155 !important;
+  color: #94a3b8 !important;
+  box-shadow: none !important;
+  cursor: not-allowed;
+  transform: none !important;
+}
+
+/* BEP20 Payment Card in Modal */
+.bep20-card {
+  background: rgba(8, 3, 18, 0.9);
+  border: 1px solid var(--pink-accent);
+  border-radius: var(--radius-lg);
+  padding: 22px;
+  margin: 18px 0;
+  text-align: center;
+}
+
+.bep20-address {
+  font-family: 'JetBrains Mono', monospace;
+  background: rgba(18, 7, 36, 0.95);
+  padding: 14px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--yellow-primary);
+  color: #facc15;
+  font-size: 0.9rem;
+  word-break: break-all;
+  margin: 12px 0;
+}
+
+/* ------------------------------------------------------------- */
+/* ALL DEVICES RESPONSIVE BREAKPOINTS (Mobile, Mobile Desktop View, Tablet, Laptops) */
+/* ------------------------------------------------------------- */
+@media (max-width: 992px) {
+  .hero-title {
+    font-size: 2.6rem;
+  }
+  .store-grid {
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 22px;
+  }
+}
+
+@media (max-width: 768px) {
+  .user-nav-inner {
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+  }
+  .user-nav-links {
+    width: 100%;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .hero-title {
+    font-size: 2.1rem;
+  }
+  .hero-subtitle {
+    font-size: 0.98rem;
+  }
+  .store-grid {
+    grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
+    gap: 18px;
+  }
+}
+
+@media (max-width: 480px) {
+  .hero-title {
+    font-size: 1.8rem;
+  }
+  .store-grid {
+    grid-template-columns: 1fr;
+  }
+  .product-store-card {
+    padding: 18px;
+  }
+  .currency-toggle-wrapper {
+    scale: 0.95;
+  }
+  .modal-container {
+    padding: 20px 16px !important;
+    width: 95% !important;
+  }
+}

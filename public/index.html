@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PrinceCloudSellar - Official Storefront</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="/css/user.css">
+  <!-- Ethers.js Web3 Library CDN (Loaded with defer for Instant 0.05s Page Render) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js" defer></script>
+</head>
+<body>
+
+  <!-- Toast Notification Container -->
+  <div id="toast-container"></div>
+
+  <!-- TOP NAVBAR -->
+  <nav class="user-navbar">
+    <div class="container user-nav-inner">
+      <a href="/" class="user-brand">
+        <div class="logo-icon">👑</div>
+        <span>PrinceCloudSellar</span>
+      </a>
+
+      <div class="user-nav-links">
+        <!-- DUAL CURRENCY TOGGLE SWITCH (INR ₹ / USD $) -->
+        <div class="currency-toggle-wrapper">
+          <button id="curr-btn-inr" class="currency-btn active" onclick="setStoreCurrency('INR')">🇮🇳 ₹ INR</button>
+          <button id="curr-btn-usd" class="currency-btn" onclick="setStoreCurrency('USD')">🇺🇸 $ USD</button>
+        </div>
+
+        <button class="btn btn-secondary" onclick="contactOwnerSupport()" style="padding:8px 18px; font-size:0.88rem; border-color:var(--pink-accent); color:var(--pink-accent);">
+          💬 Direct Support
+        </button>
+        
+        <div id="user-nav-actions" class="user-nav-links">
+          <!-- Dynamic user auth actions -->
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <!-- HERO SECTION -->
+  <section class="container hero-section">
+    <div class="badge badge-yellow" style="margin-bottom:16px;">
+      ⚡ 100% AUTOMATED INSTANT DELIVERY STORE
+    </div>
+    <h1 class="hero-title">
+      Premium Cloud Accounts, RDP, Virtual Numbers & Premium Accounts
+    </h1>
+    <p class="hero-subtitle">
+      Select your category below, pay via Binance Web3, Trust Wallet, MetaMask or any Crypto App (BEP20 USDT), and receive your working keys instantly on-screen & delivered to your Gmail inbox!
+    </p>
+  </section>
+
+  <!-- CATEGORY FILTER BAR -->
+  <section class="container" style="margin-bottom: 24px;">
+    <div style="font-size: 0.85rem; font-weight: 700; color: var(--yellow-primary); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px;">
+      📁 Browse By Product Category:
+    </div>
+    <div id="category-filter-bar" class="category-nav-bar">
+      <!-- Dynamic category tabs rendered by user.js -->
+    </div>
+  </section>
+
+  <!-- PRODUCTS GRID SECTION -->
+  <section class="container" style="margin-bottom: 80px;">
+    <div id="store-products-container" class="store-grid">
+      <!-- Dynamic products rendered by user.js -->
+    </div>
+  </section>
+
+  <!-- BUY PRODUCT & MANDATORY VERIFICATION MODAL -->
+  <div id="buy-product-modal" class="modal-overlay">
+    <div class="modal-container glass-card" style="max-width: 600px;">
+      <button class="modal-close-btn" onclick="closeModal('buy-product-modal')" title="Close Window (Cancel)">&times;</button>
+      
+      <div style="text-align: center; margin-bottom: 20px;">
+        <h2 id="buy-product-title" style="color: var(--yellow-primary); font-size: 1.5rem; margin-bottom: 4px;">
+          Product Checkout
+        </h2>
+        <span id="buy-product-price-label" class="badge badge-pink" style="font-weight: 700;">₹0 / unit</span>
+      </div>
+
+      <form id="checkout-confirm-form">
+        <!-- QUANTITY SELECTION -->
+        <div class="form-group">
+          <label class="form-label">
+            Select Quantity <span class="required-star">*</span>
+          </label>
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <input type="number" id="buy-qty" class="form-control" value="1" min="1" max="100" style="max-width: 120px; text-align: center; font-size: 1.1rem; font-weight: 700;" required>
+            <div style="font-size: 1.1rem; font-weight: 800; color: var(--green-bright);">
+              Total: <span id="buy-total-price">₹0</span> <span id="buy-usdt-estimate" style="font-size: 0.85rem; color: var(--yellow-primary); font-weight: normal;">(~ 0 USDT)</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- PAYMENT METHOD 1: WEB3 DIRECT WALLET (BINANCE WEB3, TRUST WALLET, METAMASK) -->
+        <div style="background: rgba(250,204,21,0.06); border: 1px solid var(--yellow-primary); border-radius: var(--radius-md); padding: 18px; margin-bottom: 16px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <strong style="color: var(--yellow-primary); font-size: 1rem;">
+              💎 Method 1: Pay with Binance Web3 / Web3 Wallet
+            </strong>
+            <span class="badge badge-success">⚡ 1-Click Auto Verify</span>
+          </div>
+          <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 10px; line-height: 1.4;">
+            Connect your Binance Web3 Wallet, Trust Wallet, or MetaMask to transfer exact USDT with 1-click automatic block verification!
+          </p>
+
+          <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px;">
+            <span class="badge badge-primary">🟡 Binance Web3 Wallet</span>
+            <span class="badge badge-success">🛡️ Trust Wallet</span>
+            <span class="badge badge-yellow">🦊 MetaMask</span>
+            <span class="badge badge-pink">⬛ OKX Web3</span>
+          </div>
+
+          <button type="button" class="btn btn-primary btn-block" onclick="payWithWeb3Wallet()" style="font-weight: 800; letter-spacing: 0.5px;">
+            🚀 Connect Binance Web3 / Wallet & Pay
+          </button>
+          <div id="web3-status" style="font-size: 0.85rem; margin-top: 10px; text-align: center; font-weight: 600;"></div>
+        </div>
+
+        <!-- PAYMENT METHOD 2: MANUAL BEP20 QR / ADDRESS COPY (BINANCE, TRUST WALLET, OKX, BYBIT) -->
+        <div class="bep20-card" style="background: rgba(236,72,153,0.06); border: 1px solid var(--pink-accent); border-radius: var(--radius-md); padding: 18px; margin-bottom: 20px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+            <strong style="color: var(--pink-accent); font-size: 1rem;">
+              📋 Method 2: Binance App / Trust Wallet / Any Crypto App
+            </strong>
+            <span class="badge badge-yellow">USDT (BEP20)</span>
+          </div>
+          <p style="font-size: 0.84rem; color: var(--text-muted); margin-bottom: 10px;">
+            Send exact USDT to Owner's Official BEP20 Address using <strong>Binance, Trust Wallet, OKX, Bybit, Coinbase</strong>, or any crypto exchange:
+          </p>
+
+          <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px;">
+            <span class="badge badge-primary">🟡 Binance App</span>
+            <span class="badge badge-success">🛡️ Trust Wallet</span>
+            <span class="badge badge-yellow">🦊 MetaMask</span>
+            <span class="badge badge-pink">⬛ OKX / Bybit</span>
+          </div>
+          
+          <div style="background: #000; padding: 12px; border-radius: 8px; border: 1px dashed var(--yellow-primary); font-family: monospace; font-size: 0.85rem; color: var(--yellow-primary); word-break: break-all; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; gap: 8px;">
+            <span id="bep20-wallet-addr">0xD3D65940718F769E66E1e5c425AcFf76C2D9bFf2</span>
+            <button type="button" class="btn btn-secondary" onclick="copyBep20Address()" style="padding: 4px 10px; font-size: 0.75rem; white-space: nowrap;">
+              📋 Copy
+            </button>
+          </div>
+
+          <!-- MANDATORY TRANSACTION HASH INPUT -->
+          <div class="form-group" style="margin-top: 14px; margin-bottom: 0;">
+            <label class="form-label" style="font-size: 0.88rem; color: #ffffff;">
+              Transaction Hash (Tx Hash / TxID) <span class="required-star">*</span>
+            </label>
+            <input type="text" id="buy-tx-hash" class="form-control" placeholder="Paste 66-character 0x... TxID from Binance / Trust Wallet" style="font-family: monospace; font-size: 0.85rem;" required>
+            <small style="color: var(--pink-accent); font-size: 0.78rem; display: block; margin-top: 4px;">
+              * Mandatory: Paste your 0x... TxID after completing payment to pass Server-Side Blockchain Audit.
+            </small>
+          </div>
+        </div>
+
+        <input type="hidden" id="buy-user-name">
+        <input type="hidden" id="buy-user-phone">
+
+        <div style="display: flex; gap: 10px; margin-top: 10px;">
+          <button type="button" class="btn btn-secondary" onclick="closeModal('buy-product-modal')" style="padding: 14px 20px; font-size: 0.95rem; font-weight: 700; flex: 1;">
+            ❌ Cancel / Back
+          </button>
+          <button type="submit" class="btn btn-success" style="padding: 14px 20px; font-size: 1.05rem; font-weight: 800; flex: 2;">
+            ⚡ Confirm Payment & Claim Key
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- DELIVERY SUCCESS MODAL -->
+  <div id="delivery-success-modal" class="modal-overlay">
+    <div class="modal-container glass-card" style="max-width: 540px; text-align: center;">
+      <button class="modal-close-btn" onclick="closeModal('delivery-success-modal')" title="Close Window">&times;</button>
+      
+      <div style="font-size: 3.5rem; margin-bottom: 10px;">🎉</div>
+      <h2 style="color: var(--green-bright); font-size: 1.6rem; margin-bottom: 8px;">
+        Payment Verified & Key Delivered!
+      </h2>
+      <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 20px;">
+        Your key has been saved below and a copy sent to your Gmail inbox:
+      </p>
+
+      <div style="text-align: left; margin-bottom: 20px;">
+        <label style="font-size: 0.8rem; font-weight: 700; color: var(--yellow-primary); text-transform: uppercase;">
+          🔑 Delivered Key / Account Details:
+        </label>
+        <div id="delivered-key-box" class="code-box" style="margin-top: 6px; font-size: 0.95rem; max-height: 200px; overflow-y: auto;">
+          <!-- Key contents -->
+        </div>
+      </div>
+
+      <div style="display: flex; gap: 10px;">
+        <button class="btn btn-secondary btn-block" onclick="closeModal('delivery-success-modal')">
+          ❌ Close Window
+        </button>
+        <button class="btn btn-primary btn-block" onclick="openMyOrdersModal()">
+          🛍️ View In My Orders
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- USER LOGIN MODAL -->
+  <div id="user-login-modal" class="modal-overlay">
+    <div class="modal-container glass-card" style="max-width: 440px;">
+      <button class="modal-close-btn" onclick="closeModal('user-login-modal')" title="Close Window">&times;</button>
+
+      <div style="text-align: center; margin-bottom: 20px;">
+        <h2 style="color: var(--yellow-primary); font-size: 1.5rem; margin-bottom: 4px;">Customer Sign In</h2>
+        <p style="font-size: 0.85rem; color: var(--text-muted);">Enter your registered Email/Phone & Password</p>
+      </div>
+
+      <form id="user-login-form">
+        <div class="form-group">
+          <label class="form-label">Email or Phone Number <span class="required-star">*</span></label>
+          <input type="text" id="login-email-phone" class="form-control" placeholder="e.g. user@gmail.com or 9876543210" required>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Password <span class="required-star">*</span></label>
+          <input type="password" id="login-user-pass" class="form-control" placeholder="••••••••" required>
+        </div>
+
+        <div style="text-align: right; margin-top: -6px; margin-bottom: 16px;">
+          <a href="javascript:void(0)" onclick="closeModal('user-login-modal'); openModal('forgot-pass-modal');" style="font-size: 0.82rem; color: var(--pink-accent); font-weight: 700; text-decoration: underline;">
+            🔑 Forgot Password?
+          </a>
+        </div>
+
+        <div id="login-otp-step" style="display: none; background: rgba(250,204,21,0.08); border: 1px solid #facc15; padding: 16px; border-radius: 10px; margin-bottom: 16px;">
+          <div style="font-size: 0.85rem; color: var(--yellow-primary); font-weight: 700; margin-bottom: 6px;">
+            🔐 Security OTP Verification Required
+          </div>
+          <p style="font-size: 0.78rem; color: #cbd5e1; margin-bottom: 10px;">
+            OTP code sent to <strong id="login-otp-target-email" style="color: #ffffff;"></strong>
+          </p>
+          <input type="text" id="login-otp-input" class="form-control" placeholder="Enter 6-digit Login OTP" style="letter-spacing: 4px; text-align: center; font-size: 1.1rem; font-weight: 700; margin-bottom: 10px;">
+          <button type="button" class="btn btn-primary btn-block" onclick="verifyLoginOTP()">Verify OTP & Complete Sign In</button>
+        </div>
+
+        <div style="display: flex; gap: 10px;">
+          <button type="button" class="btn btn-secondary" onclick="closeModal('user-login-modal')" style="flex: 1; padding: 12px;">
+            ❌ Cancel
+          </button>
+          <button type="submit" class="btn btn-primary" style="flex: 2; padding: 12px; font-weight: 700;">
+            Sign In To Store
+          </button>
+        </div>
+      </form>
+
+      <div style="text-align: center; margin-top: 18px; font-size: 0.85rem; color: var(--text-muted);">
+        Don't have an account? 
+        <a href="javascript:void(0)" onclick="closeModal('user-login-modal'); openModal('user-register-modal');" style="color: var(--yellow-primary); font-weight: 700; text-decoration: underline;">
+          Register Now <span style="color:#ef4444; font-weight:bold;">*</span>
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- FORGOT PASSWORD MODAL -->
+  <div id="forgot-pass-modal" class="modal-overlay">
+    <div class="modal-container glass-card" style="max-width: 450px;">
+      <button class="modal-close-btn" onclick="closeModal('forgot-pass-modal')" title="Close Window">&times;</button>
+
+      <div style="text-align: center; margin-bottom: 20px;">
+        <h2 style="color: var(--pink-accent); font-size: 1.5rem; margin-bottom: 4px;">🔑 Reset Password</h2>
+        <p style="font-size: 0.85rem; color: var(--text-muted);">Enter registered Gmail to receive 6-digit Reset OTP</p>
+      </div>
+
+      <form id="forgot-pass-form">
+        <div class="form-group">
+          <label class="form-label">Registered Gmail Address <span class="required-star">*</span></label>
+          <div style="display: flex; gap: 8px;">
+            <input type="email" id="forgot-email" class="form-control" placeholder="user@gmail.com" required>
+            <button type="button" id="forgot-send-otp-btn" class="btn btn-secondary" onclick="sendForgotPasswordOTP()" style="padding: 0 14px; font-size: 0.82rem; white-space: nowrap;">
+              📩 Send OTP
+            </button>
+          </div>
+        </div>
+
+        <div id="forgot-step-2" style="display: none;">
+          <div class="form-group">
+            <label class="form-label">Enter 6-Digit Reset OTP Code <span class="required-star">*</span></label>
+            <input type="text" id="forgot-otp" class="form-control" placeholder="123456" maxlength="6" style="letter-spacing: 4px; text-align: center; font-size: 1.1rem; font-weight: 700;" required>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Enter New Password <span class="required-star">*</span></label>
+            <input type="password" id="forgot-new-pass" class="form-control" placeholder="Enter new password" required>
+          </div>
+
+          <button type="button" class="btn btn-success btn-block" onclick="submitResetPassword()" style="padding: 12px; font-weight: 800;">
+            ✅ Reset Password & Save
+          </button>
+        </div>
+
+        <div style="margin-top: 14px; text-align: center;">
+          <button type="button" class="btn btn-secondary btn-block" onclick="closeModal('forgot-pass-modal'); openModal('user-login-modal');">
+            ↩️ Back to Sign In
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- USER REGISTER MODAL -->
+  <div id="user-register-modal" class="modal-overlay">
+    <div class="modal-container glass-card" style="max-width: 480px;">
+      <button class="modal-close-btn" onclick="closeModal('user-register-modal')" title="Close Window">&times;</button>
+
+      <div style="text-align: center; margin-bottom: 20px;">
+        <h2 style="color: var(--yellow-primary); font-size: 1.5rem; margin-bottom: 4px;">Create Customer Account</h2>
+        <p style="font-size: 0.85rem; color: var(--text-muted);">Fill all mandatory fields with red asterisks (<span style="color:#ef4444; font-weight:bold;">*</span>)</p>
+      </div>
+
+      <form id="user-register-form">
+        <div class="form-group">
+          <label class="form-label">Full Name <span class="required-star">*</span></label>
+          <input type="text" id="reg-name" class="form-control" placeholder="John Doe" required>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Mobile Number <span class="required-star">*</span></label>
+          <input type="tel" id="reg-phone" class="form-control" placeholder="9876543210" required>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Gmail Address <span class="required-star">*</span></label>
+          <div style="display: flex; gap: 8px;">
+            <input type="email" id="reg-email" class="form-control" placeholder="user@gmail.com" required>
+            <button type="button" id="reg-send-otp-btn" class="btn btn-secondary" onclick="sendRegistrationEmailOTP()" style="padding: 0 14px; font-size: 0.82rem; white-space: nowrap;">
+              📩 Send OTP
+            </button>
+          </div>
+        </div>
+
+        <div id="reg-otp-group" class="form-group" style="display: none; background: rgba(236,72,153,0.06); border: 1px solid var(--pink-accent); padding: 14px; border-radius: 10px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+            <label class="form-label" style="margin-bottom: 0;">Enter 6-Digit Email OTP <span class="required-star">*</span></label>
+            <span id="otp-status-badge" class="badge badge-warning">Pending Code</span>
+          </div>
+          <div style="display: flex; gap: 8px;">
+            <input type="text" id="reg-otp" class="form-control" placeholder="123456" maxlength="6" style="letter-spacing: 4px; text-align: center; font-weight: 700;">
+            <button type="button" class="btn btn-primary" onclick="verifyRegistrationEmailOTP()" style="padding: 0 14px; font-size: 0.82rem; white-space: nowrap;">
+              Verify OTP
+            </button>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Account Password <span class="required-star">*</span></label>
+          <input type="password" id="reg-pass" class="form-control" placeholder="••••••••" required>
+        </div>
+
+        <div style="display: flex; gap: 10px;">
+          <button type="button" class="btn btn-secondary" onclick="closeModal('user-register-modal')" style="flex: 1; padding: 12px;">
+            ❌ Cancel
+          </button>
+          <button type="submit" class="btn btn-primary" style="flex: 2; padding: 12px; font-weight: 700;">
+            Create & Verify Account
+          </button>
+        </div>
+      </form>
+
+      <div style="text-align: center; margin-top: 18px; font-size: 0.85rem; color: var(--text-muted);">
+        Already have an account? 
+        <a href="javascript:void(0)" onclick="closeModal('user-register-modal'); openModal('user-login-modal');" style="color: var(--yellow-primary); font-weight: 700; text-decoration: underline;">
+          Sign In
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- MY ORDERS MODAL -->
+  <div id="my-orders-modal" class="modal-overlay">
+    <div class="modal-container glass-card" style="max-width: 650px;">
+      <button class="modal-close-btn" onclick="closeModal('my-orders-modal')" title="Close Window">&times;</button>
+      
+      <h2 style="color: var(--yellow-primary); font-size: 1.5rem; margin-bottom: 16px;">🛍️ My Purchased Products</h2>
+      <div id="my-orders-container">
+        <!-- Dynamic purchased orders rendered by user.js -->
+      </div>
+      <div style="margin-top: 18px; text-align: right;">
+        <button class="btn btn-secondary" onclick="closeModal('my-orders-modal')" style="padding: 8px 18px;">
+          ❌ Close Window
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Application Logic -->
+  <script src="/js/user.js"></script>
+</body>
+</html>
