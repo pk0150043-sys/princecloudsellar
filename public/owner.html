@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>PrinceCloudSellar - Owner Control Center</title>
+  <link rel="icon" type="image/png" href="/logo.png">
   <link rel="stylesheet" href="/css/style.css">
   <link rel="stylesheet" href="/css/owner.css">
   <link rel="stylesheet" href="/css/user.css">
@@ -17,7 +18,7 @@
   <div id="owner-login-view" class="owner-login-wrapper">
     <div class="glass-card login-card">
       <div class="login-brand">
-        <div style="font-size:3.2rem; margin-bottom:12px;">👑</div>
+        <img src="/logo.png" alt="Prince Cloud Seller Logo" class="hero-center-logo" style="max-width: 170px; margin-bottom: 14px;">
         <h1>Owner Control Center</h1>
         <p>Enter your credentials to access your seller platform</p>
       </div>
@@ -47,7 +48,7 @@
     <header class="owner-header">
       <div class="container header-inner">
         <div class="owner-brand-title">
-          <div class="logo-badge">👑</div>
+          <img src="/logo.png" alt="Prince Cloud Seller Logo" class="owner-brand-logo">
           <div>
             <h2>PrinceCloudSellar</h2>
             <span style="font-size:0.75rem; color:var(--yellow-primary); font-weight:800;">● OWNER CONTROL SYSTEM</span>
@@ -88,6 +89,15 @@
             </div>
             <div class="nav-menu-item" data-tab="settings">
               <span>⚙️</span> Owner Support Settings
+            </div>
+            <div class="nav-menu-item" data-tab="tickets">
+              <span>🎫</span> Support Tickets &amp; Disputes <span id="owner-pending-tickets-badge" class="badge badge-pink" style="margin-left:auto; display:none;">0</span>
+            </div>
+            <div class="nav-menu-item" data-tab="dispatch-broadcast">
+              <span>🚀</span> Direct Dispatch &amp; Broadcasts
+            </div>
+            <div class="nav-menu-item" data-tab="bots">
+              <span>🤖</span> Telegram &amp; WhatsApp Bots
             </div>
             <div style="border-top:1px solid var(--glass-border); margin:4px 0;"></div>
             <div id="logout-btn" class="nav-menu-item" style="color:#fca5a5;">
@@ -162,6 +172,17 @@
 
           <div class="glass-card kpi-card">
             <div class="kpi-header">
+              <span class="kpi-title">MONTHLY SALES & REVENUE</span>
+              <div class="kpi-icon kpi-icon-5">📈</div>
+            </div>
+            <div id="kpi-monthly-val" class="kpi-value" style="color:#c084fc;">₹0</div>
+            <div class="kpi-subtext">
+              <span class="live-dot" style="background:#c084fc; box-shadow:0 0 10px #c084fc;"></span> <span id="kpi-monthly-subtext">0 Units (This Month)</span>
+            </div>
+          </div>
+
+          <div class="glass-card kpi-card">
+            <div class="kpi-header">
               <span class="kpi-title">STOCK INVENTORY POOL</span>
               <div class="kpi-icon kpi-icon-4">🔑</div>
             </div>
@@ -217,9 +238,16 @@
       <!-- TAB 3: CUSTOMER ORDERS LIST -->
       <div id="panel-orders" class="tab-panel">
         <div class="glass-card" style="padding:24px;">
-          <div class="section-header">
-            <h3>🚚 Customer Orders Directory</h3>
-            <span class="badge badge-yellow">REALTIME ORDER AUDIT</span>
+          <div class="section-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:16px;">
+            <div>
+              <h3>🚚 Customer Orders Directory</h3>
+              <p style="font-size:0.82rem; color:var(--text-muted);">Real-time orders across Website, WhatsApp Bot & Telegram Bot with UPI Approval.</p>
+            </div>
+            <div style="display:flex; gap:8px;">
+              <button type="button" class="btn btn-secondary btn-sm" onclick="filterOrdersByStatus('ALL')">All Orders</button>
+              <button type="button" class="btn btn-warning btn-sm" onclick="filterOrdersByStatus('PENDING_APPROVAL')">🟡 Pending UPI Approvals</button>
+              <button type="button" class="btn btn-success btn-sm" onclick="filterOrdersByStatus('DELIVERED')">🟢 Delivered</button>
+            </div>
           </div>
 
           <div class="table-responsive">
@@ -227,13 +255,13 @@
               <thead>
                 <tr>
                   <th>Order ID</th>
-                  <th>Customer Name & Phone</th>
-                  <th>Product & Variant</th>
-                  <th>Country Target</th>
-                  <th>Total Paid</th>
+                  <th>Customer</th>
+                  <th>Product & Plan</th>
+                  <th>Total & Method</th>
                   <th>Status</th>
-                  <th>Delivered Key</th>
-                  <th>Order Date</th>
+                  <th>Delivered Keys</th>
+                  <th>Actions</th>
+                  <th>Date</th>
                 </tr>
               </thead>
               <tbody id="orders-table-tbody">
@@ -427,29 +455,411 @@
         </div>
       </div>
 
-      <!-- TAB 7: OWNER SUPPORT SETTINGS -->
+      <!-- TAB 7: OWNER SUPPORT & PAYMENT SETTINGS -->
       <div id="panel-settings" class="tab-panel">
-        <div class="glass-card" style="padding:24px; max-width:640px; margin:0 auto;">
-          <div class="section-header">
-            <h3>⚙️ Platform & Direct Support Settings</h3>
-            <span class="badge badge-pink">WHATSAPP SUPPORT CONFIG</span>
+        <div class="glass-card" style="padding:24px; max-width:680px; margin:0 auto;">
+          <div class="section-header" style="margin-bottom: 20px;">
+            <div>
+              <h3 style="color: var(--yellow-primary); font-size: 1.3rem;">⚙️ Platform, UPI & Support Settings</h3>
+              <p style="color: var(--text-muted); font-size: 0.85rem; margin-top: 4px;">Update your Merchant UPI ID, WhatsApp proof receiver, BEP20 Wallet & Community links</p>
+            </div>
+            <span class="badge badge-warning" style="font-size: 0.78rem;">LIVE SYNC ACROSS PLATFORM</span>
           </div>
 
           <form id="settings-form">
-            <div class="form-group">
-              <label>Owner Official Mobile / Support Number</label>
-              <input type="text" id="setting-owner-phone" class="form-control" value="+91 9507325000">
+            <div style="background: rgba(250, 204, 21, 0.06); border: 1px solid var(--yellow-primary); padding: 18px; border-radius: var(--radius-md); margin-bottom: 20px;">
+              <h4 style="color: var(--yellow-primary); margin-bottom: 12px; font-size: 1.05rem; display: flex; align-items: center; gap: 8px;">
+                <span>💳</span> UPI Payment & Receiver Configuration
+              </h4>
+
+              <div class="form-group">
+                <label>Merchant UPI ID (For Customer UPI QR Code & Direct Transfer) <span style="color:#ef4444; font-weight:bold;">*</span></label>
+                <input type="text" id="setting-owner-upi" class="form-control" style="font-family: monospace; font-size: 1rem; font-weight: 700; color: var(--yellow-primary);" placeholder="e.g. 9507325677-1@naviaxis" required>
+                <small style="color:var(--text-dim); display:block; margin-top:4px;">* When you change this UPI ID, it immediately updates on Website UPI checkout, Telegram Bot and WhatsApp Bot!</small>
+              </div>
+
+              <div class="form-group">
+                <label>Owner WhatsApp Support & Proof Screenshot Number <span style="color:#ef4444; font-weight:bold;">*</span></label>
+                <input type="text" id="setting-owner-whatsapp" class="form-control" placeholder="9507325677" required>
+                <small style="color:var(--text-dim); display:block; margin-top:4px;">* Customers will be directed to send payment screenshot proofs to this WhatsApp number.</small>
+              </div>
+
+              <div class="form-group" style="margin-bottom: 0;">
+                <label>Default BEP20 USDT Receiving Wallet Address (0x...)</label>
+                <input type="text" id="setting-owner-bep20" class="form-control" style="font-family: monospace; font-size: 0.88rem;" placeholder="0xD3D65940718F769E66E1e5c425AcFf76C2D9bFf2">
+              </div>
             </div>
 
-            <div class="form-group">
-              <label>Direct WhatsApp Support Link</label>
-              <input type="text" id="setting-support-url" class="form-control" value="https://wa.me/919507325000?text=Hello%20Owner%20I%20need%20support%20for%20PrinceCloudSellar">
+            <div style="background: rgba(236, 72, 153, 0.06); border: 1px solid var(--pink-accent); padding: 18px; border-radius: var(--radius-md); margin-bottom: 20px;">
+              <h4 style="color: var(--pink-accent); margin-bottom: 12px; font-size: 1.05rem; display: flex; align-items: center; gap: 8px;">
+                <span>💬</span> Customer Support, Bots & Community Channels
+              </h4>
+
+              <div class="form-group">
+                <label>Direct WhatsApp Shop Bot Link <span style="color:#22c55e; font-weight:bold;">(Live Auto Bot)</span></label>
+                <div style="display:flex; gap:8px;">
+                  <input type="text" id="setting-whatsapp-bot" class="form-control" placeholder="https://wa.me/qr/DDVIRR5NFY2YO1">
+                  <a id="setting-link-wa-bot" href="https://wa.me/qr/DDVIRR5NFY2YO1" target="_blank" class="btn btn-secondary" style="padding:0 14px; display:inline-flex; align-items:center; white-space:nowrap; border-color:#22c55e; color:#22c55e;">
+                    🚀 Open Bot
+                  </a>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label>Direct Telegram Shop Bot Link <span style="color:#38bdf8; font-weight:bold;">(@princecloudsellarshop_bot)</span></label>
+                <div style="display:flex; gap:8px;">
+                  <input type="text" id="setting-telegram-bot" class="form-control" placeholder="https://t.me/princecloudsellarshop_bot">
+                  <a id="setting-link-tg-bot" href="https://t.me/princecloudsellarshop_bot" target="_blank" class="btn btn-secondary" style="padding:0 14px; display:inline-flex; align-items:center; white-space:nowrap; border-color:#38bdf8; color:#38bdf8;">
+                    ✈️ Open Bot
+                  </a>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label>Owner Official Mobile / Display Phone</label>
+                <input type="text" id="setting-owner-phone" class="form-control" placeholder="+91 9507325677">
+              </div>
+
+              <div class="form-group">
+                <label>Direct 1-on-1 WhatsApp Support Chat Link</label>
+                <input type="text" id="setting-support-url" class="form-control" placeholder="https://wa.me/919507325677?text=Hello%20Owner%20I%20need%20support%20for%20PrinceCloudSellar">
+              </div>
+
+              <div class="form-group">
+                <label>Official WhatsApp Community / Group Link</label>
+                <input type="text" id="setting-whatsapp-group" class="form-control" placeholder="https://chat.whatsapp.com/...">
+              </div>
+
+              <div class="form-group" style="margin-bottom: 0;">
+                <label>Official Telegram Channel / Group Link</label>
+                <input type="text" id="setting-telegram-group" class="form-control" placeholder="https://t.me/...">
+              </div>
             </div>
 
-            <button type="submit" class="btn btn-primary" style="width:100%; padding:12px;">
-              💾 Save Support Settings
+            <button type="submit" class="btn btn-primary" style="width:100%; padding:14px; font-size: 1rem; font-weight: 800;">
+              💾 Save All Platform & Payment Settings
             </button>
           </form>
+        </div>
+      </div>
+
+      <!-- TAB 8: CUSTOMER SUPPORT TICKETS & DISPUTES -->
+      <div id="panel-tickets" class="tab-panel">
+        <div class="glass-card" style="padding: 24px;">
+          <div class="section-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap:wrap; gap:10px;">
+            <div>
+              <h3>🎫 Customer Complaints &amp; Support Tickets</h3>
+              <p style="color:var(--text-muted); font-size:0.85rem; margin-top:2px;">Resolve underpaid/overpaid disputes, delivery issues &amp; replacement requests</p>
+            </div>
+            <button class="btn btn-secondary" onclick="fetchOwnerTickets()" style="padding:6px 14px; font-size:0.82rem;">
+              🔄 Refresh Tickets
+            </button>
+          </div>
+
+          <div class="table-responsive">
+            <table class="custom-table">
+              <thead>
+                <tr>
+                  <th>Ticket ID</th>
+                  <th>Customer Details</th>
+                  <th>Category</th>
+                  <th>Subject &amp; Order/TX</th>
+                  <th>Complaint Message</th>
+                  <th>Status</th>
+                  <th>Owner Resolution</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody id="owner-tickets-tbody">
+                <!-- Dynamic tickets -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 9: DIRECT SERVER-TO-CUSTOMER DISPATCH & BROADCAST NOTIFICATIONS -->
+      <div id="panel-dispatch-broadcast" class="tab-panel">
+        <div style="display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 24px;">
+          
+          <!-- SECTION 1: DIRECT SERVER-TO-CUSTOMER DISPATCH -->
+          <div class="glass-card" style="padding: 26px;">
+            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 16px;">
+              <span style="font-size: 1.6rem;">🎯</span>
+              <div>
+                <h3 style="color: var(--yellow-primary); font-size: 1.3rem;">Direct Server-to-Customer Dispatch</h3>
+                <p style="color: var(--text-muted); font-size: 0.82rem; margin: 0;">Directly assign working accounts/keys to a customer, send email &amp; in-app notification</p>
+              </div>
+            </div>
+
+            <form id="direct-dispatch-form">
+              <div class="form-group">
+                <label class="form-label">Select Registered Customer <span class="required-star">*</span></label>
+                <select id="dispatch-customer-select" class="form-control" style="border-color: var(--yellow-primary);" required>
+                  <option value="">-- Choose Customer from Database --</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label">Select Product Category / Variant <span class="required-star">*</span></label>
+                <select id="dispatch-product-select" class="form-control" onchange="onDispatchProductChange(this.value)" required>
+                  <option value="">-- Choose Store Product --</option>
+                </select>
+              </div>
+
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
+                <div class="form-group">
+                  <label class="form-label">Quantity to Deliver <span class="required-star">*</span></label>
+                  <input type="number" id="dispatch-quantity" class="form-control" value="1" min="1" max="50" required>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Key Payload Source <span class="required-star">*</span></label>
+                  <select id="dispatch-stock-mode" class="form-control" onchange="onDispatchStockModeChange(this.value)">
+                    <option value="AUTO_STOCK">🔑 Auto-pull from Available Stock</option>
+                    <option value="CUSTOM_KEY">✏️ Enter Custom Key Manually</option>
+                  </select>
+                </div>
+              </div>
+
+              <div id="dispatch-custom-payload-group" class="form-group" style="display: none;">
+                <label class="form-label">Enter Custom Key / Account Credentials</label>
+                <textarea id="dispatch-custom-payload" class="form-control" rows="3" placeholder="Username / Email: Password / Key payload..."></textarea>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label">Owner Note / Message for Customer (Optional)</label>
+                <input type="text" id="dispatch-notes" class="form-control" placeholder="e.g. Here is your bonus account replacement. Enjoy!">
+              </div>
+
+              <div class="form-group" style="display: flex; align-items: center; gap: 8px;">
+                <input type="checkbox" id="dispatch-send-email" checked style="width: 18px; height: 18px; cursor: pointer;">
+                <label for="dispatch-send-email" style="cursor: pointer; font-size: 0.85rem; color: #ffffff;">Send instant notification &amp; key invoice to customer's Gmail</label>
+              </div>
+
+              <button type="submit" class="btn btn-primary btn-block" style="padding: 14px; font-weight: 800; font-size: 1rem;">
+                🚀 Deliver Account &amp; Dispatch to Customer
+              </button>
+            </form>
+          </div>
+
+          <!-- SECTION 2 & 3: BROADCAST & DIRECT USER NOTIFICATION -->
+          <div style="display: flex; flex-direction: column; gap: 24px;">
+            
+            <!-- BROADCAST NOTIFICATION TO ALL USERS -->
+            <div class="glass-card" style="padding: 24px;">
+              <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 14px;">
+                <span style="font-size: 1.5rem;">📢</span>
+                <div>
+                  <h3 style="color: #ec4899; font-size: 1.15rem;">Broadcast Notification to ALL Users</h3>
+                  <p style="color: var(--text-muted); font-size: 0.78rem; margin: 0;">Appears on all visitors &amp; registered users' notification bell</p>
+                </div>
+              </div>
+
+              <form id="broadcast-notification-form">
+                <div class="form-group">
+                  <label class="form-label">Notification Type</label>
+                  <select id="broadcast-type" class="form-control">
+                    <option value="BROADCAST">📢 General Platform Announcement</option>
+                    <option value="STOCK_ALERT">📦 New Stock Alert Drop</option>
+                    <option value="PROMO">🎁 Special Discount / Promo Deal</option>
+                  </select>
+                </div>
+
+                <div class="form-group">
+                  <label class="form-label">Notification Title <span class="required-star">*</span></label>
+                  <input type="text" id="broadcast-title" class="form-control" placeholder="e.g. 🔥 Fresh Stock Drop: 50+ Azure PayG Ready!" required>
+                </div>
+
+                <div class="form-group">
+                  <label class="form-label">Notification Message <span class="required-star">*</span></label>
+                  <textarea id="broadcast-message" class="form-control" rows="3" placeholder="Enter message text that will be shown to all users..." required></textarea>
+                </div>
+
+                <button type="submit" class="btn btn-primary" style="width: 100%; padding: 12px; font-weight: 800; background: linear-gradient(135deg, #ec4899, #8b5cf6);">
+                  📢 Send Broadcast to All Users
+                </button>
+              </form>
+            </div>
+
+            <!-- DIRECT PERSONAL MESSAGE TO USER -->
+            <div class="glass-card" style="padding: 24px;">
+              <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 14px;">
+                <span style="font-size: 1.5rem;">📨</span>
+                <div>
+                  <h3 style="color: #38bdf8; font-size: 1.15rem;">Direct Personal Message to Customer</h3>
+                  <p style="color: var(--text-muted); font-size: 0.78rem; margin: 0;">Send private in-app notification to one specific customer</p>
+                </div>
+              </div>
+
+              <form id="direct-notif-form">
+                <div class="form-group">
+                  <label class="form-label">Select Customer <span class="required-star">*</span></label>
+                  <select id="direct-notif-customer-select" class="form-control" required>
+                    <option value="">-- Choose Customer --</option>
+                  </select>
+                </div>
+
+                <div class="form-group">
+                  <label class="form-label">Message Title <span class="required-star">*</span></label>
+                  <input type="text" id="direct-notif-title" class="form-control" placeholder="e.g. Update regarding your custom order" required>
+                </div>
+
+                <div class="form-group">
+                  <label class="form-label">Message Body <span class="required-star">*</span></label>
+                  <textarea id="direct-notif-message" class="form-control" rows="2" placeholder="Enter private message to customer..." required></textarea>
+                </div>
+
+                <button type="submit" class="btn btn-secondary" style="width: 100%; padding: 10px; font-weight: 800; border-color: #38bdf8; color: #38bdf8;">
+                  📨 Send Direct Notification
+                </button>
+              </form>
+            </div>
+
+          </div>
+
+        </div>
+      </div>
+
+      <!-- TAB 10: TELEGRAM & WHATSAPP SHOPBOTS CENTER -->
+      <div id="panel-bots" class="tab-panel">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+          
+          <!-- TELEGRAM BOT CONFIGURATION & BROADCASTER -->
+          <div class="glass-card" style="padding: 26px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+              <div style="display: flex; align-items: center; gap: 10px;">
+                <span style="font-size: 1.8rem;">✈️</span>
+                <div>
+                  <h3 style="color: #38bdf8; font-size: 1.25rem;">Telegram ShopBot &amp; Group Auto-Poster</h3>
+                  <p style="color: var(--text-muted); font-size: 0.8rem; margin: 0;">24/7 Automated Telegram sales, OTP logins &amp; channel broadcasting</p>
+                </div>
+              </div>
+              <span id="tg-bot-status-badge" class="badge badge-warning">Connecting...</span>
+            </div>
+
+            <form id="telegram-bot-config-form">
+              <div class="form-group">
+                <label class="form-label">Telegram Bot Token (from @BotFather) <span class="required-star">*</span></label>
+                <input type="text" id="tg-bot-token-input" class="form-control" placeholder="e.g. 7123456789:AAHk3j... (paste token from BotFather)" style="font-family: monospace; font-size: 0.85rem;" required>
+                <small style="color: var(--text-dim); display: block; margin-top: 4px;">* Create a bot in Telegram by messaging @BotFather and paste the HTTP API token here.</small>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label">Telegram Channel / Group ID (for Auto Stock Drops)</label>
+                <input type="text" id="tg-channel-id-input" class="form-control" placeholder="e.g. @princecloudsellar_channel or -100123456789">
+                <small style="color: var(--text-dim); display: block; margin-top: 4px;">* Make sure to add your bot as an Admin in your channel/group so it can auto-post new stock.</small>
+              </div>
+
+              <button type="submit" class="btn btn-primary" style="width: 100%; padding: 12px; font-weight: 800; background: linear-gradient(135deg, #0088cc, #38bdf8);">
+                ⚡ Connect &amp; Start Telegram Bot
+              </button>
+            </form>
+
+            <hr style="border-color: rgba(255,255,255,0.08); margin: 20px 0;">
+
+            <h4 style="color: #ffffff; font-size: 0.95rem; margin-bottom: 10px;">📢 Send Test Broadcast to Telegram Channel</h4>
+            <form id="telegram-test-broadcast-form">
+              <div class="form-group">
+                <input type="text" id="tg-test-title" class="form-control" placeholder="Announcement Title (e.g. 🔥 Azure & GCP Accounts In Stock!)" required>
+              </div>
+              <div class="form-group">
+                <textarea id="tg-test-msg" class="form-control" rows="2" placeholder="Message details to post in Telegram group..." required></textarea>
+              </div>
+              <button type="submit" class="btn btn-secondary" style="width: 100%; padding: 10px; font-weight: 800; border-color: #38bdf8; color: #38bdf8;">
+                🚀 Post Announcement to Telegram Channel
+              </button>
+            </form>
+          </div>
+
+          <!-- WHATSAPP BOT & COMMUNITY ENGINE WITH QR & PAIRING CODE LINKING -->
+          <div class="glass-card" style="padding: 26px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+              <div style="display: flex; align-items: center; gap: 10px;">
+                <span style="font-size: 1.8rem;">💬</span>
+                <div>
+                  <h3 style="color: #25d366; font-size: 1.25rem;">WhatsApp ShopBot &amp; Number Linker</h3>
+                  <p style="color: var(--text-muted); font-size: 0.8rem; margin: 0;">Automated WhatsApp command sales, QR scan &amp; pairing code</p>
+                </div>
+              </div>
+              <span id="wa-session-status-badge" class="badge badge-success">🟢 ENGINE ACTIVE</span>
+            </div>
+
+            <!-- WHATSAPP QR / PAIRING CODE LINKING BOX -->
+            <div style="background: rgba(0,0,0,0.55); border: 1px solid rgba(37, 211, 102, 0.4); border-radius: var(--radius-md); padding: 18px; margin-bottom: 16px;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                <strong style="color: #25d366; font-size: 0.92rem;">📱 Link Your WhatsApp Number to Bot:</strong>
+                <button type="button" class="btn btn-secondary" onclick="fetchWhatsAppLiveQR()" style="padding: 4px 10px; font-size: 0.75rem; border-color: #25d366; color: #25d366;">
+                  🔄 Refresh QR
+                </button>
+              </div>
+
+              <!-- DUAL VIEW: LIVE QR & PAIRING CODE -->
+              <div style="display: grid; grid-template-columns: 140px 1fr; gap: 16px; align-items: center; margin-bottom: 12px; background: rgba(0,0,0,0.4); padding: 12px; border-radius: 10px;">
+                <div style="text-align: center;">
+                  <img id="wa-live-qr-img" src="" alt="WhatsApp QR Code" style="width: 120px; height: 120px; border-radius: 8px; border: 2px solid #25d366; background: #ffffff; display: none; margin: 0 auto;">
+                  <div id="wa-qr-loading-spinner" style="width: 120px; height: 120px; display: flex; align-items: center; justify-content: center; border-radius: 8px; border: 1px dashed #25d366; font-size: 0.72rem; color: #25d366; text-align: center; margin: 0 auto;">
+                    ⏳ Loading QR...
+                  </div>
+                  <small style="font-size: 0.68rem; color: #94a3b8; display: block; margin-top: 4px;">Scan with WhatsApp</small>
+                </div>
+
+                <div>
+                  <div style="font-size: 0.75rem; color: #cbd5e1; margin-bottom: 6px;">Or Link via 8-Digit Pairing Code:</div>
+                  <div style="display: flex; gap: 6px; margin-bottom: 8px;">
+                    <input type="text" id="wa-link-phone-input" class="form-control" style="font-size: 0.82rem; padding: 6px 10px;" placeholder="+91 9507325000" value="+919507325000">
+                    <button type="button" class="btn btn-primary" onclick="generateWhatsAppPairingCode()" style="white-space: nowrap; padding: 6px 12px; font-size: 0.8rem; background: #25d366; color: #000000; font-weight: 800;">
+                      Get Code
+                    </button>
+                  </div>
+
+                  <div id="wa-pairing-code-display" style="display: flex; align-items: center; justify-content: space-between; background: rgba(37, 211, 102, 0.15); border: 1px dashed #25d366; padding: 6px 10px; border-radius: 6px;">
+                    <div>
+                      <div style="font-size: 0.65rem; color: #94a3b8; text-transform: uppercase;">Pairing Code:</div>
+                      <div id="wa-pairing-code-val" style="font-family: monospace; font-size: 1.15rem; font-weight: 900; color: #25d366; letter-spacing: 3px;">PRIN-9507</div>
+                    </div>
+                    <button type="button" class="btn btn-secondary" onclick="copyPairingCode()" style="padding: 2px 8px; font-size: 0.72rem;">📋 Copy</button>
+                  </div>
+                </div>
+              </div>
+
+              <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.75rem; color: #94a3b8;">
+                <span>Status: <strong id="wa-connected-phone-display" style="color: #25d366;">+919507325000</strong></span>
+                <button type="button" onclick="disconnectWhatsAppSession()" style="background: transparent; border: none; color: #fca5a5; cursor: pointer; text-decoration: underline; font-size: 0.75rem;">
+                  Disconnect Session
+                </button>
+              </div>
+            </div>
+
+            <div style="background: rgba(37, 211, 102, 0.08); border: 1px dashed #25d366; border-radius: var(--radius-md); padding: 14px; margin-bottom: 16px; font-size: 0.85rem; line-height: 1.5;">
+              <strong style="color: #25d366;">⚡ WhatsApp Bot Commands Supported:</strong><br>
+              • <code>!menu</code> - Welcome &amp; mandatory group join verification<br>
+              • <code>!products</code> - Real-time store catalog with live stock<br>
+              • <code>!buy &lt;product&gt;</code> - Generate BEP20 USDT invoice<br>
+              • <code>!pay &lt;0x_hash&gt;</code> - On-chain verification &amp; instant key delivery<br>
+              • <code>!orders</code> - Customer past purchases
+            </div>
+
+            <h4 style="color: #ffffff; font-size: 0.95rem; margin-bottom: 10px;">🧪 Test WhatsApp Command Simulator</h4>
+            <form id="whatsapp-simulate-form">
+              <div class="form-group">
+                <label class="form-label">Customer Mobile Number</label>
+                <input type="text" id="wa-sim-number" class="form-control" value="+919507325000" required>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Incoming Command / Message</label>
+                <input type="text" id="wa-sim-cmd" class="form-control" value="!products" placeholder="e.g. !products, !buy 1, !orders" required>
+              </div>
+              <button type="submit" class="btn btn-secondary" style="width: 100%; padding: 10px; font-weight: 800; border-color: #25d366; color: #25d366;">
+                ▶️ Execute WhatsApp Command &amp; Test Reply
+              </button>
+            </form>
+
+            <div id="wa-sim-result-box" style="margin-top: 14px; display: none;">
+              <label class="form-label" style="color: #25d366; font-size: 0.78rem;">Bot Response Preview:</label>
+              <div id="wa-sim-reply-text" class="code-box" style="margin: 0; font-size: 0.8rem; max-height: 140px; overflow-y: auto;"></div>
+            </div>
+          </div>
+
         </div>
       </div>
 
@@ -532,6 +942,61 @@
     </div>
   </div>
 
+  <!-- EDIT PRODUCT MODAL -->
+  <div id="edit-product-modal" class="modal-overlay">
+    <div class="modal-container glass-card" style="max-width:550px;">
+      <button class="modal-close-btn" onclick="closeModal('edit-product-modal')">&times;</button>
+      
+      <h3 style="color:var(--yellow-primary); margin-bottom:16px;">✏️ Edit Store Product</h3>
+
+      <form id="edit-product-form">
+        <input type="hidden" id="edit-prod-id">
+
+        <div class="form-group">
+          <label>Product / Category Name <span class="required-star">*</span></label>
+          <input type="text" id="edit-prod-name" class="form-control" placeholder="e.g. Azure, Gmail, RDP" required>
+        </div>
+
+        <div class="form-group">
+          <label>Sub-Product / Variant</label>
+          <input type="text" id="edit-prod-sub" class="form-control" placeholder="e.g. Pay As You Go Direct Acc">
+        </div>
+
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:14px;">
+          <div class="form-group">
+            <label>Target Country Target <span class="required-star">*</span></label>
+            <select id="edit-prod-country-select" class="form-control">
+              <!-- Populated dynamically -->
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Price per unit (₹) <span class="required-star">*</span></label>
+            <input type="number" id="edit-prod-price" class="form-control" placeholder="299" required>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Available Stock Count</label>
+          <input type="number" id="edit-prod-stock" class="form-control" value="0" min="0">
+        </div>
+
+        <div class="form-group">
+          <label>Offer Badge (Optional)</label>
+          <input type="text" id="edit-prod-offer" class="form-control" placeholder="e.g. 🔥 HOT DEAL 20% OFF">
+        </div>
+
+        <div class="form-group">
+          <label>Product Description</label>
+          <textarea id="edit-prod-desc" class="form-control" rows="3" placeholder="Enter details about account, warranty, etc."></textarea>
+        </div>
+
+        <button type="submit" class="btn btn-primary" style="width:100%; padding:14px; font-weight:800;">
+          💾 Save Product Updates
+        </button>
+      </form>
+    </div>
+  </div>
+
   <!-- EDIT STOCK ITEM MODAL -->
   <div id="edit-stock-modal" class="modal-overlay">
     <div class="modal-container glass-card" style="max-width:480px;">
@@ -546,6 +1011,38 @@
 
       <button type="button" class="btn btn-success" style="width:100%; padding:12px;" onclick="handleEditStockSubmit()">
         ✅ Save Key Update
+      </button>
+    </div>
+  </div>
+
+  <!-- RESOLVE TICKET MODAL -->
+  <div id="resolve-ticket-modal" class="modal-overlay">
+    <div class="modal-container glass-card" style="max-width: 540px;">
+      <button class="modal-close-btn" onclick="closeModal('resolve-ticket-modal')">&times;</button>
+      <h3 style="color: var(--yellow-primary); margin-bottom: 14px;">✍️ Resolve Support Ticket</h3>
+
+      <input type="hidden" id="resolve-ticket-id">
+      
+      <div id="resolve-ticket-info" style="background: rgba(0,0,0,0.5); padding: 14px; border-radius: var(--radius-md); margin-bottom: 16px; font-size: 0.85rem; line-height: 1.5;">
+        <!-- Dynamic prefill -->
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Update Ticket Status <span class="required-star">*</span></label>
+        <select id="resolve-status-select" class="form-control" style="border-color: var(--yellow-primary);">
+          <option value="RESOLVED">🟢 RESOLVED (Issue Fixed / Key Assigned / Refunded)</option>
+          <option value="IN_PROGRESS">🟡 IN_PROGRESS (Under Verification / Awaiting Buyer)</option>
+          <option value="REJECTED">🔴 REJECTED (Invalid TX Hash / Fraud Attempt)</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Owner Resolution Note / Key / Instructions <span class="required-star">*</span></label>
+        <textarea id="resolve-reply-text" class="form-control" rows="4" placeholder="Enter response to customer, e.g.: 'We have verified your 7 USDT payment and assigned manual key: KEY-AZURE-9988. Thank you!'" required></textarea>
+      </div>
+
+      <button type="button" class="btn btn-primary btn-block" onclick="handleResolveTicketSubmit()" style="padding: 12px; font-weight: 800;">
+        💾 Save Resolution &amp; Notify Customer
       </button>
     </div>
   </div>

@@ -1,9 +1,8 @@
-// Owner Admin Application Logic with Realtime IST Clock, Dual Currency Switcher & On-Chain Audit Links
-
 let ownerToken = localStorage.getItem('prince_owner_token') || null;
 let activeTab = 'dashboard';
 let currentProducts = [];
 let currentAvailableStocks = [];
+let currentCustomers = [];
 let activeOwnerCurrency = localStorage.getItem('owner_store_currency') || 'INR';
 
 const PRESETS = {
@@ -267,7 +266,7 @@ function initApp() {
   }
 
   setupEventListeners();
-  onMainProductChange('Azure');
+  refreshProductCategoryDropdowns();
   onStockMainProductChange('Azure');
   onStockModeChange('EXISTING');
 }
@@ -327,11 +326,13 @@ function startLiveISTClock() {
 function populateCountrySelects() {
   const prodCountrySelect = document.getElementById('prod-country-select');
   const stockCountrySelect = document.getElementById('stock-country-select');
+  const editCountrySelect = document.getElementById('edit-prod-country-select');
 
   const optionsHtml = ALL_WORLD_COUNTRIES.map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('');
 
   if (prodCountrySelect) prodCountrySelect.innerHTML = optionsHtml;
   if (stockCountrySelect) stockCountrySelect.innerHTML = optionsHtml;
+  if (editCountrySelect) editCountrySelect.innerHTML = optionsHtml;
 }
 
 function setupEventListeners() {
@@ -417,6 +418,14 @@ function setupEventListeners() {
     });
   }
 
+  const editProductForm = document.getElementById('edit-product-form');
+  if (editProductForm) {
+    editProductForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      await handleEditProductSubmit();
+    });
+  }
+
   const settingsForm = document.getElementById('settings-form');
   if (settingsForm) {
     settingsForm.addEventListener('submit', async (e) => {
@@ -424,6 +433,93 @@ function setupEventListeners() {
       await handleSaveSettings();
     });
   }
+
+  const directDispatchForm = document.getElementById('direct-dispatch-form');
+  if (directDispatchForm) {
+    directDispatchForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      await handleDirectDispatchSubmit();
+    });
+  }
+
+  const broadcastForm = document.getElementById('broadcast-notification-form');
+  if (broadcastForm) {
+    broadcastForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      await handleBroadcastSubmit();
+    });
+  }
+
+  const directNotifForm = document.getElementById('direct-notif-form');
+  if (directNotifForm) {
+    directNotifForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      await handleDirectNotifSubmit();
+    });
+  }
+
+  const tgConfigForm = document.getElementById('telegram-bot-config-form');
+  if (tgConfigForm) {
+    tgConfigForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      await handleSaveTelegramBot();
+    });
+  }
+
+  const tgTestForm = document.getElementById('telegram-test-broadcast-form');
+  if (tgTestForm) {
+    tgTestForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      await handleTestTelegramBroadcast();
+    });
+  }
+
+  const waSimForm = document.getElementById('whatsapp-simulate-form');
+  if (waSimForm) {
+    waSimForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      await handleTestWhatsAppSimulate();
+    });
+  }
+}
+
+function getAllCategoryNames() {
+  const baseNames = Object.keys(PRESETS);
+  const allNames = [...baseNames];
+  currentProducts.forEach(p => {
+    if (p.name && !allNames.includes(p.name)) {
+      allNames.push(p.name);
+    }
+  });
+  return allNames;
+}
+
+function getAllSubcategoriesForCategory(catName) {
+  const subs = [...(PRESETS[catName] || [])];
+  currentProducts.forEach(p => {
+    if (p.name === catName && p.subProduct && !subs.includes(p.subProduct)) {
+      subs.push(p.subProduct);
+    }
+  });
+  return subs;
+}
+
+function refreshProductCategoryDropdowns() {
+  const prodMainSelect = document.getElementById('prod-main-select');
+  if (!prodMainSelect) return;
+
+  const currentVal = prodMainSelect.value || 'Azure';
+  const allCats = getAllCategoryNames();
+
+  prodMainSelect.innerHTML = allCats.map(cat => `<option value="${escapeHtml(cat)}">${escapeHtml(cat)}</option>`).join('') +
+    '<option value="__CUSTOM__">➕ Add Custom Product Category...</option>';
+
+  if (allCats.includes(currentVal) || currentVal === '__CUSTOM__') {
+    prodMainSelect.value = currentVal;
+  } else if (allCats.length > 0) {
+    prodMainSelect.value = allCats[0];
+  }
+  onMainProductChange(prodMainSelect.value);
 }
 
 function onMainProductChange(mainVal) {
@@ -431,18 +527,23 @@ function onMainProductChange(mainVal) {
   const subSelect = document.getElementById('prod-sub-select');
 
   if (mainVal === '__CUSTOM__') {
-    customMainGroup.style.display = 'block';
-    subSelect.innerHTML = '<option value="__CUSTOM__">➕ Add Custom Sub-Product...</option>';
+    if (customMainGroup) customMainGroup.style.display = 'block';
+    if (subSelect) {
+      subSelect.innerHTML = '<option value="__CUSTOM__">➕ Add Custom Sub-Product...</option>';
+    }
     onSubProductChange('__CUSTOM__');
   } else {
-    customMainGroup.style.display = 'none';
-    const subs = PRESETS[mainVal] || [];
-    subSelect.innerHTML = subs.map(s => `<option value="${s}">${s}</option>`) +
-      '<option value="__CUSTOM__">➕ Add Custom Sub-Product...</option>';
-    if (subs.length > 0) {
-      onSubProductChange(subs[0]);
-    } else {
-      onSubProductChange('__CUSTOM__');
+    if (customMainGroup) customMainGroup.style.display = 'none';
+    const subs = getAllSubcategoriesForCategory(mainVal);
+    if (subSelect) {
+      if (subs.length > 0) {
+        subSelect.innerHTML = subs.map(s => `<option value="${escapeHtml(s)}">${escapeHtml(s)}</option>`).join('') +
+          '<option value="__CUSTOM__">➕ Add Custom Sub-Product...</option>';
+        onSubProductChange(subs[0]);
+      } else {
+        subSelect.innerHTML = '<option value="Standard Account">Standard Account</option><option value="__CUSTOM__">➕ Add Custom Sub-Product...</option>';
+        onSubProductChange('Standard Account');
+      }
     }
   }
 }
@@ -471,14 +572,7 @@ function onStockMainProductChange(mainVal) {
   const subSelect = document.getElementById('stock-sub-select');
   if (!subSelect) return;
 
-  const subs = [...(PRESETS[mainVal] || [])];
-  
-  // Merge any sub-products created by owner for this main product!
-  currentProducts.filter(p => p.name === mainVal).forEach(p => {
-    if (p.subProduct && !subs.includes(p.subProduct)) {
-      subs.push(p.subProduct);
-    }
-  });
+  const subs = getAllSubcategoriesForCategory(mainVal);
 
   if (subs.length === 0) {
     subSelect.innerHTML = '<option value="Standard Account">Standard Account</option>';
@@ -526,6 +620,7 @@ function showOwnerDashboard() {
   fetchCustomerDetails();
   fetchPaymentMethodSettings();
   fetchSettings();
+  fetchBotStatus();
 
   setInterval(() => {
     if (ownerToken) {
@@ -561,6 +656,7 @@ function switchTab(tabName) {
   if (tabName === 'customers') fetchCustomerDetails();
   if (tabName === 'payment-methods') fetchPaymentMethodSettings();
   if (tabName === 'settings') fetchSettings();
+  if (tabName === 'tickets') fetchOwnerTickets();
 }
 
 // ----------------------------------------------------
@@ -576,7 +672,23 @@ async function fetchMetrics() {
       document.getElementById('kpi-users-val').innerText = m.totalUsers || 0;
       document.getElementById('kpi-sold-val').innerText = m.todaySold || 0;
       document.getElementById('kpi-revenue-val').innerText = formatOwnerPriceDisplay(m.todayRevenue || 0);
+      
+      const monthlyValEl = document.getElementById('kpi-monthly-val');
+      const monthlySubEl = document.getElementById('kpi-monthly-subtext');
+      if (monthlyValEl) monthlyValEl.innerText = formatOwnerPriceDisplay(m.monthRevenue || 0);
+      if (monthlySubEl) monthlySubEl.innerText = `${m.monthSold || 0} Units Sold (This Month)`;
+
       document.getElementById('kpi-stock-val').innerText = `${m.availableStocksCount} Items`;
+
+      const ticketBadge = document.getElementById('owner-pending-tickets-badge');
+      if (ticketBadge) {
+        if (m.pendingTicketsCount > 0) {
+          ticketBadge.innerText = m.pendingTicketsCount;
+          ticketBadge.style.display = 'inline-block';
+        } else {
+          ticketBadge.style.display = 'none';
+        }
+      }
     }
   } catch (err) {
     console.error('Error fetching metrics:', err);
@@ -638,16 +750,14 @@ function renderRecentTransactions(orders) {
   }).join('');
 }
 
-// ----------------------------------------------------
-// CUSTOMER DETAILS DIRECTORY & ACCOUNT MANAGEMENT
-// ----------------------------------------------------
-
 async function fetchCustomerDetails() {
   try {
     const res = await fetch('/api/owner/customers');
     const data = await res.json();
     if (data.success) {
-      renderCustomersTable(data.customers);
+      currentCustomers = data.customers || [];
+      renderCustomersTable(currentCustomers);
+      populateCustomerSelects(currentCustomers);
     }
   } catch (err) {
     console.error('Fetch customer details error:', err);
@@ -750,10 +860,6 @@ async function deleteCustomer(id) {
   }
 }
 
-// ----------------------------------------------------
-// PRODUCTS MANAGEMENT
-// ----------------------------------------------------
-
 async function fetchProducts() {
   try {
     const res = await fetch('/api/products?t=' + Date.now());
@@ -761,7 +867,9 @@ async function fetchProducts() {
     if (data.success) {
       currentProducts = data.products;
       renderAdminProducts(data.products);
+      refreshProductCategoryDropdowns();
       populateStockProductDropdown(data.products);
+      populateDispatchProductSelect(data.products);
     }
   } catch (err) {
     console.error('Fetch products error:', err);
@@ -794,12 +902,71 @@ function renderAdminProducts(products) {
       <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px solid var(--glass-border); padding-top:12px; margin-top:12px; flex-wrap:wrap; gap:8px;">
         <span class="badge badge-primary">Stock: ${p.stock} Available</span>
         <div style="display:flex; gap:6px;">
+          <button class="btn btn-secondary" style="padding:6px 12px; font-size:0.8rem;" onclick="openEditProductModal('${p._id}')">✏️ Edit</button>
           <button class="btn btn-primary" style="padding:6px 12px; font-size:0.8rem;" onclick="quickAddStockForProduct('${p._id}')">➕ Add Keys</button>
           <button class="btn btn-danger" style="padding:6px 12px; font-size:0.8rem;" onclick="deleteProduct('${p._id}')">Delete</button>
         </div>
       </div>
     </div>
   `).join('');
+}
+
+function openEditProductModal(id) {
+  const p = currentProducts.find(prod => prod._id === id);
+  if (!p) {
+    showToast('Product not found.', 'error');
+    return;
+  }
+
+  document.getElementById('edit-prod-id').value = p._id;
+  document.getElementById('edit-prod-name').value = p.name || '';
+  document.getElementById('edit-prod-sub').value = p.subProduct || '';
+  
+  const countrySelect = document.getElementById('edit-prod-country-select');
+  if (countrySelect) countrySelect.value = p.country || '🌐 Global / Worldwide';
+
+  document.getElementById('edit-prod-price').value = p.price;
+  document.getElementById('edit-prod-stock').value = p.stock || 0;
+  document.getElementById('edit-prod-offer').value = p.offer || '';
+  document.getElementById('edit-prod-desc').value = p.description || '';
+
+  openModal('edit-product-modal');
+}
+
+async function handleEditProductSubmit() {
+  const id = document.getElementById('edit-prod-id').value;
+  const name = document.getElementById('edit-prod-name').value.trim();
+  const subProduct = document.getElementById('edit-prod-sub').value.trim();
+  const country = document.getElementById('edit-prod-country-select').value;
+  const price = document.getElementById('edit-prod-price').value;
+  const stock = document.getElementById('edit-prod-stock').value;
+  const offer = document.getElementById('edit-prod-offer').value.trim();
+  const description = document.getElementById('edit-prod-desc').value.trim();
+
+  if (!name || price === '') {
+    showToast('Product name and price are required.', 'error');
+    return;
+  }
+
+  try {
+    const res = await fetch(`/api/owner/products/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, subProduct, country, price, stock, offer, description })
+    });
+    const data = await res.json();
+    if (data.success) {
+      showToast('Product updated successfully!', 'success');
+      closeModal('edit-product-modal');
+      await fetchProducts();
+      fetchMetrics();
+      fetchStocks();
+    } else {
+      showToast(data.message || 'Failed to update product.', 'error');
+    }
+  } catch (err) {
+    showToast('Edit product error: ' + err.message, 'error');
+  }
 }
 
 function quickAddStockForProduct(productId) {
@@ -877,9 +1044,19 @@ async function deleteProduct(id) {
 // ORDERS MANAGEMENT WITH BLOCKCHAIN AUDIT
 // ----------------------------------------------------
 
-async function fetchOrders(filterStatus = 'ALL') {
+let currentOrderFilter = 'ALL';
+
+function filterOrdersByStatus(status) {
+  currentOrderFilter = status;
+  fetchOrders();
+}
+
+async function fetchOrders() {
   try {
-    const res = await fetch(`/api/owner/orders?status=${filterStatus}`);
+    const url = currentOrderFilter && currentOrderFilter !== 'ALL' 
+      ? `/api/owner/orders?status=${encodeURIComponent(currentOrderFilter)}&t=${Date.now()}`
+      : `/api/owner/orders?t=${Date.now()}`;
+    const res = await fetch(url);
     const data = await res.json();
     if (data.success) {
       renderOrdersTable(data.orders);
@@ -901,10 +1078,21 @@ function renderOrdersTable(orders) {
   tbody.innerHTML = orders.map(ord => {
     const isTxHashReal = ord.txHash && ord.txHash.startsWith('0x');
     const bscScanUrl = isTxHashReal ? `https://bscscan.com/tx/${ord.txHash}` : '#';
+    const isUpi = ord.paymentMethod === 'UPI' || (ord.utrId && ord.utrId.length > 0);
+    const isPendingApproval = ord.deliveryStatus === 'PENDING_APPROVAL' || ord.deliveryStatus === 'PENDING_DELIVERY';
+    const isDelivered = ord.deliveryStatus === 'DELIVERED';
+    const isRejected = ord.deliveryStatus === 'REJECTED';
+
+    let statusBadgeClass = 'badge-warning';
+    if (isDelivered) statusBadgeClass = 'badge-success';
+    if (isRejected) statusBadgeClass = 'badge-danger';
 
     return `
       <tr>
-        <td><span style="font-family:monospace; color:var(--text-muted);">${ord._id.substring(0, 10)}</span></td>
+        <td>
+          <span style="font-family:monospace; color:var(--text-muted); font-size:0.8rem;">${ord._id}</span><br>
+          <span class="badge badge-primary" style="font-size:0.68rem; margin-top:2px;">${ord.source || 'WEB'}</span>
+        </td>
         <td>
           <strong style="color:#ffffff;">${escapeHtml(ord.userName)}</strong><br>
           <span style="font-size:0.8rem; color:var(--yellow-primary);">${escapeHtml(ord.userPhone)}</span>
@@ -912,31 +1100,90 @@ function renderOrdersTable(orders) {
         <td>
           <strong style="color:#ffffff;">${escapeHtml(ord.productName)}</strong><br>
           <span style="font-size:0.78rem; color:var(--pink-accent);">${escapeHtml(ord.subProduct || '')}</span>
+          <span style="font-size:0.75rem; color:var(--text-dim);">[${escapeHtml(ord.country || 'Global')}] (x${ord.quantity})</span>
         </td>
-        <td><span class="badge badge-yellow">${escapeHtml(ord.country || '🌐 Global')}</span></td>
         <td>
           <strong style="color:var(--green-bright);">${formatOwnerPriceDisplay(ord.totalPaid)}</strong><br>
-          ${isTxHashReal 
-            ? `<a href="${bscScanUrl}" target="_blank" style="font-size:0.72rem; color:var(--yellow-primary); text-decoration:underline;">🔍 Audit on BscScan</a>` 
-            : `<span style="font-size:0.72rem; color:var(--text-dim);">⚡ Verified</span>`
+          ${isUpi 
+            ? `<span style="font-size:0.75rem; color:#22c55e; font-weight:700;">🏦 UPI: ${escapeHtml(ord.utrId || 'Pending UTR')}</span>`
+            : (isTxHashReal 
+                ? `<a href="${bscScanUrl}" target="_blank" style="font-size:0.72rem; color:var(--yellow-primary); text-decoration:underline;">🔍 Audit on BscScan</a>` 
+                : `<span style="font-size:0.72rem; color:var(--text-dim);">⚡ BEP20 USDT</span>`
+              )
           }
         </td>
         <td>
-          <span class="badge ${ord.deliveryStatus === 'DELIVERED' ? 'badge-success' : 'badge-warning'}">
+          <span class="badge ${statusBadgeClass}">
             ${ord.deliveryStatus}
           </span>
         </td>
         <td>
-          <div class="code-box" style="font-size:0.75rem; max-width:180px; max-height:60px; overflow:hidden;">
+          <div class="code-box" style="font-size:0.75rem; max-width:180px; max-height:60px; overflow:hidden; white-space:pre-wrap;">
             ${escapeHtml(ord.deliveredItem || 'No key')}
           </div>
         </td>
         <td>
-          <span style="font-size:0.78rem; color:var(--text-dim);">${new Date(ord.createdAt).toLocaleString()}</span>
+          <div style="display:flex; flex-direction:column; gap:4px; min-width:120px;">
+            ${isPendingApproval ? `
+              <button type="button" class="btn btn-success btn-sm" onclick="approveUpiOrder('${ord._id}')" style="padding:4px 8px; font-size:0.75rem; font-weight:700;">
+                ✅ Approve & Deliver
+              </button>
+              <button type="button" class="btn btn-danger btn-sm" onclick="rejectUpiOrder('${ord._id}')" style="padding:4px 8px; font-size:0.75rem;">
+                ❌ Reject
+              </button>
+            ` : ''}
+            <a href="/invoice/${ord._id}" target="_blank" class="btn btn-secondary btn-sm" style="padding:4px 8px; font-size:0.75rem; text-decoration:none; text-align:center;">
+              🧾 Invoice
+            </a>
+          </div>
+        </td>
+        <td>
+          <span style="font-size:0.75rem; color:var(--text-dim);">${new Date(ord.createdAt).toLocaleString()}</span>
         </td>
       </tr>
     `;
   }).join('');
+}
+
+async function approveUpiOrder(orderId) {
+  if (!confirm(`Approve Order #${orderId} and dispatch stock keys + PDF invoice to customer on WhatsApp/Telegram/Email?`)) return;
+  showOwnerToast('⏳ Approving order & generating PDF invoice...', 'info');
+  try {
+    const res = await fetch(`/api/owner/orders/${orderId}/approve-upi`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' }
+    });
+    const data = await res.json();
+    if (data.success) {
+      showOwnerToast('🎉 Order Approved! Keys & PDF Invoice Dispatched.', 'success');
+      Promise.all([fetchOrders(), fetchStocks(), fetchMetrics()]).catch(() => {});
+    } else {
+      showOwnerToast(data.message || 'Approval failed.', 'error');
+    }
+  } catch (err) {
+    showOwnerToast('Approval error: ' + err.message, 'error');
+  }
+}
+
+async function rejectUpiOrder(orderId) {
+  const reason = prompt('Enter reason for rejection (optional):', 'Payment unverified / invalid UTR');
+  if (reason === null) return;
+  try {
+    const res = await fetch(`/api/owner/orders/${orderId}/reject-upi`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ reason })
+    });
+    const data = await res.json();
+    if (data.success) {
+      showOwnerToast('Order Rejected.', 'info');
+      fetchOrders();
+    } else {
+      showOwnerToast(data.message, 'error');
+    }
+  } catch (err) {
+    showOwnerToast('Reject error: ' + err.message, 'error');
+  }
 }
 
 // ----------------------------------------------------
@@ -1185,8 +1432,21 @@ async function fetchSettings() {
     const data = await res.json();
     if (data.success && data.settings) {
       const s = data.settings;
-      if (document.getElementById('setting-owner-phone')) document.getElementById('setting-owner-phone').value = s.ownerPhone || '';
+      if (document.getElementById('setting-owner-upi')) document.getElementById('setting-owner-upi').value = s.ownerUpiId || '9507325677-1@naviaxis';
+      if (document.getElementById('setting-owner-whatsapp')) document.getElementById('setting-owner-whatsapp').value = s.ownerWhatsApp || '9507325677';
+      if (document.getElementById('setting-owner-bep20')) document.getElementById('setting-owner-bep20').value = s.defaultBep20Address || '';
+      if (document.getElementById('setting-whatsapp-bot')) document.getElementById('setting-whatsapp-bot').value = s.whatsappBotUrl || 'https://wa.me/qr/DDVIRR5NFY2YO1';
+      if (document.getElementById('setting-telegram-bot')) document.getElementById('setting-telegram-bot').value = s.telegramBotUrl || 'https://t.me/princecloudsellarshop_bot';
+      if (document.getElementById('setting-owner-phone')) document.getElementById('setting-owner-phone').value = s.ownerPhone || '+91 9507325677';
       if (document.getElementById('setting-support-url')) document.getElementById('setting-support-url').value = s.supportUrl || '';
+      if (document.getElementById('setting-whatsapp-group')) document.getElementById('setting-whatsapp-group').value = s.whatsappGroupUrl || '';
+      if (document.getElementById('setting-telegram-group')) document.getElementById('setting-telegram-group').value = s.telegramGroupUrl || '';
+      
+      const linkWa = document.getElementById('setting-link-wa-bot');
+      if (linkWa) linkWa.href = s.whatsappBotUrl || 'https://wa.me/qr/DDVIRR5NFY2YO1';
+
+      const linkTg = document.getElementById('setting-link-tg-bot');
+      if (linkTg) linkTg.href = s.telegramBotUrl || 'https://t.me/princecloudsellarshop_bot';
     }
   } catch (err) {
     console.error('Fetch settings error:', err);
@@ -1194,23 +1454,584 @@ async function fetchSettings() {
 }
 
 async function handleSaveSettings() {
-  const ownerPhone = document.getElementById('setting-owner-phone').value;
-  const supportUrl = document.getElementById('setting-support-url').value;
+  const ownerUpiId = document.getElementById('setting-owner-upi')?.value.trim() || '9507325677-1@naviaxis';
+  const ownerWhatsApp = document.getElementById('setting-owner-whatsapp')?.value.trim() || '9507325677';
+  const defaultBep20Address = document.getElementById('setting-owner-bep20')?.value.trim() || '';
+  const whatsappBotUrl = document.getElementById('setting-whatsapp-bot')?.value.trim() || 'https://wa.me/qr/DDVIRR5NFY2YO1';
+  const telegramBotUrl = document.getElementById('setting-telegram-bot')?.value.trim() || 'https://t.me/princecloudsellarshop_bot';
+  const ownerPhone = document.getElementById('setting-owner-phone')?.value.trim() || '+91 9507325677';
+  const supportUrl = document.getElementById('setting-support-url')?.value.trim() || '';
+  const whatsappGroupUrl = document.getElementById('setting-whatsapp-group')?.value.trim() || '';
+  const telegramGroupUrl = document.getElementById('setting-telegram-group')?.value.trim() || '';
 
   try {
     const res = await fetch('/api/owner/settings', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ownerPhone, supportUrl })
+      body: JSON.stringify({ 
+        ownerUpiId, 
+        ownerWhatsApp, 
+        defaultBep20Address, 
+        whatsappBotUrl,
+        telegramBotUrl,
+        ownerPhone, 
+        supportUrl, 
+        whatsappGroupUrl, 
+        telegramGroupUrl 
+      })
     });
     const data = await res.json();
     if (data.success) {
-      showToast('Owner support settings saved successfully!', 'success');
+      showToast('🎉 All Platform, Bot & Payment Settings saved successfully! Live everywhere.', 'success');
+      fetchSettings();
     } else {
       showToast(data.message, 'error');
     }
   } catch (err) {
     showToast('Save settings error: ' + err.message, 'error');
+  }
+}
+
+// ----------------------------------------------------
+// OWNER SUPPORT TICKETS & DISPUTES LOGIC
+// ----------------------------------------------------
+let currentOwnerTickets = [];
+
+async function fetchOwnerTickets() {
+  try {
+    const res = await fetch('/api/owner/tickets?t=' + Date.now());
+    const data = await res.json();
+    if (data.success) {
+      currentOwnerTickets = data.tickets || [];
+      renderOwnerTicketsTable(currentOwnerTickets);
+
+      const pendingCount = currentOwnerTickets.filter(t => t.status === 'PENDING').length;
+      const ticketBadge = document.getElementById('owner-pending-tickets-badge');
+      if (ticketBadge) {
+        if (pendingCount > 0) {
+          ticketBadge.innerText = pendingCount;
+          ticketBadge.style.display = 'inline-block';
+        } else {
+          ticketBadge.style.display = 'none';
+        }
+      }
+    }
+  } catch (err) {
+    console.error('Fetch owner tickets error:', err);
+    showToast('Failed to load tickets: ' + err.message, 'error');
+  }
+}
+
+function renderOwnerTicketsTable(tickets) {
+  const tbody = document.getElementById('owner-tickets-tbody');
+  if (!tbody) return;
+
+  if (!tickets || tickets.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; padding:30px; color:var(--text-muted);">No customer support tickets received yet.</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = tickets.map(t => {
+    let statusBadge = '<span class="badge badge-warning">🟡 PENDING</span>';
+    if (t.status === 'RESOLVED') statusBadge = '<span class="badge badge-success">🟢 RESOLVED</span>';
+    if (t.status === 'IN_PROGRESS') statusBadge = '<span class="badge badge-yellow">🔄 IN PROGRESS</span>';
+    if (t.status === 'REJECTED') statusBadge = '<span class="badge badge-danger">🔴 REJECTED</span>';
+
+    const productTag = t.productName ? `
+      <div style="background: rgba(250,204,21,0.08); border: 1px solid rgba(250,204,21,0.3); border-radius: 4px; padding: 2px 6px; margin-top: 4px; font-size: 0.75rem; color: #facc15; display: inline-block;">
+        📦 ${escapeHtml(t.productName)} ${t.subProduct ? `(${escapeHtml(t.subProduct)})` : ''} ${t.country ? `[${escapeHtml(t.country)}]` : ''}
+      </div>
+    ` : '';
+
+    const customCategoryTag = t.customProblem ? `
+      <div style="color: #ec4899; font-size: 0.75rem; font-weight: 700; margin-top: 2px;">
+        Specific Issue: ${escapeHtml(t.customProblem)}
+      </div>
+    ` : '';
+
+    return `
+      <tr>
+        <td style="font-family:monospace; color:var(--yellow-primary); font-weight:800; font-size:0.82rem;">${escapeHtml(t._id)}</td>
+        <td>
+          <div style="font-weight:700; color:#ffffff;">${escapeHtml(t.userName)}</div>
+          <div style="font-size:0.78rem; color:var(--text-dim);">${escapeHtml(t.userPhone)}</div>
+          <div style="font-size:0.78rem; color:var(--pink-accent);">${escapeHtml(t.userEmail)}</div>
+        </td>
+        <td>
+          <span class="badge badge-yellow" style="font-size:0.72rem;">${escapeHtml(t.category)}</span>
+          ${customCategoryTag}
+          ${productTag}
+        </td>
+        <td>
+          <div style="font-weight:600; color:#ffffff;">${escapeHtml(t.subject)}</div>
+          ${t.orderId ? `<div style="font-size:0.75rem; color:var(--text-dim);">Order: ${escapeHtml(t.orderId)}</div>` : ''}
+          ${t.amountPaid ? `<div style="font-size:0.75rem; color:#34d399;">Amount: ${escapeHtml(t.amountPaid)}</div>` : ''}
+          ${t.txHash ? `<div style="font-family:monospace; font-size:0.72rem; color:#38bdf8; word-break:break-all; max-width:180px;">TX: ${escapeHtml(t.txHash)}</div>` : ''}
+        </td>
+        <td style="max-width:240px; font-size:0.84rem; color:var(--text-muted); line-height:1.4;">
+          ${escapeHtml(t.message)}
+          <div style="font-size:0.72rem; color:var(--text-dim); margin-top:4px;">${new Date(t.createdAt).toLocaleString()}</div>
+        </td>
+        <td>${statusBadge}</td>
+        <td style="max-width:220px; font-size:0.84rem;">
+          ${t.ownerReply ? `
+            <div style="color:var(--yellow-primary); background:rgba(0,0,0,0.4); padding:6px 10px; border-radius:6px; font-size:0.8rem; line-height:1.35;">
+              ${escapeHtml(t.ownerReply)}
+            </div>
+          ` : `<span style="color:var(--text-dim); font-size:0.78rem; font-style:italic;">No reply yet</span>`}
+        </td>
+        <td>
+          <button class="btn btn-primary" onclick="openResolveTicketModal('${t._id}')" style="padding:6px 12px; font-size:0.8rem; white-space:nowrap;">
+            ✍️ Resolve / Reply
+          </button>
+        </td>
+      </tr>
+    `;
+  }).join('');
+}
+
+function openResolveTicketModal(ticketId) {
+  const ticket = currentOwnerTickets.find(t => t._id === ticketId);
+  if (!ticket) return;
+
+  document.getElementById('resolve-ticket-id').value = ticket._id;
+  document.getElementById('resolve-status-select').value = ticket.status || 'RESOLVED';
+  document.getElementById('resolve-reply-text').value = ticket.ownerReply || '';
+
+  const infoEl = document.getElementById('resolve-ticket-info');
+  if (infoEl) {
+    infoEl.innerHTML = `
+      <div style="margin-bottom:6px;"><strong>Ticket ID:</strong> <span style="color:var(--yellow-primary); font-family:monospace;">${escapeHtml(ticket._id)}</span></div>
+      <div style="margin-bottom:6px;"><strong>Customer:</strong> ${escapeHtml(ticket.userName)} (${escapeHtml(ticket.userPhone)} / ${escapeHtml(ticket.userEmail)})</div>
+      <div style="margin-bottom:6px;"><strong>Category &amp; Issue:</strong> [${escapeHtml(ticket.category)}] ${ticket.customProblem ? `(Custom: ${escapeHtml(ticket.customProblem)})` : ''}</div>
+      ${ticket.productName ? `<div style="margin-bottom:6px; color:#facc15;"><strong>Disputed Product:</strong> ${escapeHtml(ticket.productName)} ${ticket.subProduct ? `(${escapeHtml(ticket.subProduct)})` : ''} [${escapeHtml(ticket.country || 'Global')}]</div>` : ''}
+      ${ticket.orderId ? `<div style="margin-bottom:6px;"><strong>Order ID:</strong> ${escapeHtml(ticket.orderId)}</div>` : ''}
+      ${ticket.txHash ? `<div style="margin-bottom:6px; font-family:monospace; color:#38bdf8; word-break:break-all;"><strong>TX Hash:</strong> ${escapeHtml(ticket.txHash)}</div>` : ''}
+      <div style="background:rgba(255,255,255,0.06); padding:8px; border-radius:6px; margin-top:8px;">
+        <strong>Customer Complaint:</strong><br>${escapeHtml(ticket.message)}
+      </div>
+    `;
+  }
+
+  openModal('resolve-ticket-modal');
+}
+
+async function handleResolveTicketSubmit() {
+  const ticketId = document.getElementById('resolve-ticket-id').value;
+  const status = document.getElementById('resolve-status-select').value;
+  const ownerReply = document.getElementById('resolve-reply-text').value.trim();
+
+  if (!ownerReply) {
+    showToast('Please enter resolution note / reply for the customer.', 'warning');
+    return;
+  }
+
+  try {
+    const res = await fetch(`/api/owner/tickets/${ticketId}/resolve`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status, ownerReply })
+    });
+
+    const data = await res.json();
+    if (data.success) {
+      showToast('Support ticket updated & customer notified!', 'success');
+      closeModal('resolve-ticket-modal');
+      fetchOwnerTickets();
+      fetchMetrics();
+    } else {
+      showToast(data.message || 'Failed to update ticket.', 'error');
+    }
+  } catch (err) {
+    showToast('Resolve ticket error: ' + err.message, 'error');
+  }
+}
+
+// ----------------------------------------------------
+// DIRECT DISPATCH & BROADCAST NOTIFICATIONS CONTROLLER
+// ----------------------------------------------------
+
+function populateCustomerSelects(customers) {
+  const dispatchSelect = document.getElementById('dispatch-customer-select');
+  const directNotifSelect = document.getElementById('direct-notif-customer-select');
+
+  const optionsHtml = (customers && customers.length > 0)
+    ? '<option value="">-- Choose Customer from Database --</option>' + customers.map(c => `
+        <option value="${escapeHtml(c.id)}">${escapeHtml(c.name)} (${escapeHtml(c.email)} • ${escapeHtml(c.phone)})</option>
+      `).join('')
+    : '<option value="">-- No Registered Customers Found --</option>';
+
+  if (dispatchSelect) dispatchSelect.innerHTML = optionsHtml;
+  if (directNotifSelect) directNotifSelect.innerHTML = optionsHtml;
+}
+
+function populateDispatchProductSelect(products) {
+  const select = document.getElementById('dispatch-product-select');
+  if (!select) return;
+
+  if (!products || products.length === 0) {
+    select.innerHTML = '<option value="">-- No Products Created Yet --</option>';
+    return;
+  }
+
+  select.innerHTML = '<option value="">-- Choose Store Product --</option>' + products.map(p => `
+    <option value="${escapeHtml(p._id)}">📦 ${escapeHtml(p.name)} ${p.subProduct ? `(${escapeHtml(p.subProduct)})` : ''} [${escapeHtml(p.country || 'Global')}] (Stock: ${p.stock || 0} Avail)</option>
+  `).join('');
+}
+
+function onDispatchProductChange(prodId) {
+  const prod = currentProducts.find(p => p._id === prodId);
+  const qtyInput = document.getElementById('dispatch-quantity');
+  if (prod && qtyInput) {
+    const avail = Number(prod.stock) || 0;
+    if (avail > 0) {
+      qtyInput.max = avail;
+    }
+  }
+}
+
+function onDispatchStockModeChange(mode) {
+  const customGroup = document.getElementById('dispatch-custom-payload-group');
+  if (customGroup) {
+    customGroup.style.display = mode === 'CUSTOM_KEY' ? 'block' : 'none';
+  }
+}
+
+async function handleDirectDispatchSubmit() {
+  const userId = document.getElementById('dispatch-customer-select').value;
+  const productId = document.getElementById('dispatch-product-select').value;
+  const quantity = Number(document.getElementById('dispatch-quantity').value) || 1;
+  const stockMode = document.getElementById('dispatch-stock-mode').value;
+  const customPayload = document.getElementById('dispatch-custom-payload') ? document.getElementById('dispatch-custom-payload').value : '';
+  const notes = document.getElementById('dispatch-notes') ? document.getElementById('dispatch-notes').value.trim() : '';
+  const sendEmail = document.getElementById('dispatch-send-email') ? document.getElementById('dispatch-send-email').checked : true;
+
+  if (!userId || !productId) {
+    showToast('Please select both a Customer and a Product.', 'warning');
+    return;
+  }
+
+  if (stockMode === 'CUSTOM_KEY' && (!customPayload || customPayload.trim().length === 0)) {
+    showToast('Please enter the custom account payload / key.', 'warning');
+    return;
+  }
+
+  try {
+    const res = await fetch('/api/owner/dispatch-direct', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        userId,
+        productId,
+        quantity,
+        useStock: stockMode === 'AUTO_STOCK',
+        customPayload,
+        notes,
+        sendEmail
+      })
+    });
+
+    const data = await res.json();
+    if (data.success) {
+      showToast(data.message || 'Account successfully dispatched to customer!', 'success');
+      document.getElementById('direct-dispatch-form').reset();
+      fetchProducts();
+      fetchStocks();
+      fetchRecentTransactions();
+      fetchMetrics();
+    } else {
+      showToast(data.message || 'Dispatch failed.', 'error');
+    }
+  } catch (err) {
+    showToast('Dispatch error: ' + err.message, 'error');
+  }
+}
+
+async function handleBroadcastSubmit() {
+  const type = document.getElementById('broadcast-type').value;
+  const title = document.getElementById('broadcast-title').value.trim();
+  const message = document.getElementById('broadcast-message').value.trim();
+
+  if (!title || !message) {
+    showToast('Please enter both notification title and message body.', 'warning');
+    return;
+  }
+
+  try {
+    const res = await fetch('/api/owner/notifications/broadcast', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type, title, message })
+    });
+
+    const data = await res.json();
+    if (data.success) {
+      showToast('Broadcast notification sent to ALL users successfully!', 'success');
+      document.getElementById('broadcast-notification-form').reset();
+    } else {
+      showToast(data.message || 'Failed to send broadcast.', 'error');
+    }
+  } catch (err) {
+    showToast('Broadcast error: ' + err.message, 'error');
+  }
+}
+
+async function handleDirectNotifSubmit() {
+  const userId = document.getElementById('direct-notif-customer-select').value;
+  const title = document.getElementById('direct-notif-title').value.trim();
+  const message = document.getElementById('direct-notif-message').value.trim();
+
+  if (!userId || !title || !message) {
+    showToast('Please select a customer, title and message.', 'warning');
+    return;
+  }
+
+  const cust = currentCustomers.find(c => c.id === userId);
+  const userEmail = cust ? cust.email : '';
+
+  try {
+    const res = await fetch('/api/owner/notifications/direct', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId, userEmail, title, message, type: 'PROMO' })
+    });
+
+    const data = await res.json();
+    if (data.success) {
+      showToast('Direct notification sent to customer successfully!', 'success');
+      document.getElementById('direct-notif-form').reset();
+    } else {
+      showToast(data.message || 'Failed to send direct notification.', 'error');
+    }
+  } catch (err) {
+    showToast('Direct notification error: ' + err.message, 'error');
+  }
+}
+
+// ----------------------------------------------------
+// TELEGRAM & WHATSAPP BOT MANAGEMENT CONTROLLER
+// ----------------------------------------------------
+
+async function fetchBotStatus() {
+  try {
+    const res = await fetch('/api/owner/bots/status');
+    const data = await res.json();
+    if (data.success) {
+      const badge = document.getElementById('tg-bot-status-badge');
+      if (badge) {
+        if (data.telegram && data.telegram.isActive) {
+          badge.className = 'badge badge-success';
+          badge.innerText = '🟢 BOT RUNNING';
+        } else if (data.telegram && data.telegram.tokenSet) {
+          badge.className = 'badge badge-yellow';
+          badge.innerText = '🟡 CONFIGURED';
+        } else {
+          badge.className = 'badge badge-warning';
+          badge.innerText = '⚪ TOKEN REQUIRED';
+        }
+      }
+
+      if (data.telegram && data.telegram.channelId) {
+        const chanInput = document.getElementById('tg-channel-id-input');
+        if (chanInput && !chanInput.value) chanInput.value = data.telegram.channelId;
+      }
+
+      const waBadge = document.getElementById('wa-session-status-badge');
+      if (waBadge) {
+        if (data.whatsapp && data.whatsapp.sessionLinked) {
+          waBadge.className = 'badge badge-success';
+          waBadge.innerText = '🟢 SESSION PAIRED';
+        } else {
+          waBadge.className = 'badge badge-yellow';
+          waBadge.innerText = '🟡 READY TO PAIR';
+        }
+      }
+
+      if (data.whatsapp && data.whatsapp.connectedNumber) {
+        const phoneDisp = document.getElementById('wa-connected-phone-display');
+        if (phoneDisp) phoneDisp.innerText = data.whatsapp.connectedNumber;
+      }
+
+      fetchWhatsAppLiveQR();
+    }
+  } catch (err) {
+    console.error('Fetch bot status error:', err);
+  }
+}
+
+async function handleSaveTelegramBot() {
+  const token = document.getElementById('tg-bot-token-input').value.trim();
+  const channelId = document.getElementById('tg-channel-id-input').value.trim();
+
+  if (!token) {
+    showToast('Please enter your Telegram Bot Token.', 'warning');
+    return;
+  }
+
+  try {
+    const res = await fetch('/api/owner/bots/telegram/configure', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token, channelId })
+    });
+
+    const data = await res.json();
+    if (data.success) {
+      showToast(data.message, 'success');
+      fetchBotStatus();
+    } else {
+      showToast(data.message || 'Failed to connect Telegram Bot.', 'error');
+    }
+  } catch (err) {
+    showToast('Telegram connection error: ' + err.message, 'error');
+  }
+}
+
+async function handleTestTelegramBroadcast() {
+  const title = document.getElementById('tg-test-title').value.trim();
+  const message = document.getElementById('tg-test-msg').value.trim();
+  const channelId = document.getElementById('tg-channel-id-input').value.trim();
+
+  if (!title || !message) {
+    showToast('Please enter title and message.', 'warning');
+    return;
+  }
+
+  try {
+    const res = await fetch('/api/owner/bots/telegram/broadcast', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title, message, channelId })
+    });
+
+    const data = await res.json();
+    if (data.success) {
+      showToast(data.message, 'success');
+      document.getElementById('telegram-test-broadcast-form').reset();
+    } else {
+      showToast(data.message || 'Broadcast failed. Check if bot is admin in channel.', 'error');
+    }
+  } catch (err) {
+    showToast('Telegram broadcast error: ' + err.message, 'error');
+  }
+}
+
+async function handleTestWhatsAppSimulate() {
+  const from = document.getElementById('wa-sim-number').value.trim();
+  const message = document.getElementById('wa-sim-cmd').value.trim();
+
+  try {
+    const res = await fetch('/api/whatsapp/webhook', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ from, message })
+    });
+
+    const data = await res.json();
+    const resultBox = document.getElementById('wa-sim-result-box');
+    const replyText = document.getElementById('wa-sim-reply-text');
+
+    if (data.success && data.reply) {
+      if (resultBox && replyText) {
+        replyText.innerText = data.reply;
+        resultBox.style.display = 'block';
+      }
+      showToast('WhatsApp bot replied successfully!', 'success');
+    } else {
+      showToast('No reply or unhandled command.', 'info');
+    }
+  } catch (err) {
+    showToast('WhatsApp simulation error: ' + err.message, 'error');
+  }
+}
+
+async function fetchWhatsAppLiveQR() {
+  const phone = (document.getElementById('wa-link-phone-input') ? document.getElementById('wa-link-phone-input').value : '+919507325000').trim();
+  const spinner = document.getElementById('wa-qr-loading-spinner');
+  const qrImg = document.getElementById('wa-live-qr-img');
+
+  if (spinner) spinner.style.display = 'flex';
+  if (qrImg) qrImg.style.display = 'none';
+
+  try {
+    const res = await fetch(`/api/owner/bots/whatsapp/qr?phone=${encodeURIComponent(phone)}`);
+    const data = await res.json();
+
+    if (data.success && data.qrDataUrl) {
+      if (qrImg) {
+        qrImg.src = data.qrDataUrl;
+        qrImg.style.display = 'block';
+      }
+      if (spinner) spinner.style.display = 'none';
+
+      const codeVal = document.getElementById('wa-pairing-code-val');
+      if (codeVal && data.pairingCode) codeVal.innerText = data.pairingCode;
+    }
+  } catch (err) {
+    console.error('WhatsApp QR fetch error:', err);
+  }
+}
+
+async function generateWhatsAppPairingCode() {
+  const phoneInput = document.getElementById('wa-link-phone-input');
+  const phone = phoneInput ? phoneInput.value.trim() : '+919507325000';
+
+  if (!phone) {
+    showToast('Please enter your WhatsApp mobile number.', 'warning');
+    return;
+  }
+
+  try {
+    const res = await fetch('/api/owner/bots/whatsapp/pair', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phone })
+    });
+
+    const data = await res.json();
+    if (data.success) {
+      if (data.pairingCode) {
+        const codeVal = document.getElementById('wa-pairing-code-val');
+        if (codeVal) codeVal.innerText = data.pairingCode;
+      }
+
+      const phoneDisp = document.getElementById('wa-connected-phone-display');
+      if (phoneDisp) phoneDisp.innerText = data.phone || phone;
+
+      showToast(data.message || `Pairing Code generated: ${data.pairingCode}`, 'success');
+    } else {
+      showToast(data.message || 'Failed to request pairing code.', 'error');
+    }
+  } catch (err) {
+    showToast('WhatsApp pairing error: ' + err.message, 'error');
+  }
+}
+
+async function disconnectWhatsAppSession() {
+  try {
+    const res = await fetch('/api/owner/bots/whatsapp/disconnect', {
+      method: 'POST'
+    });
+    const data = await res.json();
+    if (data.success) {
+      const badge = document.getElementById('wa-session-status-badge');
+      if (badge) {
+        badge.className = 'badge badge-warning';
+        badge.innerText = '⚪ DISCONNECTED';
+      }
+      showToast('WhatsApp session disconnected.', 'info');
+      fetchWhatsAppLiveQR();
+    }
+  } catch (err) {
+    showToast('Disconnect error: ' + err.message, 'error');
+  }
+}
+
+function copyPairingCode() {
+  const display = document.getElementById('wa-pairing-code-val');
+  if (display) {
+    navigator.clipboard.writeText(display.innerText);
+    showToast('Pairing code copied to clipboard!', 'info');
   }
 }
 

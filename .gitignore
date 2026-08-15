@@ -1,4 +1,9 @@
 node_modules
 .env
+.env.*
 .DS_Store
 *.log
+data/baileys_auth/
+data/baileys_auth
+data/whatsapp_session.json
+scripts/

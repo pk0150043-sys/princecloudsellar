@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>PrinceCloudSellar - Official Storefront</title>
+  <link rel="icon" type="image/png" href="/logo.png">
   <link rel="stylesheet" href="/css/style.css">
   <link rel="stylesheet" href="/css/user.css">
   <!-- Ethers.js Web3 Library CDN (Loaded with defer for Instant 0.05s Page Render) -->
@@ -14,12 +15,40 @@
   <!-- Toast Notification Container -->
   <div id="toast-container"></div>
 
+  <!-- TOP COMMUNITY & DIRECT SUPPORT BANNER STRIP -->
+  <div class="top-community-bar">
+    <div class="container community-bar-inner">
+      <div class="community-bar-left">
+        <span class="live-pulse-dot"></span>
+        <span style="font-size: 0.78rem; font-weight: 800; color: var(--yellow-primary); letter-spacing: 0.5px;">OFFICIAL 24/7 BOTS:</span>
+        <a id="top-wa-link" href="https://wa.me/qr/DDVIRR5NFY2YO1" target="_blank" class="top-community-link top-wa-link">
+          <span>💬 WhatsApp Shop Bot</span>
+        </a>
+        <a id="top-tg-link" href="https://t.me/princecloudsellarshop_bot" target="_blank" class="top-community-link top-tg-link">
+          <span>✈️ Telegram Shop Bot</span>
+        </a>
+        <a href="https://wa.me/919507325677?text=Hello%20Owner%20I%20need%20support%20for%20PrinceCloudSellar" target="_blank" class="top-community-link" style="background: rgba(236,72,153,0.15); border: 1px solid var(--pink-accent); color: var(--pink-accent);">
+          <span>💬 Direct WhatsApp: +91 9507325677</span>
+        </a>
+      </div>
+
+      <div class="community-bar-right">
+        <button type="button" class="top-ticket-btn" onclick="openSupportTicketModal()">
+          <span>🎫 Raise Complaint / Support Ticket</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- TOP NAVBAR -->
   <nav class="user-navbar">
     <div class="container user-nav-inner">
       <a href="/" class="user-brand">
-        <div class="logo-icon">👑</div>
-        <span>PrinceCloudSellar</span>
+        <img src="/logo.png" alt="Prince Cloud Seller Logo" class="brand-logo-img">
+        <div class="brand-text-block">
+          <span class="brand-name">PrinceCloudSellar</span>
+          <span class="brand-tagline">Reliable Cloud • Web Hosting • Secure Server</span>
+        </div>
       </a>
 
       <div class="user-nav-links">
@@ -29,12 +58,45 @@
           <button id="curr-btn-usd" class="currency-btn" onclick="setStoreCurrency('USD')">🇺🇸 $ USD</button>
         </div>
 
-        <button class="btn btn-secondary" onclick="contactOwnerSupport()" style="padding:8px 18px; font-size:0.88rem; border-color:var(--pink-accent); color:var(--pink-accent);">
+        <!-- DIRECT AUTOMATED SHOP BOTS & OFFICIAL CHANNELS -->
+        <a id="btn-join-whatsapp" href="https://wa.me/qr/DDVIRR5NFY2YO1" target="_blank" class="nav-social-btn nav-wa-btn" title="Open WhatsApp Shop Bot">
+          <span style="font-size:1.05rem;">💬</span>
+          <span>WhatsApp Bot</span>
+        </a>
+        <a id="btn-join-wa-channel" href="https://wa.me/qr/DDVIRR5NFY2YO1" target="_blank" class="nav-social-btn nav-wa-channel-btn" title="Join Official WhatsApp Channel / Group">
+          <span style="font-size:1.05rem;">📢</span>
+          <span>WhatsApp Channel</span>
+        </a>
+        <a id="btn-join-telegram" href="https://t.me/princecloudsellarshop_bot" target="_blank" class="nav-social-btn nav-tg-btn" title="Open Telegram Shop Bot">
+          <span style="font-size:1.05rem;">✈️</span>
+          <span>Telegram Bot</span>
+        </a>
+        <a id="btn-join-tg-channel" href="https://t.me/princecloudsellarshop_bot" target="_blank" class="nav-social-btn nav-tg-channel-btn" title="Join Official Telegram Channel">
+          <span style="font-size:1.05rem;">📢</span>
+          <span>Telegram Channel</span>
+        </a>
+
+        <a href="#landing-about-terms-section" class="btn btn-secondary" style="padding:8px 14px; font-size:0.85rem; text-decoration:none; display:inline-flex; align-items:center; gap:4px; border-color:rgba(255,255,255,0.2);">
+          📜 About &amp; Terms
+        </a>
+
+        <button class="btn btn-secondary" onclick="openSupportTicketModal()" style="padding:8px 16px; font-size:0.85rem; border-color:var(--yellow-primary); color:var(--yellow-primary);">
+          🎫 Tickets / Help
+        </button>
+
+        <button class="btn btn-secondary" onclick="contactOwnerSupport()" style="padding:8px 16px; font-size:0.85rem; border-color:var(--pink-accent); color:var(--pink-accent);">
           💬 Direct Support
+        </button>
+
+        <!-- NOTIFICATION BELL BUTTON -->
+        <button class="nav-notif-btn" id="nav-notif-btn" onclick="openNotificationsModal()" title="Notifications & Announcements">
+          <span style="font-size:1.15rem;">🔔</span>
+          <span class="notif-badge" id="user-notif-badge" style="display:none;">0</span>
         </button>
         
         <div id="user-nav-actions" class="user-nav-links">
-          <!-- Dynamic user auth actions -->
+          <button class="btn btn-secondary" style="padding:7px 14px; font-size:0.85rem; font-weight:700; border-color:var(--yellow-primary); color:var(--yellow-primary);" onclick="openModal('user-login-modal')">🔑 Sign In</button>
+          <button class="btn btn-primary" style="padding:7px 16px; font-size:0.85rem; font-weight:700;" onclick="openModal('user-register-modal')">✨ Register</button>
         </div>
       </div>
     </div>
@@ -42,21 +104,47 @@
 
   <!-- HERO SECTION -->
   <section class="container hero-section">
-    <div class="badge badge-yellow" style="margin-bottom:16px;">
-      ⚡ 100% AUTOMATED INSTANT DELIVERY STORE
+    <div class="hero-logo-banner">
+      <div class="hero-logo-wrapper">
+        <img src="/logo.png" alt="Prince Cloud Seller Official" class="hero-center-logo">
+      </div>
     </div>
+
+    <!-- INTERACTIVE LIVE STATS RIBBON -->
+    <div class="hero-live-ribbon">
+      <div class="ribbon-item">
+        <span class="live-pulse-dot"></span>
+        <span style="color:#facc15;">24/7 ON-CHAIN DISPATCH</span>
+      </div>
+      <span class="ribbon-divider">•</span>
+      <div class="ribbon-item">
+        <span>⚡ 1.8s Avg Delivery</span>
+      </div>
+      <span class="ribbon-divider">•</span>
+      <div class="ribbon-item">
+        <span style="color:#38bdf8;">🛡️ 100% Tested Warranty</span>
+      </div>
+      <span class="ribbon-divider">•</span>
+      <div class="ribbon-item">
+        <span style="color:#34d399;">⭐ 4.9/5 Rating</span>
+      </div>
+    </div>
+    
     <h1 class="hero-title">
-      Premium Cloud Accounts, RDP, Virtual Numbers & Premium Accounts
+      Premium Cloud Accounts, RDP, Virtual Numbers &amp; Developer Tools
     </h1>
     <p class="hero-subtitle">
-      Select your category below, pay via Binance Web3, Trust Wallet, MetaMask or any Crypto App (BEP20 USDT), and receive your working keys instantly on-screen & delivered to your Gmail inbox!
+      Select your category below, pay via Binance Web3, Trust Wallet, MetaMask or any Crypto App (BEP20 USDT), and receive your working keys instantly on-screen &amp; delivered to your Gmail inbox!
     </p>
   </section>
 
-  <!-- CATEGORY FILTER BAR -->
+  <!-- CATEGORY FILTER BAR (IMMEDIATELY VISIBLE ON HOMEPAGE) -->
   <section class="container" style="margin-bottom: 24px;">
-    <div style="font-size: 0.85rem; font-weight: 700; color: var(--yellow-primary); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px;">
-      📁 Browse By Product Category:
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 10px;">
+      <div style="font-size: 0.95rem; font-weight: 800; color: var(--yellow-primary); text-transform: uppercase; letter-spacing: 1px; display: flex; align-items: center; gap: 8px;">
+        <span>📁</span> Available Store Products &amp; Stock:
+      </div>
+      <span class="badge badge-success" style="font-size: 0.78rem;">🟢 Real-Time Verified Stock</span>
     </div>
     <div id="category-filter-bar" class="category-nav-bar">
       <!-- Dynamic category tabs rendered by user.js -->
@@ -64,9 +152,153 @@
   </section>
 
   <!-- PRODUCTS GRID SECTION -->
-  <section class="container" style="margin-bottom: 80px;">
+  <section class="container" style="margin-bottom: 50px;">
     <div id="store-products-container" class="store-grid">
       <!-- Dynamic products rendered by user.js -->
+    </div>
+  </section>
+
+  <!-- ABOUT OUR WEBSITE & INDIAN IT ACT COMPLIANCE & TERMS SECTION -->
+  <section id="landing-about-terms-section" class="container" style="margin-bottom: 40px;">
+    <div class="platform-info-grid">
+      
+      <!-- CARD 1: ABOUT PRINCECLOUDSALLAR -->
+      <div class="glass-card info-card about-platform-card">
+        <div class="info-card-header">
+          <div class="info-icon-badge info-icon-gold">
+            <span>👑</span>
+          </div>
+          <div>
+            <span class="info-badge-tag">ABOUT OUR PLATFORM</span>
+            <h2 class="info-card-title">Reliable Cloud & Digital Infrastructure</h2>
+          </div>
+        </div>
+
+        <p class="info-card-desc">
+          <strong>PrinceCloudSellar</strong> is India's trusted automated digital provider delivering authentic Cloud Accounts (Azure, AWS, Google Cloud, Vultr), High-Performance RDP / Cloud PCs, Virtual Numbers (WhatsApp/Telegram), and Verified Developer Assets with sub-second key dispatch.
+        </p>
+
+        <div class="features-mini-grid">
+          <div class="feature-pill">
+            <span class="pill-icon">⚡</span>
+            <div>
+              <strong>Instant Delivery</strong>
+              <p>Keys on-screen & emailed in &lt;5s</p>
+            </div>
+          </div>
+          <div class="feature-pill">
+            <span class="pill-icon">🛡️</span>
+            <div>
+              <strong>100% Tested</strong>
+              <p>Replacement warranty guaranteed</p>
+            </div>
+          </div>
+          <div class="feature-pill">
+            <span class="pill-icon">💳</span>
+            <div>
+              <strong>Dual Payment</strong>
+              <p>Crypto BEP20 &amp; UPI (GPay/PhonePe)</p>
+            </div>
+          </div>
+          <div class="feature-pill">
+            <span class="pill-icon">💬</span>
+            <div>
+              <strong>24/7 Support</strong>
+              <p>Official WhatsApp & Telegram groups</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- CARD 2: TERMS & CONDITIONS & INDIAN GOVT IT ACT GUIDELINES -->
+      <div class="glass-card info-card terms-compliance-card">
+        <div class="info-card-header">
+          <div class="info-icon-badge info-icon-cyan">
+            <span>🇮🇳</span>
+          </div>
+          <div>
+            <span class="info-badge-tag info-tag-cyan">REGULATORY COMPLIANCE</span>
+            <h2 class="info-card-title">Terms &amp; IT Act Guidelines</h2>
+          </div>
+        </div>
+
+        <div class="compliance-notice-banner" style="padding: 8px 12px; margin-bottom: 12px;">
+          <span>⚖️</span>
+          <div>
+            <strong style="font-size: 0.82rem;">IT Act, 2000 (India) Compliant Platform</strong>
+          </div>
+        </div>
+
+        <div class="compliance-points-list">
+          <div class="compliance-item">
+            <span class="item-bullet">✉️</span>
+            <div>
+              <strong>Mandatory Gmail OTP:</strong>
+              <span>6-digit email OTP verification required for verified ownership and bot prevention.</span>
+            </div>
+          </div>
+
+          <div class="compliance-item">
+            <span class="item-bullet">👤</span>
+            <div>
+              <strong>Valid Identification:</strong>
+              <span>Accurate Name &amp; Phone required for digital order fulfillment and customer support.</span>
+            </div>
+          </div>
+
+          <div class="compliance-item">
+            <span class="item-bullet">🛡️</span>
+            <div>
+              <strong>Ethical &amp; Lawful Use:</strong>
+              <span>For lawful development &amp; business computing only. Zero tolerance for spam/cybercrimes.</span>
+            </div>
+          </div>
+
+          <div class="compliance-item">
+            <span class="item-bullet">🔐</span>
+            <div>
+              <strong>Instant Digital Settlement:</strong>
+              <span>Blockchain BEP20 USDT &amp; Instant UPI verification with automated key dispatch.</span>
+            </div>
+          </div>
+        </div>
+
+        <div style="margin-top: 12px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; border-top: 1px solid var(--glass-border); padding-top: 10px;">
+          <span style="font-size: 0.78rem; color: var(--text-dim);">● Terms of Service Apply</span>
+          <button type="button" class="btn btn-secondary" onclick="openModal('terms-modal')" style="padding: 4px 12px; font-size: 0.78rem; border-color: var(--yellow-primary); color: var(--yellow-primary);">
+            📜 Read Full Policy
+          </button>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- CUSTOMER REVIEWS & RATINGS SHOWCASE SECTION -->
+  <section class="container" style="margin-bottom: 70px;">
+    <div class="glass-card" style="padding: 30px; border-color: rgba(250, 204, 21, 0.25);">
+      <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; margin-bottom: 24px; border-bottom: 1px solid var(--glass-border); padding-bottom: 16px;">
+        <div style="display: flex; align-items: center; gap: 14px;">
+          <div style="font-size: 2.2rem;">⭐</div>
+          <div>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <h2 style="font-size: 1.4rem; color: #ffffff; margin: 0;">Customer Reviews &amp; Ratings</h2>
+              <span id="feedback-avg-badge" class="badge badge-yellow" style="font-size: 0.85rem; font-weight: 800;">4.9 ★ / 5.0</span>
+            </div>
+            <p style="font-size: 0.82rem; color: var(--text-dim); margin-top: 2px;">
+              Public ratings and verified feedback from genuine developers &amp; cloud buyers
+            </p>
+          </div>
+        </div>
+
+        <button type="button" class="btn btn-primary" onclick="openFeedbackModal()" style="padding: 10px 20px; font-weight: 800; font-size: 0.88rem;">
+          ✍️ Give Feedback / Rate Us
+        </button>
+      </div>
+
+      <div id="feedbacks-container" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 18px;">
+        <!-- Dynamic reviews loaded from /api/feedback -->
+      </div>
     </div>
   </section>
 
@@ -150,11 +382,48 @@
           <!-- MANDATORY TRANSACTION HASH INPUT -->
           <div class="form-group" style="margin-top: 14px; margin-bottom: 0;">
             <label class="form-label" style="font-size: 0.88rem; color: #ffffff;">
-              Transaction Hash (Tx Hash / TxID) <span class="required-star">*</span>
+              Crypto Tx Hash (for Crypto Method 1 & 2)
             </label>
-            <input type="text" id="buy-tx-hash" class="form-control" placeholder="Paste 66-character 0x... TxID from Binance / Trust Wallet" style="font-family: monospace; font-size: 0.85rem;" required>
+            <input type="text" id="buy-tx-hash" class="form-control" placeholder="Paste 66-character 0x... TxID from Binance / Trust Wallet" style="font-family: monospace; font-size: 0.85rem;">
             <small style="color: var(--pink-accent); font-size: 0.78rem; display: block; margin-top: 4px;">
-              * Mandatory: Paste your 0x... TxID after completing payment to pass Server-Side Blockchain Audit.
+              * If paying with BEP20 USDT: Paste your 0x... TxID after sending payment.
+            </small>
+          </div>
+        </div>
+
+        <!-- PAYMENT METHOD 3: UPI (GPAY, PHONEPE, PAYTM, BHIM, NAVI) -->
+        <div class="upi-card" style="background: rgba(34,197,94,0.06); border: 1px solid #22c55e; border-radius: var(--radius-md); padding: 18px; margin-bottom: 20px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+            <strong style="color: #22c55e; font-size: 1rem;">
+              🏦 Method 3: Pay via UPI (GPay / PhonePe / Paytm / BHIM)
+            </strong>
+            <span class="badge badge-success">Manual Approval</span>
+          </div>
+          <p style="font-size: 0.84rem; color: var(--text-muted); margin-bottom: 10px;">
+            Pay in INR to Owner's Official Merchant UPI ID using <strong>Google Pay, PhonePe, Paytm, BHIM, Navi</strong>, or Any UPI App:
+          </p>
+
+          <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px;">
+            <span class="badge badge-primary">Google Pay</span>
+            <span class="badge badge-pink">PhonePe</span>
+            <span class="badge badge-yellow">Paytm</span>
+            <span class="badge badge-success">BHIM / Navi</span>
+          </div>
+
+          <div style="background: #000; padding: 12px; border-radius: 8px; border: 1px dashed #22c55e; font-family: monospace; font-size: 0.95rem; color: #22c55e; word-break: break-all; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; gap: 8px;">
+            <span id="upi-merchant-id">9507325677-1@naviaxis</span>
+            <button type="button" class="btn btn-secondary" onclick="copyUpiId()" style="padding: 4px 10px; font-size: 0.75rem; white-space: nowrap; border-color: #22c55e; color: #22c55e;">
+              📋 Copy UPI ID
+            </button>
+          </div>
+
+          <div class="form-group" style="margin-bottom: 0;">
+            <label class="form-label" style="font-size: 0.88rem; color: #ffffff;">
+              Enter 12-Digit UPI UTR / Transaction ID (for UPI Method 3)
+            </label>
+            <input type="text" id="buy-upi-utr" class="form-control" placeholder="Enter 12-digit UTR ID (e.g. 423456789012)" style="font-family: monospace; font-size: 0.88rem;">
+            <small style="color: #22c55e; font-size: 0.78rem; display: block; margin-top: 4px;">
+              * After paying ₹<span id="upi-pay-amount-label">0</span> via UPI, enter your UTR number and click "Submit UPI Order".
             </small>
           </div>
         </div>
@@ -162,19 +431,22 @@
         <input type="hidden" id="buy-user-name">
         <input type="hidden" id="buy-user-phone">
 
-        <div style="display: flex; gap: 10px; margin-top: 10px;">
-          <button type="button" class="btn btn-secondary" onclick="closeModal('buy-product-modal')" style="padding: 14px 20px; font-size: 0.95rem; font-weight: 700; flex: 1;">
-            ❌ Cancel / Back
+        <div style="display: flex; gap: 10px; margin-top: 10px; flex-wrap: wrap;">
+          <button type="button" class="btn btn-secondary" onclick="closeModal('buy-product-modal')" style="padding: 14px 20px; font-size: 0.95rem; font-weight: 700; flex: 1; min-width: 130px;">
+            ❌ Cancel
           </button>
-          <button type="submit" class="btn btn-success" style="padding: 14px 20px; font-size: 1.05rem; font-weight: 800; flex: 2;">
-            ⚡ Confirm Payment & Claim Key
+          <button type="button" id="btn-submit-upi" class="btn btn-primary" onclick="submitUpiCheckout()" style="padding: 14px 20px; font-size: 1rem; font-weight: 800; flex: 1.5; min-width: 170px; background: #22c55e; border-color: #22c55e; color: #000;">
+            🏦 Submit UPI Order
+          </button>
+          <button type="submit" id="btn-submit-crypto" class="btn btn-success" style="padding: 14px 20px; font-size: 1rem; font-weight: 800; flex: 1.5; min-width: 170px;">
+            ⚡ Claim via BEP20 USDT
           </button>
         </div>
       </form>
     </div>
   </div>
 
-  <!-- DELIVERY SUCCESS MODAL -->
+  <!-- DELIVERY SUCCESS MODAL (CRYPTO INSTANT) -->
   <div id="delivery-success-modal" class="modal-overlay">
     <div class="modal-container glass-card" style="max-width: 540px; text-align: center;">
       <button class="modal-close-btn" onclick="closeModal('delivery-success-modal')" title="Close Window">&times;</button>
@@ -197,11 +469,47 @@
       </div>
 
       <div style="display: flex; gap: 10px;">
-        <button class="btn btn-secondary btn-block" onclick="closeModal('delivery-success-modal')">
-          ❌ Close Window
-        </button>
+        <a id="crypto-invoice-link" href="#" target="_blank" class="btn btn-secondary btn-block">
+          🧾 Printable Invoice
+        </a>
         <button class="btn btn-primary btn-block" onclick="openMyOrdersModal()">
           🛍️ View In My Orders
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- UPI ORDER SUBMISSION MODAL (PENDING APPROVAL) -->
+  <div id="upi-success-modal" class="modal-overlay">
+    <div class="modal-container glass-card" style="max-width: 560px; text-align: center;">
+      <button class="modal-close-btn" onclick="closeModal('upi-success-modal')" title="Close Window">&times;</button>
+      
+      <div style="font-size: 3.5rem; margin-bottom: 10px;">🏦</div>
+      <h2 style="color: #22c55e; font-size: 1.6rem; margin-bottom: 8px;">
+        UPI Order Submitted Successfully!
+      </h2>
+      <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 18px;">
+        Order ID: <strong id="upi-modal-order-id" style="color: var(--yellow-primary);">ord_...</strong> | UTR: <span id="upi-modal-utr" style="color: #fff; font-family: monospace;">...</span>
+      </p>
+
+      <div style="background: rgba(34,197,94,0.08); border: 1px dashed #22c55e; border-radius: 12px; padding: 18px; text-align: left; margin-bottom: 20px;">
+        <h4 style="color: #22c55e; font-size: 0.95rem; margin-bottom: 8px;">
+          ⚠️ MANDATORY FINAL STEP:
+        </h4>
+        <p style="font-size: 0.85rem; color: #e2e8f0; line-height: 1.5; margin-bottom: 12px;">
+          Please send your <strong>Payment Screenshot</strong> along with your <strong>Order ID</strong> and <strong>UTR ID</strong> to the Owner on WhatsApp:
+        </p>
+        <a id="upi-whatsapp-proof-btn" href="https://wa.me/919507325677" target="_blank" class="btn btn-block" style="background: #25D366; color: #000; font-weight: 800; text-decoration: none;">
+          💬 Send Screenshot on WhatsApp (+91 9507325677)
+        </a>
+      </div>
+
+      <div style="display: flex; gap: 10px;">
+        <a id="upi-invoice-btn" href="#" target="_blank" class="btn btn-secondary btn-block">
+          🧾 Download / Print Invoice
+        </a>
+        <button class="btn btn-primary btn-block" onclick="closeModal('upi-success-modal'); openMyOrdersModal();">
+          📦 View My Orders
         </button>
       </div>
     </div>
@@ -217,7 +525,7 @@
         <p style="font-size: 0.85rem; color: var(--text-muted);">Enter your registered Email/Phone & Password</p>
       </div>
 
-      <form id="user-login-form">
+      <form id="user-login-form" onsubmit="event.preventDefault(); handleUserLogin();">
         <div class="form-group">
           <label class="form-label">Email or Phone Number <span class="required-star">*</span></label>
           <input type="text" id="login-email-phone" class="form-control" placeholder="e.g. user@gmail.com or 9876543210" required>
@@ -234,22 +542,31 @@
           </a>
         </div>
 
-        <div id="login-otp-step" style="display: none; background: rgba(250,204,21,0.08); border: 1px solid #facc15; padding: 16px; border-radius: 10px; margin-bottom: 16px;">
-          <div style="font-size: 0.85rem; color: var(--yellow-primary); font-weight: 700; margin-bottom: 6px;">
-            🔐 Security OTP Verification Required
+        <!-- 6-HOUR LOGIN OTP VERIFICATION STEP (IF REQUIRED) -->
+        <div id="login-modal-otp-step" style="display: none; background: rgba(236,72,153,0.08); border: 2px solid var(--pink-accent); padding: 14px; border-radius: 12px; margin-bottom: 16px; box-shadow: 0 0 16px rgba(236,72,153,0.15);">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+            <strong style="color: #ffffff; font-size: 0.85rem;">🔐 Gmail Login OTP Code <span class="required-star">*</span></strong>
+            <span class="badge badge-warning" style="font-size: 0.7rem;">6-Hour Security</span>
           </div>
-          <p style="font-size: 0.78rem; color: #cbd5e1; margin-bottom: 10px;">
-            OTP code sent to <strong id="login-otp-target-email" style="color: #ffffff;"></strong>
+          <p style="color: #cbd5e1; font-size: 0.78rem; margin: 0 0 10px 0;">
+            Security code sent to <strong id="login-otp-target-email" style="color: var(--yellow-primary);"></strong>
           </p>
-          <input type="text" id="login-otp-input" class="form-control" placeholder="Enter 6-digit Login OTP" style="letter-spacing: 4px; text-align: center; font-size: 1.1rem; font-weight: 700; margin-bottom: 10px;">
-          <button type="button" class="btn btn-primary btn-block" onclick="verifyLoginOTP()">Verify OTP & Complete Sign In</button>
+          <div style="display: flex; gap: 8px;">
+            <input type="text" id="login-otp-input" class="form-control" placeholder="• • • • • •" maxlength="6" style="letter-spacing: 6px; text-align: center; font-weight: 800; font-size: 1.2rem; font-family: monospace; color: #facc15; background: #080312;">
+            <button type="button" id="login-verify-otp-btn" class="btn btn-primary" onclick="verifyLoginOTP()" style="padding: 0 14px; font-size: 0.85rem; white-space: nowrap; font-weight: 800;">
+              Verify &amp; Enter
+            </button>
+          </div>
+          <small style="color: #94a3b8; font-size: 0.72rem; display: block; margin-top: 6px;">
+            Valid for 15 minutes. Once verified, your session will stay active for 6 hours.
+          </small>
         </div>
 
         <div style="display: flex; gap: 10px;">
           <button type="button" class="btn btn-secondary" onclick="closeModal('user-login-modal')" style="flex: 1; padding: 12px;">
             ❌ Cancel
           </button>
-          <button type="submit" class="btn btn-primary" style="flex: 2; padding: 12px; font-weight: 700;">
+          <button type="submit" id="login-submit-btn" class="btn btn-primary" style="flex: 2; padding: 12px; font-weight: 700;">
             Sign In To Store
           </button>
         </div>
@@ -288,7 +605,7 @@
         <div id="forgot-step-2" style="display: none;">
           <div class="form-group">
             <label class="form-label">Enter 6-Digit Reset OTP Code <span class="required-star">*</span></label>
-            <input type="text" id="forgot-otp" class="form-control" placeholder="123456" maxlength="6" style="letter-spacing: 4px; text-align: center; font-size: 1.1rem; font-weight: 700;" required>
+            <input type="text" id="forgot-otp" class="form-control" placeholder="123456" maxlength="6" style="letter-spacing: 6px; text-align: center; font-size: 1.3rem; font-weight: 800; font-family: monospace; color: #facc15;" required>
           </div>
 
           <div class="form-group">
@@ -317,54 +634,61 @@
 
       <div style="text-align: center; margin-bottom: 20px;">
         <h2 style="color: var(--yellow-primary); font-size: 1.5rem; margin-bottom: 4px;">Create Customer Account</h2>
-        <p style="font-size: 0.85rem; color: var(--text-muted);">Fill all mandatory fields with red asterisks (<span style="color:#ef4444; font-weight:bold;">*</span>)</p>
+        <p style="font-size: 0.85rem; color: var(--text-muted);">Unified account with instant automated Gmail OTP verification</p>
       </div>
 
-      <form id="user-register-form">
+      <form id="user-register-form" onsubmit="event.preventDefault(); handleUserRegister();">
         <div class="form-group">
           <label class="form-label">Full Name <span class="required-star">*</span></label>
-          <input type="text" id="reg-name" class="form-control" placeholder="John Doe" required>
+          <input type="text" id="reg-name" class="form-control" placeholder="e.g. Prince Kumar" required>
         </div>
 
         <div class="form-group">
-          <label class="form-label">Mobile Number <span class="required-star">*</span></label>
-          <input type="tel" id="reg-phone" class="form-control" placeholder="9876543210" required>
+          <label class="form-label">Mobile / WhatsApp Number <span class="required-star">*</span></label>
+          <input type="tel" id="reg-phone" class="form-control" placeholder="e.g. 9507325677" maxlength="12" required>
         </div>
 
         <div class="form-group">
           <label class="form-label">Gmail Address <span class="required-star">*</span></label>
           <div style="display: flex; gap: 8px;">
             <input type="email" id="reg-email" class="form-control" placeholder="user@gmail.com" required>
-            <button type="button" id="reg-send-otp-btn" class="btn btn-secondary" onclick="sendRegistrationEmailOTP()" style="padding: 0 14px; font-size: 0.82rem; white-space: nowrap;">
+            <button type="button" id="reg-send-otp-btn" class="btn btn-secondary" onclick="sendRegistrationEmailOTP()" style="padding: 0 14px; font-size: 0.82rem; white-space: nowrap; font-weight: 700; border-color: var(--yellow-primary); color: var(--yellow-primary);">
               📩 Send OTP
             </button>
           </div>
+          <small style="color: var(--text-dim); font-size: 0.76rem; display: block; margin-top: 4px;">* A 6-digit security code will be sent to this Gmail.</small>
         </div>
 
-        <div id="reg-otp-group" class="form-group" style="display: none; background: rgba(236,72,153,0.06); border: 1px solid var(--pink-accent); padding: 14px; border-radius: 10px;">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-            <label class="form-label" style="margin-bottom: 0;">Enter 6-Digit Email OTP <span class="required-star">*</span></label>
-            <span id="otp-status-badge" class="badge badge-warning">Pending Code</span>
+        <!-- PERMANENTLY PROMINENT 6-DIGIT EMAIL OTP VERIFICATION BOX -->
+        <div id="reg-otp-group" class="form-group" style="background: rgba(236,72,153,0.08); border: 2px solid var(--pink-accent); padding: 16px; border-radius: 12px; margin-bottom: 18px; box-shadow: 0 0 20px rgba(236,72,153,0.12);">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <label class="form-label" style="margin-bottom: 0; font-weight: 800; color: #ffffff;">
+              🔑 Enter 6-Digit Gmail OTP <span class="required-star">*</span>
+            </label>
+            <span id="otp-status-badge" class="badge badge-warning" style="font-size: 0.72rem;">Pending Code</span>
           </div>
           <div style="display: flex; gap: 8px;">
-            <input type="text" id="reg-otp" class="form-control" placeholder="123456" maxlength="6" style="letter-spacing: 4px; text-align: center; font-weight: 700;">
-            <button type="button" class="btn btn-primary" onclick="verifyRegistrationEmailOTP()" style="padding: 0 14px; font-size: 0.82rem; white-space: nowrap;">
+            <input type="text" id="reg-otp" class="form-control" placeholder="• • • • • •" maxlength="6" style="letter-spacing: 6px; text-align: center; font-weight: 800; font-size: 1.3rem; font-family: monospace; color: #facc15; background: #080312;">
+            <button type="button" id="reg-verify-btn" class="btn btn-primary" onclick="verifyRegistrationEmailOTP()" style="padding: 0 16px; font-size: 0.85rem; white-space: nowrap; font-weight: 800;">
               Verify OTP
             </button>
           </div>
+          <small id="reg-otp-hint" style="color: #cbd5e1; font-size: 0.76rem; display: block; margin-top: 6px;">
+            Enter the 6-digit code received on your Gmail and click Verify.
+          </small>
         </div>
 
         <div class="form-group">
-          <label class="form-label">Account Password <span class="required-star">*</span></label>
-          <input type="password" id="reg-pass" class="form-control" placeholder="••••••••" required>
+          <label class="form-label">Set Account Password <span class="required-star">*</span></label>
+          <input type="password" id="reg-pass" class="form-control" placeholder="Minimum 4 characters" minlength="4" required>
         </div>
 
         <div style="display: flex; gap: 10px;">
           <button type="button" class="btn btn-secondary" onclick="closeModal('user-register-modal')" style="flex: 1; padding: 12px;">
             ❌ Cancel
           </button>
-          <button type="submit" class="btn btn-primary" style="flex: 2; padding: 12px; font-weight: 700;">
-            Create & Verify Account
+          <button type="submit" id="reg-submit-btn" class="btn btn-primary" style="flex: 2; padding: 12px; font-weight: 800; font-size: 0.95rem;">
+            ✨ Create &amp; Verify Account
           </button>
         </div>
       </form>
@@ -391,6 +715,300 @@
         <button class="btn btn-secondary" onclick="closeModal('my-orders-modal')" style="padding: 8px 18px;">
           ❌ Close Window
         </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TERMS & CONDITIONS FULL LEGAL MODAL -->
+  <div id="terms-modal" class="modal-overlay">
+    <div class="modal-container glass-card" style="max-width: 680px; max-height: 85vh; overflow-y: auto;">
+      <button class="modal-close-btn" onclick="closeModal('terms-modal')" title="Close Window">&times;</button>
+      
+      <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 18px; border-bottom: 1px solid var(--glass-border); padding-bottom: 14px;">
+        <span style="font-size: 2rem;">📜</span>
+        <div>
+          <h2 style="color: var(--yellow-primary); font-size: 1.4rem;">Terms of Service &amp; IT Rules Guidelines</h2>
+          <span style="font-size: 0.78rem; color: #38bdf8; font-weight: 700;">GOVERNMENT OF INDIA IT ACT &amp; STORE COMPLIANCE</span>
+        </div>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 16px; font-size: 0.88rem; color: var(--text-muted); line-height: 1.6;">
+        
+        <div style="background: rgba(250,204,21,0.06); border: 1px solid var(--yellow-primary); border-radius: var(--radius-md); padding: 14px;">
+          <strong style="color: var(--yellow-primary); display: block; margin-bottom: 4px;">1. User Registration &amp; Mandatory Gmail OTP Authentication</strong>
+          To prevent unauthorized automated bots, spam registrations, and financial fraud, every user account must be verified with an active, genuine Gmail address via a 6-digit one-time password (OTP). Providing false identification or proxy information violates platform policy.
+        </div>
+
+        <div>
+          <strong style="color: #ffffff; display: block; margin-bottom: 4px;">2. Real Identity Identification (Name &amp; Mobile Number)</strong>
+          In accordance with digital marketplace norms and consumer protection guidelines, users must supply accurate names and verifiable mobile numbers. This data is exclusively used for order reconciliation and customer service.
+        </div>
+
+        <div>
+          <strong style="color: #ffffff; display: block; margin-bottom: 4px;">3. Ethical &amp; Lawful Computing Policy</strong>
+          All cloud subscriptions (Azure, AWS, GCP, Vultr), Virtual Numbers, and RDP servers purchased on PrinceCloudSellar must be utilized strictly for ethical, legal, educational, software development, or authorized business computing operations.
+          <ul style="margin: 6px 0 0 20px; list-style-type: disc;">
+            <li>Zero tolerance for spamming, phishing, DDoS attacks, or malware distribution.</li>
+            <li>Any violation reported by infrastructure providers will result in immediate permanent banning and reporting as per Section 66 of the IT Act.</li>
+          </ul>
+        </div>
+
+        <div>
+          <strong style="color: #ffffff; display: block; margin-bottom: 4px;">4. Cryptographic Blockchain Payment (BEP20 USDT)</strong>
+          All transactions are settled through decentralized Web3 protocols on the Binance Smart Chain (BSC). Blockchain transfers are non-reversible. Please ensure you send the exact required USDT amount to the official verified recipient address displayed on checkout.
+        </div>
+
+        <div>
+          <strong style="color: #ffffff; display: block; margin-bottom: 4px;">5. Instant Automated Key Delivery &amp; Warranty Policy</strong>
+          Purchased keys are released automatically in real-time on-screen and to your registered email upon blockchain transaction confirmation. We guarantee functioning accounts upon receipt. Any replacement requests must be submitted to support within the declared product guarantee period along with order details.
+        </div>
+      </div>
+
+      <div style="margin-top: 22px; text-align: right; border-top: 1px solid var(--glass-border); padding-top: 14px;">
+        <button class="btn btn-primary" onclick="closeModal('terms-modal')" style="padding: 8px 24px;">
+          ✅ I Understand &amp; Agree
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- SITE FOOTER -->
+  <footer class="user-footer" style="background: rgba(4, 1, 10, 0.95); border-top: 1px solid var(--glass-border); padding: 40px 0 24px 0; margin-top: 60px;">
+    <div class="container">
+      <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 20px; margin-bottom: 24px;">
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <img src="/logo.png" alt="Prince Cloud Seller" class="brand-logo-img" style="width: 40px; height: 40px;">
+          <div>
+            <div style="font-weight: 800; font-size: 1.1rem; color: #ffffff;">PrinceCloudSellar</div>
+            <div style="font-size: 0.72rem; color: var(--yellow-primary); font-weight: 700;">● RELIABLE CLOUD SOLUTIONS • WEB HOSTING • SECURE SERVER</div>
+          </div>
+        </div>
+
+        <div style="display: flex; gap: 16px; align-items: center; flex-wrap: wrap;">
+          <a href="javascript:void(0)" onclick="openModal('terms-modal')" style="color: var(--text-muted); font-size: 0.85rem; text-decoration: none; transition: var(--transition);">
+            📜 Terms &amp; Conditions
+          </a>
+          <span style="color: var(--glass-border);">|</span>
+          <a href="javascript:void(0)" onclick="contactOwnerSupport()" style="color: var(--pink-accent); font-size: 0.85rem; text-decoration: none; font-weight: 700;">
+            💬 WhatsApp Support
+          </a>
+        </div>
+      </div>
+
+      <div style="border-top: 1px solid var(--glass-border); padding-top: 18px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; font-size: 0.78rem; color: var(--text-dim);">
+        <div>
+          🇮🇳 Compliant with Information Technology Act, 2000 &amp; Digital Commerce Guidelines of India.
+        </div>
+        <div>
+          © 2026 PrinceCloudSellar. All rights reserved. Instant Web3 Delivery.
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <!-- CUSTOMER SUPPORT TICKET & DISPUTE RESOLUTION MODAL -->
+  <div id="support-ticket-modal" class="modal-overlay">
+    <div class="modal-container glass-card" style="max-width: 680px; max-height: 90vh; overflow-y: auto;">
+      <button class="modal-close-btn" onclick="closeModal('support-ticket-modal')" title="Close Window">&times;</button>
+      
+      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; border-bottom: 1px solid var(--glass-border); padding-bottom: 12px; flex-wrap: wrap; gap: 8px;">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <div style="font-size: 1.8rem;">🎫</div>
+          <div>
+            <h2 style="color: var(--yellow-primary); font-size: 1.35rem; margin: 0;">Support &amp; Dispute Resolution Center</h2>
+            <span style="font-size: 0.76rem; color: #38bdf8; font-weight: 700;">FAST OWNER TICKET ASSISTANCE &amp; REPLACEMENTS</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- TICKET TABS (CREATE / TRACK) -->
+      <div class="ticket-tab-switcher" style="display: flex; gap: 10px; margin-bottom: 20px;">
+        <button id="tab-btn-create-ticket" class="btn btn-primary" style="flex: 1; padding: 10px;" onclick="switchTicketModalTab('CREATE')">
+          📝 Submit Complaint Ticket
+        </button>
+        <button id="tab-btn-track-ticket" class="btn btn-secondary" style="flex: 1; padding: 10px;" onclick="switchTicketModalTab('TRACK')">
+          🔍 Track My Tickets
+        </button>
+      </div>
+
+      <!-- VIEW 1: CREATE TICKET FORM -->
+      <div id="ticket-view-create">
+        <form id="create-ticket-form">
+          <!-- PRODUCT CONTEXT HIGHLIGHT BANNER (If opened from My Orders) -->
+          <div id="ticket-order-product-banner" style="display: none; background: rgba(250, 204, 21, 0.1); border: 1px solid var(--yellow-primary); border-radius: var(--radius-md); padding: 12px; margin-bottom: 16px;">
+            <div style="font-size: 0.75rem; color: var(--yellow-primary); font-weight: 800; text-transform: uppercase;">📦 Product In Dispute:</div>
+            <div id="ticket-product-banner-text" style="font-size: 0.95rem; font-weight: 700; color: #ffffff; margin-top: 2px;"></div>
+          </div>
+
+          <input type="hidden" id="ticket-product-id">
+          <input type="hidden" id="ticket-product-name">
+          <input type="hidden" id="ticket-sub-product">
+          <input type="hidden" id="ticket-country">
+
+          <div class="form-group">
+            <label class="form-label">Category of Problem <span class="required-star">*</span></label>
+            <select id="ticket-category" class="form-control" style="border-color: var(--yellow-primary); color: #ffffff;" onchange="onTicketCategoryChange(this.value)" required>
+              <option value="KEY_REPLACEMENT">🔑 Replacement Claim (Delivered Key / Account Not Working)</option>
+              <option value="LOGIN_CREDENTIALS">🔒 Login Credentials / Password / 2FA Issue</option>
+              <option value="CONFIG_HELP">⚙️ Setup / RDP / Server Configuration Assistance</option>
+              <option value="PAYMENT_UNDERPAID">⚠️ Underpaid Amount (e.g. Sent less USDT than required)</option>
+              <option value="PAYMENT_OVERPAID">💸 Overpaid Amount (Transferred extra funds / Refund claim)</option>
+              <option value="KEY_NOT_DELIVERED">⚡ Payment Done but Key Not Delivered / Stuck</option>
+              <option value="CUSTOM_PROBLEM">✏️ Custom Specific Problem (Specify below)</option>
+            </select>
+          </div>
+
+          <div id="custom-problem-field-group" class="form-group" style="display: none;">
+            <label class="form-label">Specify Custom Problem Category <span class="required-star">*</span></label>
+            <input type="text" id="ticket-custom-problem" class="form-control" placeholder="e.g. Need additional IP addresses / Sub-user quota">
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Subject / Issue Summary <span class="required-star">*</span></label>
+            <input type="text" id="ticket-subject" class="form-control" placeholder="e.g. Replacement needed for Azure key" required>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+            <div class="form-group">
+              <label class="form-label">Order ID (If applicable)</label>
+              <input type="text" id="ticket-order-id" class="form-control" placeholder="e.g. ord_178656...">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Amount Transferred (e.g. 7 USDT)</label>
+              <input type="text" id="ticket-amount" class="form-control" placeholder="e.g. 7 USDT">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Transaction Hash (0x...) (If Payment Issue)</label>
+            <input type="text" id="ticket-tx-hash" class="form-control" style="font-family: monospace; font-size: 0.85rem;" placeholder="0x123456789abcdef...">
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+            <div class="form-group">
+              <label class="form-label">Your Name <span class="required-star">*</span></label>
+              <input type="text" id="ticket-name" class="form-control" placeholder="Full Name" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Mobile Number <span class="required-star">*</span></label>
+              <input type="tel" id="ticket-phone" class="form-control" placeholder="Active Mobile Number" required>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Registered Gmail Address <span class="required-star">*</span></label>
+            <input type="email" id="ticket-email" class="form-control" placeholder="user@gmail.com" required>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Full Complaint Details &amp; Explanation <span class="required-star">*</span></label>
+            <textarea id="ticket-message" class="form-control" rows="4" placeholder="Explain your exact problem with full details so the Owner can test and resolve it immediately." required></textarea>
+          </div>
+
+          <button type="submit" class="btn btn-primary btn-block" style="padding: 14px; font-weight: 800; font-size: 1rem;">
+            🚀 Submit Complaint Ticket To Owner
+          </button>
+        </form>
+      </div>
+
+      <!-- VIEW 2: TRACK TICKETS VIEW -->
+      <div id="ticket-view-track" style="display: none;">
+        <div style="display: flex; gap: 8px; margin-bottom: 16px;">
+          <input type="text" id="ticket-track-query" class="form-control" placeholder="Enter your Registered Gmail or Phone Number">
+          <button type="button" class="btn btn-primary" onclick="fetchUserTickets()" style="white-space: nowrap; padding: 0 18px;">
+            🔍 Search
+          </button>
+        </div>
+
+        <div id="ticket-history-list">
+          <div style="text-align: center; color: var(--text-muted); padding: 30px;">
+            Enter your Gmail or Phone number above to check submitted tickets and Owner resolutions.
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- CUSTOMER FEEDBACK & REVIEW MODAL -->
+  <div id="feedback-modal" class="modal-overlay">
+    <div class="modal-container glass-card" style="max-width: 520px;">
+      <button class="modal-close-btn" onclick="closeModal('feedback-modal')" title="Close Window">&times;</button>
+      
+      <div style="text-align: center; margin-bottom: 20px;">
+        <div style="font-size: 2rem; margin-bottom: 4px;">⭐</div>
+        <h2 style="color: var(--yellow-primary); font-size: 1.4rem;">Submit Your Review &amp; Rating</h2>
+        <p style="font-size: 0.82rem; color: var(--text-muted);">Share your experience with PrinceCloudSellar to help other buyers</p>
+      </div>
+
+      <form id="submit-feedback-form">
+        <div class="form-group" style="text-align: center;">
+          <label class="form-label" style="text-align: center;">Select Star Rating <span class="required-star">*</span></label>
+          <div class="star-rating-selector" style="display: inline-flex; gap: 8px; font-size: 1.8rem; cursor: pointer; color: #facc15;">
+            <span class="star-item" data-rating="1" onclick="setRatingValue(1)">★</span>
+            <span class="star-item" data-rating="2" onclick="setRatingValue(2)">★</span>
+            <span class="star-item" data-rating="3" onclick="setRatingValue(3)">★</span>
+            <span class="star-item" data-rating="4" onclick="setRatingValue(4)">★</span>
+            <span class="star-item" data-rating="5" onclick="setRatingValue(5)">★</span>
+          </div>
+          <input type="hidden" id="feedback-rating-val" value="5">
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+          <div class="form-group">
+            <label class="form-label">Your Name <span class="required-star">*</span></label>
+            <input type="text" id="feedback-user-name" class="form-control" placeholder="Full Name" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Gmail Address</label>
+            <input type="email" id="feedback-user-email" class="form-control" placeholder="user@gmail.com">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Purchased Product / Service</label>
+          <input type="text" id="feedback-product-name" class="form-control" placeholder="e.g. Azure $200 / Windows 365 RDP / GCP">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Review Headline / Title <span class="required-star">*</span></label>
+          <input type="text" id="feedback-title" class="form-control" placeholder="e.g. Instant Delivery &amp; Perfect Working Account!" required>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Your Review &amp; Comments <span class="required-star">*</span></label>
+          <textarea id="feedback-comment" class="form-control" rows="3" placeholder="Tell us how fast was the delivery and how was the account quality..." required></textarea>
+        </div>
+
+        <button type="submit" class="btn btn-primary btn-block" style="padding: 12px; font-weight: 800;">
+          🌟 Publish My Review
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- USER NOTIFICATIONS & ANNOUNCEMENTS CENTER MODAL -->
+  <div id="user-notifications-modal" class="modal-overlay">
+    <div class="modal-container glass-card" style="max-width: 650px; max-height: 85vh; display: flex; flex-direction: column;">
+      <button class="modal-close-btn" onclick="closeModal('user-notifications-modal')" title="Close Window">&times;</button>
+      
+      <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--glass-border); padding-bottom: 14px; margin-bottom: 16px;">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <span style="font-size: 1.6rem;">🔔</span>
+          <div>
+            <h2 style="color: var(--yellow-primary); font-size: 1.25rem; line-height: 1.2;">Notifications &amp; Alerts</h2>
+            <p style="font-size: 0.78rem; color: var(--text-muted); margin: 0;">Dispatched orders, stock drops &amp; server broadcasts</p>
+          </div>
+        </div>
+        <button type="button" class="btn btn-secondary" onclick="markNotificationsAsRead()" style="padding: 6px 12px; font-size: 0.78rem; border-color: rgba(255,255,255,0.2);">
+          ✓ Mark All Read
+        </button>
+      </div>
+
+      <div id="user-notifications-list" style="overflow-y: auto; flex: 1; padding-right: 4px;">
+        <div style="text-align: center; color: var(--text-muted); padding: 30px;">
+          🔍 Loading notifications...
+        </div>
       </div>
     </div>
   </div>
