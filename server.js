@@ -1358,84 +1358,110 @@ app.get('/api/owner/orders', async (req, res) => {
 });
 
 // -------------------------------------------------------------
-// OWNER UPI ORDER APPROVAL & DISPATCH API
+// OWNER UPI ORDER APPROVAL & DISPATCH API (INSTANT & RELIABLE)
 // -------------------------------------------------------------
 app.post('/api/owner/orders/:id/approve-upi', async (req, res) => {
   try {
     const { id } = req.params;
     const { customPayload, notes } = req.body || {};
 
-    const order = persistentStore.orders.find(o => o._id === id);
-    if (!order) return res.status(404).json({ success: false, message: 'Order not found.' });
+    let order = persistentStore.orders.find(o => String(o._id) === String(id));
+    if (!order && getDBStatus() && Order) {
+      const dbOrder = await Order.findOne({ _id: id }).lean();
+      if (dbOrder) {
+        order = { ...dbOrder, _id: String(dbOrder._id) };
+        persistentStore.orders.unshift(order);
+      }
+    }
+
+    if (!order) {
+      return res.status(404).json({ success: false, message: `Order #${id} not found in system.` });
+    }
 
     if (order.deliveryStatus === 'DELIVERED') {
-      return res.status(400).json({ success: false, message: 'Order has already been delivered.' });
+      return res.status(400).json({ success: false, message: 'Order has already been approved and delivered.' });
     }
 
-    const targetProduct = persistentStore.products.find(p => p._id === order.productId);
-    const qty = order.quantity || 1;
+    const targetProduct = persistentStore.products.find(p => String(p._id) === String(order.productId));
+    const qty = Math.max(1, Number(order.quantity) || 1);
     let deliveredItemsText = '';
 
-    // Check available stock
-    const availableStocks = persistentStore.stocks.filter(s => s.productId === order.productId && s.status === 'AVAILABLE').slice(0, qty);
-    if (availableStocks.length > 0) {
-      deliveredItemsText = availableStocks.map(s => s.content).join('\n');
-      availableStocks.forEach(stk => {
-        stk.status = 'SOLD';
-        stk.soldToUserId = order.userId;
-        stk.soldToUserName = order.userName;
-        stk.soldToUserPhone = order.userPhone;
-        stk.orderId = order._id;
-        stk.soldAt = new Date();
-      });
-
-      if (targetProduct) {
-        const remainingAvail = persistentStore.stocks.filter(s => s.productId === order.productId && s.status === 'AVAILABLE').length;
-        targetProduct.stock = remainingAvail;
-        if (getDBStatus()) {
-          await Product.findOneAndUpdate({ _id: targetProduct._id }, { stock: remainingAvail });
-        }
-      }
-
-      if (getDBStatus()) {
-        for (const stk of availableStocks) {
-          await Stock.findOneAndUpdate({ _id: stk._id }, {
-            status: 'SOLD',
-            soldToUserId: stk.soldToUserId,
-            soldToUserName: stk.soldToUserName,
-            soldToUserPhone: stk.soldToUserPhone,
-            orderId: order._id,
-            soldAt: new Date()
-          });
-        }
-      }
-    } else if (customPayload && customPayload.trim().length > 0) {
+    // If custom payload provided by Owner, prioritize it directly
+    if (customPayload && customPayload.trim().length > 0) {
       deliveredItemsText = customPayload.trim();
     } else {
-      const prodTag = (order.subProduct || order.productName).toUpperCase().replace(/\s+/g, '-');
-      deliveredItemsText = Array.from({ length: qty }, () => `KEY-${prodTag}-${Math.floor(1000 + Math.random() * 9000)}`).join('\n');
+      // Check available stock
+      const availableStocks = persistentStore.stocks.filter(s => 
+        (String(s.productId) === String(order.productId)) && s.status === 'AVAILABLE'
+      ).slice(0, qty);
+
+      if (availableStocks.length > 0) {
+        deliveredItemsText = availableStocks.map(s => s.content).join('\n');
+        availableStocks.forEach(stk => {
+          stk.status = 'SOLD';
+          stk.soldToUserId = order.userId;
+          stk.soldToUserName = order.userName;
+          stk.soldToUserPhone = order.userPhone;
+          stk.orderId = order._id;
+          stk.soldAt = new Date();
+        });
+
+        if (targetProduct) {
+          const remainingAvail = persistentStore.stocks.filter(s => 
+            (String(s.productId) === String(order.productId)) && s.status === 'AVAILABLE'
+          ).length;
+          targetProduct.stock = remainingAvail;
+          if (getDBStatus() && Product) {
+            Product.findOneAndUpdate({ _id: targetProduct._id }, { stock: remainingAvail }).catch(e => console.error('Product stock update error:', e.message));
+          }
+        }
+
+        if (getDBStatus() && Stock) {
+          for (const stk of availableStocks) {
+            Stock.findOneAndUpdate({ _id: stk._id }, {
+              status: 'SOLD',
+              soldToUserId: stk.soldToUserId,
+              soldToUserName: stk.soldToUserName,
+              soldToUserPhone: stk.soldToUserPhone,
+              orderId: order._id,
+              soldAt: new Date()
+            }).catch(e => console.error('Stock sold update error:', e.message));
+          }
+        }
+      } else {
+        // Fallback auto-generated keys if stock empty and no custom keys entered
+        const prodTag = (order.subProduct || order.productName || 'CLOUD').toUpperCase().replace(/[^A-Z0-9]/g, '-');
+        deliveredItemsText = Array.from({ length: qty }, () => `KEY-${prodTag}-${Math.floor(100000 + Math.random() * 900000)}`).join('\n');
+      }
     }
 
+    // Update order status
     order.paymentStatus = 'PAID (UPI)';
     order.deliveryStatus = 'DELIVERED';
     order.deliveredItem = deliveredItemsText;
+    if (notes && notes.trim()) {
+      order.ownerNotes = notes.trim();
+    }
+    order.approvedAt = new Date();
 
-    if (getDBStatus()) {
-      await Order.findOneAndUpdate({ _id: order._id }, {
+    if (getDBStatus() && Order) {
+      Order.findOneAndUpdate({ _id: order._id }, {
         paymentStatus: 'PAID (UPI)',
         deliveryStatus: 'DELIVERED',
-        deliveredItem: deliveredItemsText
-      });
+        deliveredItem: deliveredItemsText,
+        approvedAt: order.approvedAt,
+        ownerNotes: order.ownerNotes || ''
+      }).catch(e => console.error('Order approval DB update error:', e.message));
     }
 
-    // Customer In-App Notification
+    // Customer in-app notification
     const userNotif = {
       _id: 'notif_' + Date.now(),
       recipientType: 'USER',
       userId: order.userId,
       userEmail: '',
       title: `🎉 UPI Order Approved & Delivered: ${order.productName}`,
-      message: `Your UPI payment for Order ${order._id} has been verified and approved! Account keys are now ready in "My Orders".`,
+      message: `Your UPI payment for Order #${order._id} (₹${order.totalPaid}) has been approved! Account keys are now ready in "My Orders".`,
       type: 'ORDER_DISPATCH',
       orderId: order._id,
       deliveredItem: deliveredItemsText,
@@ -1444,103 +1470,142 @@ app.post('/api/owner/orders/:id/approve-upi', async (req, res) => {
     };
     if (!persistentStore.notifications) persistentStore.notifications = [];
     persistentStore.notifications.unshift(userNotif);
-    if (getDBStatus()) {
-      await Notification.create(userNotif);
-    }
-
-    // Generate in-memory PDF Invoice Buffer
-    let invoicePdfBuffer = null;
-    try {
-      invoicePdfBuffer = await generateOrderInvoicePdfBuffer(order);
-    } catch (pdfErr) {
-      console.error('PDF invoice buffer generation error:', pdfErr.message);
-    }
-
-    // Direct WhatsApp Message + PDF Document to customer if ordered from WA or phone provided
-    const targetWaPhone = (order.userId && order.userId.startsWith('wa_')) ? order.userId.replace('wa_', '') : (order.userPhone ? order.userPhone.replace(/[^0-9]/g, '') : null);
-    if (order.source === 'WHATSAPP' || (targetWaPhone && targetWaPhone.length >= 10)) {
-      const waPhone = targetWaPhone || order.userPhone;
-      const waMsg = `🎉 *PRINCE CLOUD SELLAR - UPI PAYMENT APPROVED!* 🎉\n\n` +
-        `📦 *Product:* ${order.productName} ${order.subProduct ? `(${order.subProduct})` : ''}\n` +
-        `🔖 *Order ID:* \`${order._id}\`\n` +
-        `💵 *Paid:* ₹${order.totalPaid} (UPI UTR: ${order.utrId})\n` +
-        `🧾 *Invoice Slip:* https://princecloudsellar.onrender.com/invoice/${order._id}\n\n` +
-        `🔑 *YOUR DELIVERED ACCOUNT / KEY DETAILS:*\n` +
-        `\`\`\`\n${deliveredItemsText}\n\`\`\`\n\n` +
-        `_Official PDF Invoice attached below! Thank you for choosing Prince Cloud Sellar._`;
-      try {
-        await sendWhatsAppDirectMessage(waPhone, waMsg);
-        if (invoicePdfBuffer) {
-          await sendWhatsAppDirectDocument(waPhone, invoicePdfBuffer, `PrinceCloudSellar_Invoice_${order._id}.pdf`, `🧾 Official Paid Invoice - Order #${order._id}`);
-        }
-      } catch (e) {
-        console.error('WA delivery error:', e.message);
-      }
-    }
-
-    // Direct Telegram Message + PDF Document if ordered from Telegram or user has telegramId
-    const targetUser = persistentStore.users.find(u => u._id === order.userId);
-    const tgChatId = (order.userId && order.userId.startsWith('tg_')) ? order.userId.replace('tg_', '') : (targetUser ? targetUser.telegramId : null);
-    if (tgChatId) {
-      const tgMsg = `🎉 *PRINCE CLOUD SELLAR - UPI PAYMENT APPROVED!* 🎉\n\n` +
-        `📦 *Product:* ${order.productName} ${order.subProduct ? `(${order.subProduct})` : ''}\n` +
-        `🔖 *Order ID:* \`${order._id}\`\n` +
-        `💵 *Paid:* ₹${order.totalPaid} (UPI UTR: \`${order.utrId}\`)\n` +
-        `🧾 *Invoice Slip:* [Printable PDF Invoice](/invoice/${order._id})\n\n` +
-        `🔑 *YOUR DELIVERED ACCOUNT / KEY DETAILS:*\n` +
-        `\`\`\`\n${deliveredItemsText}\n\`\`\`\n\n` +
-        `_Official PDF Invoice attached below! Thank you for choosing Prince Cloud Sellar._`;
-      try {
-        await sendTelegramDirectMessage(tgChatId, tgMsg);
-        if (invoicePdfBuffer) {
-          await sendTelegramDirectDocument(tgChatId, invoicePdfBuffer, `PrinceCloudSellar_Invoice_${order._id}.pdf`, `🧾 Official Paid Invoice - Order #${order._id}`);
-        }
-      } catch (e) {
-        console.error('TG delivery error:', e.message);
-      }
-    }
-
-    // Send Email with PDF Attachment to Customer
-    const userEmail = targetUser ? targetUser.email : null;
-    if (userEmail && emailTransporter) {
-      try {
-        const mailOptions = {
-          from: '"PrinceCloudSellar Platform" <bhagwanbot09292@gmail.com>',
-          to: userEmail,
-          subject: `🎉 UPI Payment Approved & Keys Delivered - ${order.productName}`,
-          html: `
-            <div style="font-family:Arial,sans-serif;max-width:580px;margin:0 auto;background:#080312;color:#ffffff;padding:24px;border-radius:12px;border:1px solid #facc15;">
-              <h2 style="color:#facc15;">🎉 UPI Payment Approved & Keys Delivered</h2>
-              <p>Hello ${order.userName}, your UPI payment has been verified by the Owner.</p>
-              <hr style="border-color:rgba(255,255,255,0.1);">
-              <p><strong>Order ID:</strong> ${order._id}</p>
-              <p><strong>Product:</strong> ${order.productName} ${order.subProduct ? `(${order.subProduct})` : ''}</p>
-              <p><strong>Quantity:</strong> ${order.quantity}</p>
-              <p><strong>Total Paid:</strong> ₹${order.totalPaid}</p>
-              <p><strong>UTR ID:</strong> ${order.utrId}</p>
-              <hr style="border-color:rgba(255,255,255,0.1);">
-              <h4 style="color:#ec4899;">🔑 Delivered Keys:</h4>
-              <div style="background:#000;padding:12px;border-radius:6px;font-family:monospace;color:#facc15;white-space:pre-wrap;">${deliveredItemsText}</div>
-              <p style="color:#94a3b8;font-size:12px;margin-top:16px;">Your official PDF Tax Invoice is attached to this email.</p>
-            </div>
-          `,
-          attachments: invoicePdfBuffer ? [
-            {
-              filename: `PrinceCloudSellar_Invoice_${order._id}.pdf`,
-              content: invoicePdfBuffer,
-              contentType: 'application/pdf'
-            }
-          ] : []
-        };
-        await emailTransporter.sendMail(mailOptions);
-      } catch (e) {
-        console.error('Email dispatch error:', e.message);
-      }
+    if (getDBStatus() && Notification) {
+      Notification.create(userNotif).catch(e => console.error('Notification creation error:', e.message));
     }
 
     saveLocalDB();
-    return res.json({ success: true, message: 'UPI Order approved and keys dispatched with PDF invoice!', order });
+
+    // Send HTTP Response IMMEDIATELY for super fast UX
+    res.json({
+      success: true,
+      message: '🎉 Order approved & credentials delivered successfully!',
+      order,
+      deliveredKeys: deliveredItemsText
+    });
+
+    // -----------------------------------------------------------------
+    // ASYNCHRONOUS BACKGROUND DISPATCH (WhatsApp, Telegram, PDF, Email)
+    // Runs non-blockingly so the Owner interface never hangs or slows down!
+    // -----------------------------------------------------------------
+    setImmediate(async () => {
+      try {
+        let invoicePdfBuffer = null;
+        try {
+          invoicePdfBuffer = await generateOrderInvoicePdfBuffer(order);
+        } catch (pdfErr) {
+          console.error('PDF invoice buffer generation error:', pdfErr.message);
+        }
+
+        // WhatsApp Customer Delivery
+        const targetWaPhone = (order.userId && order.userId.startsWith('wa_')) 
+          ? order.userId.replace('wa_', '') 
+          : (order.userPhone ? order.userPhone.replace(/[^0-9]/g, '') : null);
+
+        if (order.source === 'WHATSAPP' || (targetWaPhone && targetWaPhone.length >= 10)) {
+          const waPhone = targetWaPhone || order.userPhone;
+          const waMsg = `🎉 *PRINCE CLOUD SELLAR - UPI PAYMENT APPROVED!* 🎉\n\n` +
+            `📦 *Product:* ${order.productName} ${order.subProduct ? `(${order.subProduct})` : ''}\n` +
+            `🔖 *Order ID:* \`${order._id}\`\n` +
+            `💵 *Paid:* ₹${order.totalPaid} (UPI UTR: ${order.utrId || 'Verified'})\n` +
+            `🧾 *Invoice Slip:* https://princecloudsellar.onrender.com/invoice/${order._id}\n\n` +
+            `🔑 *YOUR DELIVERED ACCOUNT / KEY DETAILS:*\n` +
+            `\`\`\`\n${deliveredItemsText}\n\`\`\`\n\n` +
+            `_Official PDF Invoice attached below! Thank you for choosing Prince Cloud Sellar._`;
+          try {
+            await Promise.race([
+              sendWhatsAppDirectMessage(waPhone, waMsg),
+              new Promise((_, rej) => setTimeout(() => rej(new Error('WA msg timeout')), 7000))
+            ]);
+            if (invoicePdfBuffer) {
+              await Promise.race([
+                sendWhatsAppDirectDocument(waPhone, invoicePdfBuffer, `PrinceCloudSellar_Invoice_${order._id}.pdf`, `🧾 Official Paid Invoice - Order #${order._id}`),
+                new Promise((_, rej) => setTimeout(() => rej(new Error('WA doc timeout')), 7000))
+              ]);
+            }
+          } catch (e) {
+            console.error('Background WA delivery error:', e.message);
+          }
+        }
+
+        // Telegram Customer Delivery
+        const targetUser = persistentStore.users.find(u => String(u._id) === String(order.userId));
+        const tgChatId = (order.userId && order.userId.startsWith('tg_')) 
+          ? order.userId.replace('tg_', '') 
+          : (targetUser ? targetUser.telegramId : null);
+
+        if (tgChatId) {
+          const tgMsg = `🎉 *PRINCE CLOUD SELLAR - UPI PAYMENT APPROVED!* 🎉\n\n` +
+            `📦 *Product:* ${order.productName} ${order.subProduct ? `(${order.subProduct})` : ''}\n` +
+            `🔖 *Order ID:* \`${order._id}\`\n` +
+            `💵 *Paid:* ₹${order.totalPaid} (UPI UTR: \`${order.utrId || 'Verified'}\`)\n` +
+            `🧾 *Invoice Slip:* [Printable PDF Invoice](/invoice/${order._id})\n\n` +
+            `🔑 *YOUR DELIVERED ACCOUNT / KEY DETAILS:*\n` +
+            `\`\`\`\n${deliveredItemsText}\n\`\`\`\n\n` +
+            `_Official PDF Invoice attached below! Thank you for choosing Prince Cloud Sellar._`;
+          try {
+            await Promise.race([
+              sendTelegramDirectMessage(tgChatId, tgMsg),
+              new Promise((_, rej) => setTimeout(() => rej(new Error('TG msg timeout')), 7000))
+            ]);
+            if (invoicePdfBuffer) {
+              await Promise.race([
+                sendTelegramDirectDocument(tgChatId, invoicePdfBuffer, `PrinceCloudSellar_Invoice_${order._id}.pdf`, `🧾 Official Paid Invoice - Order #${order._id}`),
+                new Promise((_, rej) => setTimeout(() => rej(new Error('TG doc timeout')), 7000))
+              ]);
+            }
+          } catch (e) {
+            console.error('Background TG delivery error:', e.message);
+          }
+        }
+
+        // Email Customer Delivery
+        const userEmail = targetUser ? targetUser.email : (order.userEmail || null);
+        if (userEmail && emailTransporter) {
+          try {
+            const mailOptions = {
+              from: '"PrinceCloudSellar Platform" <bhagwanbot09292@gmail.com>',
+              to: userEmail,
+              subject: `🎉 UPI Payment Approved & Keys Delivered - ${order.productName}`,
+              html: `
+                <div style="font-family:Arial,sans-serif;max-width:580px;margin:0 auto;background:#080312;color:#ffffff;padding:24px;border-radius:12px;border:1px solid #facc15;">
+                  <h2 style="color:#facc15;">🎉 UPI Payment Approved & Keys Delivered</h2>
+                  <p>Hello ${order.userName}, your UPI payment has been verified by the Owner.</p>
+                  <hr style="border-color:rgba(255,255,255,0.1);">
+                  <p><strong>Order ID:</strong> ${order._id}</p>
+                  <p><strong>Product:</strong> ${order.productName} ${order.subProduct ? `(${order.subProduct})` : ''}</p>
+                  <p><strong>Quantity:</strong> ${order.quantity}</p>
+                  <p><strong>Total Paid:</strong> ₹${order.totalPaid}</p>
+                  <p><strong>UTR ID:</strong> ${order.utrId || 'Verified'}</p>
+                  <hr style="border-color:rgba(255,255,255,0.1);">
+                  <h4 style="color:#ec4899;">🔑 Delivered Keys / Credentials:</h4>
+                  <div style="background:#000;padding:12px;border-radius:6px;font-family:monospace;color:#facc15;white-space:pre-wrap;">${deliveredItemsText}</div>
+                  <p style="color:#94a3b8;font-size:12px;margin-top:16px;">Your official PDF Tax Invoice is attached to this email.</p>
+                </div>
+              `,
+              attachments: invoicePdfBuffer ? [
+                {
+                  filename: `PrinceCloudSellar_Invoice_${order._id}.pdf`,
+                  content: invoicePdfBuffer,
+                  contentType: 'application/pdf'
+                }
+              ] : []
+            };
+            await Promise.race([
+              emailTransporter.sendMail(mailOptions),
+              new Promise((_, rej) => setTimeout(() => rej(new Error('Email dispatch timeout')), 8000))
+            ]);
+          } catch (e) {
+            console.error('Background Email dispatch error:', e.message);
+          }
+        }
+      } catch (bgErr) {
+        console.error('Background order dispatch task error:', bgErr.message);
+      }
+    });
+
   } catch (err) {
+    console.error('approve-upi route error:', err);
     res.status(500).json({ success: false, message: err.message });
   }
 });
@@ -1551,7 +1616,10 @@ app.post('/api/owner/orders/:id/approve-upi', async (req, res) => {
 app.get(['/api/orders/:id/invoice-pdf', '/invoice/:id/pdf'], async (req, res) => {
   try {
     const { id } = req.params;
-    const order = persistentStore.orders.find(o => o._id === id);
+    let order = persistentStore.orders.find(o => String(o._id) === String(id));
+    if (!order && getDBStatus() && Order) {
+      order = await Order.findOne({ _id: id }).lean();
+    }
     if (!order) return res.status(404).send('Order not found');
 
     const pdfBuffer = await generateOrderInvoicePdfBuffer(order);
@@ -1570,23 +1638,49 @@ app.post('/api/owner/orders/:id/reject-upi', async (req, res) => {
     const { id } = req.params;
     const { reason } = req.body || {};
 
-    const order = persistentStore.orders.find(o => o._id === id);
+    let order = persistentStore.orders.find(o => String(o._id) === String(id));
+    if (!order && getDBStatus() && Order) {
+      order = await Order.findOne({ _id: id }).lean();
+      if (order) persistentStore.orders.unshift(order);
+    }
     if (!order) return res.status(404).json({ success: false, message: 'Order not found.' });
 
     order.deliveryStatus = 'REJECTED';
     order.paymentStatus = 'REJECTED';
-    order.deliveredItem = `REJECTED: ${reason || 'Invalid or unverified UPI payment'}`;
+    order.deliveredItem = `REJECTED: ${reason || 'Invalid or unverified UPI payment / fake UTR'}`;
+    order.rejectedAt = new Date();
 
-    if (getDBStatus()) {
-      await Order.findOneAndUpdate({ _id: order._id }, {
+    if (getDBStatus() && Order) {
+      Order.findOneAndUpdate({ _id: order._id }, {
         deliveryStatus: 'REJECTED',
         paymentStatus: 'REJECTED',
-        deliveredItem: order.deliveredItem
-      });
+        deliveredItem: order.deliveredItem,
+        rejectedAt: order.rejectedAt
+      }).catch(e => console.error('Order rejection DB update error:', e.message));
+    }
+
+    // Customer Notification
+    const userNotif = {
+      _id: 'notif_' + Date.now(),
+      recipientType: 'USER',
+      userId: order.userId,
+      userEmail: '',
+      title: `❌ UPI Order Rejected: ${order.productName}`,
+      message: `Your UPI Order #${order._id} was rejected. Reason: ${reason || 'Payment could not be verified'}. Please contact support with valid payment proof.`,
+      type: 'ORDER_REJECTED',
+      orderId: order._id,
+      deliveredItem: '',
+      isRead: false,
+      createdAt: new Date()
+    };
+    if (!persistentStore.notifications) persistentStore.notifications = [];
+    persistentStore.notifications.unshift(userNotif);
+    if (getDBStatus() && Notification) {
+      Notification.create(userNotif).catch(e => console.error('Notification creation error:', e.message));
     }
 
     saveLocalDB();
-    return res.json({ success: true, message: 'Order rejected.', order });
+    return res.json({ success: true, message: 'Order has been rejected.', order });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }

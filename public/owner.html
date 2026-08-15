@@ -241,13 +241,23 @@
           <div class="section-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:16px;">
             <div>
               <h3>🚚 Customer Orders Directory</h3>
-              <p style="font-size:0.82rem; color:var(--text-muted);">Real-time orders across Website, WhatsApp Bot & Telegram Bot with UPI Approval.</p>
+              <p style="font-size:0.82rem; color:var(--text-muted);">Real-time orders across Website, WhatsApp Bot &amp; Telegram Bot with Instant 1-Click UPI Approval.</p>
             </div>
-            <div style="display:flex; gap:8px;">
-              <button type="button" class="btn btn-secondary btn-sm" onclick="filterOrdersByStatus('ALL')">All Orders</button>
-              <button type="button" class="btn btn-warning btn-sm" onclick="filterOrdersByStatus('PENDING_APPROVAL')">🟡 Pending UPI Approvals</button>
-              <button type="button" class="btn btn-success btn-sm" onclick="filterOrdersByStatus('DELIVERED')">🟢 Delivered</button>
+            <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+              <button id="order-filter-btn-all" type="button" class="btn btn-secondary btn-sm" onclick="filterOrdersByStatus('ALL')">All Orders</button>
+              <button id="order-filter-btn-pending" type="button" class="btn btn-warning btn-sm" onclick="filterOrdersByStatus('PENDING_APPROVAL')">
+                🟡 Pending UPI Approvals <span id="orders-pending-counter" class="badge badge-danger" style="display:none; margin-left:4px; font-size:0.68rem;">0</span>
+              </button>
+              <button id="order-filter-btn-delivered" type="button" class="btn btn-secondary btn-sm" onclick="filterOrdersByStatus('DELIVERED')">🟢 Delivered</button>
+              <button id="order-filter-btn-rejected" type="button" class="btn btn-secondary btn-sm" onclick="filterOrdersByStatus('REJECTED')">🔴 Rejected</button>
             </div>
+          </div>
+
+          <!-- Quick Search Bar for Orders -->
+          <div style="margin-bottom: 16px; display: flex; gap: 10px; align-items: center; background: rgba(0,0,0,0.3); padding: 8px 12px; border-radius: var(--radius-md); border: 1px solid var(--glass-border);">
+            <span style="font-size: 1rem; color: var(--yellow-primary);">🔍</span>
+            <input type="text" id="order-search-input" class="form-control" placeholder="Search by customer name, phone number, UTR ID, product, or order ID..." oninput="handleOrderSearch(this.value)" style="border: none; background: transparent; padding: 6px; box-shadow: none;">
+            <button type="button" class="btn btn-secondary btn-sm" onclick="clearOrderSearch()" style="padding: 4px 10px; font-size: 0.75rem;">Clear</button>
           </div>
 
           <div class="table-responsive">
@@ -256,8 +266,8 @@
                 <tr>
                   <th>Order ID</th>
                   <th>Customer</th>
-                  <th>Product & Plan</th>
-                  <th>Total & Method</th>
+                  <th>Product &amp; Plan</th>
+                  <th>Total &amp; Payment</th>
                   <th>Status</th>
                   <th>Delivered Keys</th>
                   <th>Actions</th>
@@ -1044,6 +1054,130 @@
       <button type="button" class="btn btn-primary btn-block" onclick="handleResolveTicketSubmit()" style="padding: 12px; font-weight: 800;">
         💾 Save Resolution &amp; Notify Customer
       </button>
+    </div>
+  </div>
+
+  <!-- CUSTOMER ORDER DETAILS & UPI APPROVAL MODAL -->
+  <div id="order-details-modal" class="modal-overlay">
+    <div class="modal-container glass-card" style="max-width: 680px; max-height: 90vh; overflow-y: auto;">
+      <button class="modal-close-btn" onclick="closeModal('order-details-modal')">&times;</button>
+      
+      <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--glass-border); padding-bottom: 12px; margin-bottom: 16px; flex-wrap: wrap; gap: 8px;">
+        <div>
+          <h3 style="color: var(--yellow-primary); margin: 0; display: flex; align-items: center; gap: 8px;">
+            <span>📋 Order Details &amp; UPI Approval</span>
+          </h3>
+          <span id="mod-order-id-sub" style="font-family: monospace; font-size: 0.8rem; color: var(--text-muted);"></span>
+        </div>
+        <span id="mod-order-status-badge" class="badge badge-warning" style="font-size: 0.85rem; padding: 4px 10px;">PENDING</span>
+      </div>
+
+      <input type="hidden" id="mod-order-id-val">
+      <input type="hidden" id="mod-order-product-id">
+
+      <!-- 2-COL DETAILS GRID -->
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; margin-bottom: 16px;">
+        
+        <!-- Customer Box -->
+        <div style="background: rgba(0,0,0,0.45); border: 1px solid var(--glass-border); border-radius: var(--radius-md); padding: 14px;">
+          <h4 style="color: var(--pink-accent); font-size: 0.85rem; text-transform: uppercase; margin-bottom: 8px; display: flex; align-items: center; gap: 6px;">
+            <span>👤 Customer Profile</span>
+          </h4>
+          <div style="font-size: 0.85rem; line-height: 1.7;">
+            <div><strong>Name:</strong> <span id="mod-cust-name" style="color:#ffffff;">-</span></div>
+            <div><strong>Phone/WA:</strong> <span id="mod-cust-phone" style="color:var(--yellow-primary); font-family:monospace;">-</span> 
+              <a id="mod-cust-wa-link" href="#" target="_blank" class="btn btn-secondary btn-sm" style="padding: 2px 6px; font-size: 0.7rem; border-color: #22c55e; color: #22c55e; margin-left: 6px; text-decoration: none; display: inline-flex; align-items: center; gap: 3px;">
+                💬 Chat WA
+              </a>
+            </div>
+            <div><strong>Source:</strong> <span id="mod-order-source" class="badge badge-primary" style="font-size: 0.7rem;">WEB</span></div>
+            <div><strong>Order Date:</strong> <span id="mod-order-date" style="color:var(--text-muted); font-size:0.8rem;">-</span></div>
+          </div>
+        </div>
+
+        <!-- Product & Price Box -->
+        <div style="background: rgba(0,0,0,0.45); border: 1px solid var(--glass-border); border-radius: var(--radius-md); padding: 14px;">
+          <h4 style="color: var(--yellow-primary); font-size: 0.85rem; text-transform: uppercase; margin-bottom: 8px; display: flex; align-items: center; gap: 6px;">
+            <span>📦 Product &amp; Pricing</span>
+          </h4>
+          <div style="font-size: 0.85rem; line-height: 1.7;">
+            <div><strong>Product:</strong> <span id="mod-prod-name" style="color:#ffffff; font-weight:700;">-</span></div>
+            <div><strong>Variant / Plan:</strong> <span id="mod-prod-sub" style="color:var(--pink-accent);">-</span></div>
+            <div><strong>Region / Type:</strong> <span id="mod-prod-country" style="color:var(--text-dim);">-</span></div>
+            <div><strong>Quantity:</strong> <span id="mod-order-qty" class="badge badge-yellow">1x</span></div>
+            <div style="margin-top: 4px; border-top: 1px dashed rgba(255,255,255,0.1); padding-top: 4px;">
+              <strong>Total Amount:</strong> <span id="mod-order-total" style="color:var(--green-bright); font-weight:800; font-size:1.1rem;">₹0</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- UPI Payment Proof Box -->
+      <div style="background: rgba(34, 197, 94, 0.08); border: 1px solid rgba(34, 197, 94, 0.3); border-radius: var(--radius-md); padding: 14px; margin-bottom: 16px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 6px;">
+          <h4 style="color: #22c55e; font-size: 0.85rem; text-transform: uppercase; margin: 0; display: flex; align-items: center; gap: 6px;">
+            <span>🏦 UPI Payment &amp; UTR Verification</span>
+          </h4>
+          <span id="mod-payment-method-badge" class="badge badge-success" style="font-size: 0.72rem;">UPI DIRECT</span>
+        </div>
+        <div style="display: flex; align-items: center; justify-content: space-between; background: rgba(0,0,0,0.5); padding: 8px 12px; border-radius: 6px; border: 1px dashed #22c55e; flex-wrap: wrap; gap: 8px;">
+          <div>
+            <span style="font-size: 0.75rem; color: var(--text-muted);">Submitted UTR / Reference ID:</span><br>
+            <strong id="mod-order-utr" style="font-family: monospace; font-size: 1.1rem; color: #facc15; letter-spacing: 1px;">-</strong>
+          </div>
+          <button type="button" class="btn btn-secondary btn-sm" onclick="copyUtrFromModal()" style="padding: 4px 10px; font-size: 0.75rem; border-color: #facc15; color: #facc15;">
+            📋 Copy UTR
+          </button>
+        </div>
+      </div>
+
+      <!-- Stock & Credentials Delivery Box -->
+      <div style="background: rgba(0,0,0,0.45); border: 1px solid var(--glass-border); border-radius: var(--radius-md); padding: 14px; margin-bottom: 16px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; gap: 8px;">
+          <h4 style="color: var(--yellow-primary); font-size: 0.85rem; text-transform: uppercase; margin: 0;">
+            🔑 Key / Account Delivery Options
+          </h4>
+          <span id="mod-stock-status-badge" class="badge badge-pink" style="font-size: 0.75rem;">Checking Stock...</span>
+        </div>
+
+        <div id="mod-already-delivered-box" style="display: none; margin-bottom: 10px;">
+          <label style="font-size: 0.75rem; color: #22c55e; font-weight: 700;">Delivered Credentials / Key:</label>
+          <div id="mod-delivered-text-display" class="code-box" style="white-space: pre-wrap; font-size: 0.8rem; margin-top: 4px; max-height: 120px; overflow-y: auto;"></div>
+        </div>
+
+        <div id="mod-pending-delivery-input-box">
+          <div class="form-group" style="margin-bottom: 10px;">
+            <label class="form-label" style="font-size: 0.8rem; color: var(--text-dim);">
+              Custom Account / Key Credentials (Optional - Leave blank to auto-fetch from stock or auto-keygen):
+            </label>
+            <textarea id="mod-custom-payload" class="form-control" rows="3" placeholder="Enter custom credentials, e.g. email:pass | ip:port:user:pass | license_key (or leave empty for auto-stock)"></textarea>
+          </div>
+          <div class="form-group" style="margin-bottom: 0;">
+            <label class="form-label" style="font-size: 0.8rem; color: var(--text-dim);">
+              Owner Internal Notes (Optional):
+            </label>
+            <input type="text" id="mod-owner-notes" class="form-control" placeholder="e.g. Verified from Bank statement / WhatsApp proof">
+          </div>
+        </div>
+      </div>
+
+      <!-- ACTION BUTTONS -->
+      <div style="display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wrap;">
+        <button type="button" class="btn btn-secondary" onclick="closeModal('order-details-modal')" style="padding: 9px 16px;">
+          Close
+        </button>
+        <a id="mod-invoice-btn" href="#" target="_blank" class="btn btn-secondary" style="padding: 9px 16px; border-color: var(--yellow-primary); color: var(--yellow-primary); text-decoration: none;">
+          🧾 View Invoice
+        </a>
+        <button id="mod-reject-btn" type="button" class="btn btn-danger" onclick="handleModalRejectOrder()" style="padding: 9px 16px;">
+          ❌ Reject Order
+        </button>
+        <button id="mod-approve-btn" type="button" class="btn btn-success" onclick="handleModalApproveOrder()" style="padding: 9px 20px; font-weight: 800;">
+          ⚡ Approve &amp; Deliver Now
+        </button>
+      </div>
+
     </div>
   </div>
 

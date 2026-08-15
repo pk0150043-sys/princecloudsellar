@@ -719,6 +719,8 @@ function renderRecentTransactions(orders) {
   tbody.innerHTML = orders.map(ord => {
     const isTxHashReal = ord.txHash && ord.txHash.startsWith('0x');
     const bscScanUrl = isTxHashReal ? `https://bscscan.com/tx/${ord.txHash}` : '#';
+    const isUpi = ord.paymentMethod === 'UPI' || (ord.utrId && ord.utrId.length > 0);
+    const isPendingApproval = ord.deliveryStatus === 'PENDING_APPROVAL' || ord.deliveryStatus === 'PENDING_DELIVERY';
 
     return `
       <tr>
@@ -734,16 +736,24 @@ function renderRecentTransactions(orders) {
         <td><span class="badge badge-primary">${ord.quantity}x</span></td>
         <td><strong style="color:var(--green-bright);">${formatOwnerPriceDisplay(ord.totalPaid)}</strong></td>
         <td>
-          <span class="badge badge-success">PAID & VERIFIED</span><br>
-          ${isTxHashReal 
-            ? `<a href="${bscScanUrl}" target="_blank" style="font-size:0.72rem; color:var(--yellow-primary); text-decoration:underline;">🔍 BscScan Audit</a>` 
-            : `<span style="font-size:0.72rem; color:var(--text-dim);">⚡ Web3 Auto</span>`
+          ${isUpi 
+            ? `<span class="badge badge-warning" style="font-size:0.7rem;">🏦 UPI: ${escapeHtml(ord.utrId || 'Pending')}</span>`
+            : (isTxHashReal 
+                ? `<a href="${bscScanUrl}" target="_blank" style="font-size:0.72rem; color:var(--yellow-primary); text-decoration:underline;">🔍 BscScan Audit</a>` 
+                : `<span style="font-size:0.72rem; color:var(--text-dim);">⚡ Web3 Auto</span>`
+              )
           }
         </td>
         <td>
-          <span class="badge ${ord.deliveryStatus === 'DELIVERED' ? 'badge-success' : 'badge-warning'}">
+          <span class="badge ${ord.deliveryStatus === 'DELIVERED' ? 'badge-success' : (isPendingApproval ? 'badge-warning' : 'badge-danger')}">
             ${ord.deliveryStatus}
           </span>
+          ${isPendingApproval ? `
+            <br>
+            <button type="button" class="btn btn-warning btn-sm" onclick="openOrderDetailsModal('${ord._id}')" style="padding:2px 8px; font-size:0.7rem; font-weight:700; margin-top:4px;">
+              ⚡ Approve UPI
+            </button>
+          ` : ''}
         </td>
       </tr>
     `;
@@ -1041,29 +1051,106 @@ async function deleteProduct(id) {
 }
 
 // ----------------------------------------------------
-// ORDERS MANAGEMENT WITH BLOCKCHAIN AUDIT
+// ORDERS MANAGEMENT WITH INSTANT 1-CLICK UPI APPROVAL
 // ----------------------------------------------------
 
+let allOwnerOrders = [];
 let currentOrderFilter = 'ALL';
+let orderSearchQuery = '';
 
 function filterOrdersByStatus(status) {
   currentOrderFilter = status;
-  fetchOrders();
+
+  // Update button active styles
+  const btnMap = {
+    'ALL': 'order-filter-btn-all',
+    'PENDING_APPROVAL': 'order-filter-btn-pending',
+    'DELIVERED': 'order-filter-btn-delivered',
+    'REJECTED': 'order-filter-btn-rejected'
+  };
+
+  Object.entries(btnMap).forEach(([st, btnId]) => {
+    const el = document.getElementById(btnId);
+    if (el) {
+      if (st === status) {
+        el.className = 'btn btn-primary btn-sm';
+      } else {
+        el.className = 'btn btn-secondary btn-sm';
+      }
+    }
+  });
+
+  applyOrdersFilterAndRender();
+}
+
+function handleOrderSearch(val) {
+  orderSearchQuery = (val || '').trim().toLowerCase();
+  applyOrdersFilterAndRender();
+}
+
+function clearOrderSearch() {
+  const input = document.getElementById('order-search-input');
+  if (input) input.value = '';
+  orderSearchQuery = '';
+  applyOrdersFilterAndRender();
 }
 
 async function fetchOrders() {
   try {
-    const url = currentOrderFilter && currentOrderFilter !== 'ALL' 
-      ? `/api/owner/orders?status=${encodeURIComponent(currentOrderFilter)}&t=${Date.now()}`
-      : `/api/owner/orders?t=${Date.now()}`;
-    const res = await fetch(url);
+    const res = await fetch(`/api/owner/orders?t=${Date.now()}`);
     const data = await res.json();
     if (data.success) {
-      renderOrdersTable(data.orders);
+      allOwnerOrders = data.orders || [];
+
+      // Update pending badge counter
+      const pendingCount = allOwnerOrders.filter(o => 
+        o.deliveryStatus === 'PENDING_APPROVAL' || o.deliveryStatus === 'PENDING_DELIVERY'
+      ).length;
+
+      const counterBadge = document.getElementById('orders-pending-counter');
+      if (counterBadge) {
+        if (pendingCount > 0) {
+          counterBadge.innerText = pendingCount;
+          counterBadge.style.display = 'inline-block';
+        } else {
+          counterBadge.style.display = 'none';
+        }
+      }
+
+      applyOrdersFilterAndRender();
     }
   } catch (err) {
     console.error('Fetch orders error:', err);
   }
+}
+
+function applyOrdersFilterAndRender() {
+  let filtered = [...allOwnerOrders];
+
+  // Apply Status Filter
+  if (currentOrderFilter === 'PENDING_APPROVAL') {
+    filtered = filtered.filter(o => o.deliveryStatus === 'PENDING_APPROVAL' || o.deliveryStatus === 'PENDING_DELIVERY');
+  } else if (currentOrderFilter === 'DELIVERED') {
+    filtered = filtered.filter(o => o.deliveryStatus === 'DELIVERED');
+  } else if (currentOrderFilter === 'REJECTED') {
+    filtered = filtered.filter(o => o.deliveryStatus === 'REJECTED');
+  }
+
+  // Apply Real-time Text Search Filter
+  if (orderSearchQuery && orderSearchQuery.length > 0) {
+    filtered = filtered.filter(o => {
+      const matchId = (o._id || '').toLowerCase().includes(orderSearchQuery);
+      const matchUser = (o.userName || '').toLowerCase().includes(orderSearchQuery);
+      const matchPhone = (o.userPhone || '').toLowerCase().includes(orderSearchQuery);
+      const matchProd = (o.productName || '').toLowerCase().includes(orderSearchQuery);
+      const matchSub = (o.subProduct || '').toLowerCase().includes(orderSearchQuery);
+      const matchUtr = (o.utrId || '').toLowerCase().includes(orderSearchQuery);
+      const matchTx = (o.txHash || '').toLowerCase().includes(orderSearchQuery);
+      return matchId || matchUser || matchPhone || matchProd || matchSub || matchUtr || matchTx;
+    });
+  }
+
+  renderOrdersTable(filtered);
 }
 
 function renderOrdersTable(orders) {
@@ -1071,7 +1158,7 @@ function renderOrdersTable(orders) {
   if (!tbody) return;
 
   if (!orders || orders.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; color: var(--text-muted); padding:30px;">No orders found.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; color: var(--text-muted); padding:30px;">No matching customer orders found.</td></tr>`;
     return;
   }
 
@@ -1087,27 +1174,34 @@ function renderOrdersTable(orders) {
     if (isDelivered) statusBadgeClass = 'badge-success';
     if (isRejected) statusBadgeClass = 'badge-danger';
 
+    const cleanPhone = (ord.userPhone || '').replace(/[^0-9]/g, '');
+
     return `
-      <tr>
+      <tr id="order-row-${ord._id}">
         <td>
           <span style="font-family:monospace; color:var(--text-muted); font-size:0.8rem;">${ord._id}</span><br>
-          <span class="badge badge-primary" style="font-size:0.68rem; margin-top:2px;">${ord.source || 'WEB'}</span>
+          <span class="badge badge-primary" style="font-size:0.68rem; margin-top:2px;">${escapeHtml(ord.source || 'WEB')}</span>
         </td>
         <td>
           <strong style="color:#ffffff;">${escapeHtml(ord.userName)}</strong><br>
-          <span style="font-size:0.8rem; color:var(--yellow-primary);">${escapeHtml(ord.userPhone)}</span>
+          <span style="font-size:0.8rem; color:var(--yellow-primary);">${escapeHtml(ord.userPhone || 'N/A')}</span>
+          ${cleanPhone.length >= 10 ? `
+            <a href="https://wa.me/91${cleanPhone}?text=Hello%20${encodeURIComponent(ord.userName)}%2C%20regarding%20Order%20${ord._id}" target="_blank" style="margin-left:4px; font-size:0.75rem; text-decoration:none;" title="Chat on WhatsApp">💬</a>
+          ` : ''}
         </td>
         <td>
           <strong style="color:#ffffff;">${escapeHtml(ord.productName)}</strong><br>
           <span style="font-size:0.78rem; color:var(--pink-accent);">${escapeHtml(ord.subProduct || '')}</span>
-          <span style="font-size:0.75rem; color:var(--text-dim);">[${escapeHtml(ord.country || 'Global')}] (x${ord.quantity})</span>
+          <span style="font-size:0.75rem; color:var(--text-dim);">[${escapeHtml(ord.country || 'Global')}] (x${ord.quantity || 1})</span>
         </td>
         <td>
-          <strong style="color:var(--green-bright);">${formatOwnerPriceDisplay(ord.totalPaid)}</strong><br>
+          <strong style="color:var(--green-bright); font-size:0.95rem;">${formatOwnerPriceDisplay(ord.totalPaid)}</strong><br>
           ${isUpi 
-            ? `<span style="font-size:0.75rem; color:#22c55e; font-weight:700;">🏦 UPI: ${escapeHtml(ord.utrId || 'Pending UTR')}</span>`
+            ? `<span style="font-size:0.75rem; color:#22c55e; font-weight:700; background:rgba(34,197,94,0.12); padding:2px 6px; border-radius:4px; display:inline-block; margin-top:2px;">
+                🏦 UTR: <code>${escapeHtml(ord.utrId || 'Pending')}</code>
+               </span>`
             : (isTxHashReal 
-                ? `<a href="${bscScanUrl}" target="_blank" style="font-size:0.72rem; color:var(--yellow-primary); text-decoration:underline;">🔍 Audit on BscScan</a>` 
+                ? `<a href="${bscScanUrl}" target="_blank" style="font-size:0.72rem; color:var(--yellow-primary); text-decoration:underline;">🔍 BscScan Audit</a>` 
                 : `<span style="font-size:0.72rem; color:var(--text-dim);">⚡ BEP20 USDT</span>`
               )
           }
@@ -1118,56 +1212,252 @@ function renderOrdersTable(orders) {
           </span>
         </td>
         <td>
-          <div class="code-box" style="font-size:0.75rem; max-width:180px; max-height:60px; overflow:hidden; white-space:pre-wrap;">
-            ${escapeHtml(ord.deliveredItem || 'No key')}
+          <div class="code-box" style="font-size:0.72rem; max-width:180px; max-height:55px; overflow:hidden; white-space:pre-wrap; cursor:pointer;" onclick="openOrderDetailsModal('${ord._id}')" title="Click to view full delivered keys">
+            ${escapeHtml(ord.deliveredItem || 'No key delivered yet')}
           </div>
         </td>
         <td>
-          <div style="display:flex; flex-direction:column; gap:4px; min-width:120px;">
+          <div style="display:flex; flex-direction:column; gap:4px; min-width:130px;">
+            <button type="button" class="btn btn-secondary btn-sm" onclick="openOrderDetailsModal('${ord._id}')" style="padding:4px 8px; font-size:0.75rem; border-color:var(--yellow-primary); color:var(--yellow-primary);">
+              👁️ View Details
+            </button>
             ${isPendingApproval ? `
-              <button type="button" class="btn btn-success btn-sm" onclick="approveUpiOrder('${ord._id}')" style="padding:4px 8px; font-size:0.75rem; font-weight:700;">
-                ✅ Approve & Deliver
+              <button type="button" class="btn btn-success btn-sm" onclick="approveUpiOrder('${ord._id}', this)" style="padding:4px 8px; font-size:0.75rem; font-weight:800; background:#16a34a; border-color:#16a34a;">
+                ⚡ Fast Approve
               </button>
-              <button type="button" class="btn btn-danger btn-sm" onclick="rejectUpiOrder('${ord._id}')" style="padding:4px 8px; font-size:0.75rem;">
+              <button type="button" class="btn btn-danger btn-sm" onclick="rejectUpiOrder('${ord._id}')" style="padding:4px 8px; font-size:0.72rem;">
                 ❌ Reject
               </button>
             ` : ''}
-            <a href="/invoice/${ord._id}" target="_blank" class="btn btn-secondary btn-sm" style="padding:4px 8px; font-size:0.75rem; text-decoration:none; text-align:center;">
-              🧾 Invoice
+            <a href="/invoice/${ord._id}" target="_blank" class="btn btn-secondary btn-sm" style="padding:4px 8px; font-size:0.72rem; text-decoration:none; text-align:center;">
+              🧾 Invoice Slip
             </a>
           </div>
         </td>
         <td>
-          <span style="font-size:0.75rem; color:var(--text-dim);">${new Date(ord.createdAt).toLocaleString()}</span>
+          <span style="font-size:0.72rem; color:var(--text-dim);">${new Date(ord.createdAt).toLocaleString()}</span>
         </td>
       </tr>
     `;
   }).join('');
 }
 
-async function approveUpiOrder(orderId) {
-  if (!confirm(`Approve Order #${orderId} and dispatch stock keys + PDF invoice to customer on WhatsApp/Telegram/Email?`)) return;
-  showOwnerToast('⏳ Approving order & generating PDF invoice...', 'info');
+// ----------------------------------------------------
+// DEDICATED ORDER DETAILS & UPI APPROVAL MODAL ENGINE
+// ----------------------------------------------------
+
+function openOrderDetailsModal(orderId) {
+  const ord = allOwnerOrders.find(o => String(o._id) === String(orderId));
+  if (!ord) {
+    showToast('Order not found.', 'error');
+    return;
+  }
+
+  // Populate IDs & Status
+  document.getElementById('mod-order-id-val').value = ord._id;
+  document.getElementById('mod-order-product-id').value = ord.productId || '';
+  document.getElementById('mod-order-id-sub').innerText = `Order ID: #${ord._id}`;
+  
+  const statusBadge = document.getElementById('mod-order-status-badge');
+  const isPending = ord.deliveryStatus === 'PENDING_APPROVAL' || ord.deliveryStatus === 'PENDING_DELIVERY';
+  const isDelivered = ord.deliveryStatus === 'DELIVERED';
+  const isRejected = ord.deliveryStatus === 'REJECTED';
+
+  if (isDelivered) {
+    statusBadge.className = 'badge badge-success';
+    statusBadge.innerText = 'DELIVERED & PAID';
+  } else if (isRejected) {
+    statusBadge.className = 'badge badge-danger';
+    statusBadge.innerText = 'REJECTED';
+  } else {
+    statusBadge.className = 'badge badge-warning';
+    statusBadge.innerText = '🟡 PENDING APPROVAL';
+  }
+
+  // Customer Profile Info
+  document.getElementById('mod-cust-name').innerText = ord.userName || 'Anonymous Customer';
+  document.getElementById('mod-cust-phone').innerText = ord.userPhone || 'N/A';
+  
+  const cleanPhone = (ord.userPhone || '').replace(/[^0-9]/g, '');
+  const waBtn = document.getElementById('mod-cust-wa-link');
+  if (cleanPhone.length >= 10) {
+    waBtn.href = `https://wa.me/91${cleanPhone}?text=Hello%20${encodeURIComponent(ord.userName)}%2C%20regarding%20your%20PrinceCloudSellar%20Order%20${ord._id}...`;
+    waBtn.style.display = 'inline-flex';
+  } else {
+    waBtn.style.display = 'none';
+  }
+
+  document.getElementById('mod-order-source').innerText = ord.source || 'WEB';
+  document.getElementById('mod-order-date').innerText = new Date(ord.createdAt).toLocaleString();
+
+  // Product & Pricing Info
+  document.getElementById('mod-prod-name').innerText = ord.productName || 'Cloud Account';
+  document.getElementById('mod-prod-sub').innerText = ord.subProduct || 'Standard Variant';
+  document.getElementById('mod-prod-country').innerText = ord.country || '🌐 Global';
+  document.getElementById('mod-order-qty').innerText = `${ord.quantity || 1}x`;
+  document.getElementById('mod-order-total').innerText = formatOwnerPriceDisplay(ord.totalPaid);
+
+  // UPI / Payment Info
+  const isUpi = ord.paymentMethod === 'UPI' || (ord.utrId && ord.utrId.length > 0);
+  document.getElementById('mod-payment-method-badge').innerText = isUpi ? 'UPI PAYMENT' : 'CRYPTO BEP20';
+  document.getElementById('mod-order-utr').innerText = ord.utrId || (ord.txHash ? `TX: ${String(ord.txHash).substring(0, 18)}...` : 'No UTR Submitted');
+
+  // Stock check
+  const availStockCount = (currentStocks || []).filter(s => 
+    String(s.productId) === String(ord.productId) && s.status === 'AVAILABLE'
+  ).length;
+
+  const stockBadge = document.getElementById('mod-stock-status-badge');
+  if (availStockCount > 0) {
+    stockBadge.className = 'badge badge-success';
+    stockBadge.innerText = `🟢 ${availStockCount} Stock Item(s) Ready for Auto-Dispatch`;
+  } else {
+    stockBadge.className = 'badge badge-warning';
+    stockBadge.innerText = `🟡 0 in Stock (Auto-Keygen or Custom Keys)`;
+  }
+
+  // Delivered vs Pending Boxes
+  const deliveredBox = document.getElementById('mod-already-delivered-box');
+  const pendingBox = document.getElementById('mod-pending-delivery-input-box');
+  const approveBtn = document.getElementById('mod-approve-btn');
+  const rejectBtn = document.getElementById('mod-reject-btn');
+  const invoiceBtn = document.getElementById('mod-invoice-btn');
+
+  invoiceBtn.href = `/invoice/${ord._id}`;
+
+  if (isDelivered) {
+    deliveredBox.style.display = 'block';
+    document.getElementById('mod-delivered-text-display').innerText = ord.deliveredItem || 'No content';
+    pendingBox.style.display = 'none';
+    approveBtn.style.display = 'none';
+    rejectBtn.style.display = 'none';
+  } else {
+    deliveredBox.style.display = 'none';
+    pendingBox.style.display = 'block';
+    document.getElementById('mod-custom-payload').value = '';
+    document.getElementById('mod-owner-notes').value = '';
+    approveBtn.style.display = 'inline-block';
+    approveBtn.disabled = false;
+    approveBtn.innerHTML = '⚡ Approve &amp; Deliver Now';
+    rejectBtn.style.display = 'inline-block';
+  }
+
+  openModal('order-details-modal');
+}
+
+function copyUtrFromModal() {
+  const utr = document.getElementById('mod-order-utr').innerText;
+  if (utr && utr !== '-' && utr !== 'No UTR Submitted') {
+    navigator.clipboard.writeText(utr);
+    showToast(`UTR copied: ${utr}`, 'success');
+  } else {
+    showToast('No UTR to copy.', 'info');
+  }
+}
+
+async function handleModalApproveOrder() {
+  const orderId = document.getElementById('mod-order-id-val').value;
+  const customPayload = document.getElementById('mod-custom-payload').value;
+  const notes = document.getElementById('mod-owner-notes').value;
+  const approveBtn = document.getElementById('mod-approve-btn');
+
+  if (!orderId) return;
+
+  if (approveBtn) {
+    approveBtn.disabled = true;
+    approveBtn.innerHTML = '⏳ Approving &amp; Delivering...';
+  }
+
   try {
     const res = await fetch(`/api/owner/orders/${orderId}/approve-upi`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' }
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ customPayload, notes })
+    });
+    const data = await res.json();
+
+    if (data.success) {
+      showToast('🎉 Order Approved & Credentials Delivered Successfully!', 'success');
+      closeModal('order-details-modal');
+
+      // Update in-memory order object
+      const idx = allOwnerOrders.findIndex(o => String(o._id) === String(orderId));
+      if (idx !== -1 && data.order) {
+        allOwnerOrders[idx] = data.order;
+      }
+
+      applyOrdersFilterAndRender();
+      
+      // Refresh related views in background
+      Promise.all([fetchOrders(), fetchStocks(), fetchMetrics(), fetchRecentTransactions()]).catch(() => {});
+    } else {
+      showToast(data.message || 'Approval failed.', 'error');
+      if (approveBtn) {
+        approveBtn.disabled = false;
+        approveBtn.innerHTML = '⚡ Approve &amp; Deliver Now';
+      }
+    }
+  } catch (err) {
+    showToast('Approval error: ' + err.message, 'error');
+    if (approveBtn) {
+      approveBtn.disabled = false;
+      approveBtn.innerHTML = '⚡ Approve &amp; Deliver Now';
+    }
+  }
+}
+
+async function handleModalRejectOrder() {
+  const orderId = document.getElementById('mod-order-id-val').value;
+  if (!orderId) return;
+
+  closeModal('order-details-modal');
+  await rejectUpiOrder(orderId);
+}
+
+async function approveUpiOrder(orderId, btnEl) {
+  if (btnEl) {
+    btnEl.disabled = true;
+    btnEl.innerHTML = '⏳ Approving...';
+  }
+
+  try {
+    const res = await fetch(`/api/owner/orders/${orderId}/approve-upi`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({})
     });
     const data = await res.json();
     if (data.success) {
-      showOwnerToast('🎉 Order Approved! Keys & PDF Invoice Dispatched.', 'success');
-      Promise.all([fetchOrders(), fetchStocks(), fetchMetrics()]).catch(() => {});
+      showToast('🎉 Order Approved! Keys Delivered Instantly.', 'success');
+      
+      // Update in-memory order object
+      const idx = allOwnerOrders.findIndex(o => String(o._id) === String(orderId));
+      if (idx !== -1 && data.order) {
+        allOwnerOrders[idx] = data.order;
+      }
+
+      applyOrdersFilterAndRender();
+      Promise.all([fetchStocks(), fetchMetrics(), fetchRecentTransactions()]).catch(() => {});
     } else {
-      showOwnerToast(data.message || 'Approval failed.', 'error');
+      showToast(data.message || 'Approval failed.', 'error');
+      if (btnEl) {
+        btnEl.disabled = false;
+        btnEl.innerHTML = '⚡ Fast Approve';
+      }
     }
   } catch (err) {
-    showOwnerToast('Approval error: ' + err.message, 'error');
+    showToast('Approval error: ' + err.message, 'error');
+    if (btnEl) {
+      btnEl.disabled = false;
+      btnEl.innerHTML = '⚡ Fast Approve';
+    }
   }
 }
 
 async function rejectUpiOrder(orderId) {
-  const reason = prompt('Enter reason for rejection (optional):', 'Payment unverified / invalid UTR');
+  const reason = prompt('Enter reason for order rejection:', 'Payment unverified / invalid UPI UTR');
   if (reason === null) return;
+  
   try {
     const res = await fetch(`/api/owner/orders/${orderId}/reject-upi`, {
       method: 'POST',
@@ -1176,13 +1466,19 @@ async function rejectUpiOrder(orderId) {
     });
     const data = await res.json();
     if (data.success) {
-      showOwnerToast('Order Rejected.', 'info');
-      fetchOrders();
+      showToast('Order Rejected.', 'info');
+      
+      const idx = allOwnerOrders.findIndex(o => String(o._id) === String(orderId));
+      if (idx !== -1 && data.order) {
+        allOwnerOrders[idx] = data.order;
+      }
+      applyOrdersFilterAndRender();
+      fetchRecentTransactions();
     } else {
-      showOwnerToast(data.message, 'error');
+      showToast(data.message, 'error');
     }
   } catch (err) {
-    showOwnerToast('Reject error: ' + err.message, 'error');
+    showToast('Reject error: ' + err.message, 'error');
   }
 }
 
@@ -2096,3 +2392,6 @@ function escapeHtml(str) {
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#039;');
 }
+
+window.showOwnerToast = showToast;
+window.showToast = showToast;
