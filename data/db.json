@@ -1,11 +1,550 @@
 {
-  "users": [],
-  "products": [],
-  "orders": [],
-  "stocks": [],
-  "tickets": [],
-  "feedbacks": [],
-  "notifications": [],
+  "users": [
+    {
+      "_id": "u_1786735787521",
+      "name": "King Legend",
+      "email": "kingoffical505@gmail.com",
+      "phone": "9507325677",
+      "password": "PRINCE@9507325",
+      "role": "user",
+      "status": "active",
+      "lastOtpVerifiedAt": "2026-08-15T07:51:02.901Z",
+      "createdAt": "2026-08-14T19:29:47.524Z",
+      "whatsappNumber": "9507325677",
+      "telegramId": "5214825153"
+    },
+    {
+      "_id": "u_1786562387773",
+      "name": "King Legend",
+      "email": "spamkingxl097@gmail.com",
+      "phone": "8986269256",
+      "password": "PRINCE@9507325",
+      "role": "user",
+      "status": "active",
+      "lastOtpVerifiedAt": "2026-08-15T08:52:08.457Z",
+      "createdAt": "2026-08-12T19:19:47.773Z"
+    }
+  ],
+  "products": [
+    {
+      "_id": "p_demo_0",
+      "name": "Azure",
+      "subProduct": "Azure Pay As Go Direct Acc",
+      "country": "🇺🇸 United States",
+      "price": 499,
+      "stock": 3,
+      "description": "Azure (Azure Pay As Go Direct Acc) - Instant automated key delivery.",
+      "bep20Address": "0xD3D65940718F769E66E1e5c425AcFf76C2D9bFf2",
+      "offer": "INSTANT DELIVERY",
+      "createdAt": "2026-08-12T19:18:12.465Z"
+    },
+    {
+      "_id": "p_demo_1",
+      "name": "Gmail",
+      "subProduct": "Aged Gmail Acc (PVA 2022)",
+      "country": "🇮🇳 India",
+      "price": 149,
+      "stock": 7,
+      "description": "Gmail (Aged Gmail Acc (PVA 2022)) - Instant automated key delivery.",
+      "bep20Address": "0xD3D65940718F769E66E1e5c425AcFf76C2D9bFf2",
+      "offer": "INSTANT DELIVERY",
+      "createdAt": "2026-08-12T19:18:12.465Z"
+    },
+    {
+      "_id": "p_demo_2",
+      "name": "WhatsApp Numbers",
+      "subProduct": "Indian WhatsApp Numbers",
+      "country": "🇮🇳 India",
+      "price": 99,
+      "stock": 10,
+      "description": "WhatsApp Numbers (Indian WhatsApp Numbers) - Instant automated key delivery.",
+      "bep20Address": "0xD3D65940718F769E66E1e5c425AcFf76C2D9bFf2",
+      "offer": "INSTANT DELIVERY",
+      "createdAt": "2026-08-12T19:18:12.466Z"
+    },
+    {
+      "_id": "p_demo_3",
+      "name": "GCP",
+      "subProduct": "Paid Acc ($300 Credit)",
+      "country": "🌐 Global",
+      "price": 899,
+      "stock": 5,
+      "description": "GCP (Paid Acc ($300 Credit)) - Instant automated key delivery.",
+      "bep20Address": "0xD3D65940718F769E66E1e5c425AcFf76C2D9bFf2",
+      "offer": "INSTANT DELIVERY",
+      "createdAt": "2026-08-12T19:18:12.466Z"
+    },
+    {
+      "_id": "p_demo_4",
+      "name": "Windows 365",
+      "subProduct": "Windows 365 Cloud PC 4vCPU",
+      "country": "🇬🇧 United Kingdom",
+      "price": 699,
+      "stock": 4,
+      "description": "Windows 365 (Windows 365 Cloud PC 4vCPU) - Instant automated key delivery.",
+      "bep20Address": "0xD3D65940718F769E66E1e5c425AcFf76C2D9bFf2",
+      "offer": "INSTANT DELIVERY",
+      "createdAt": "2026-08-12T19:18:12.466Z"
+    },
+    {
+      "_id": "p_demo_5",
+      "name": "AWS",
+      "subProduct": "AWS 8 vCPU Account",
+      "country": "🇺🇸 United States",
+      "price": 799,
+      "stock": 5,
+      "description": "AWS (AWS 8 vCPU Account) - Instant automated key delivery.",
+      "bep20Address": "0xD3D65940718F769E66E1e5c425AcFf76C2D9bFf2",
+      "offer": "INSTANT DELIVERY",
+      "createdAt": "2026-08-12T19:18:12.466Z"
+    },
+    {
+      "_id": "p_1786565141614",
+      "name": "RDP",
+      "subProduct": "16",
+      "country": "🇧🇧 Barbados",
+      "price": 200,
+      "stock": 2,
+      "description": "",
+      "bep20Address": "0xD3D65940718F769E66E1e5c425AcFf76C2D9bFf2",
+      "offer": "",
+      "createdAt": "2026-08-12T20:05:41.621Z"
+    }
+  ],
+  "orders": [
+    {
+      "_id": "ord_1786563102746",
+      "userId": "u_1786562387773",
+      "userName": "King Legend",
+      "userPhone": "8986269256",
+      "productId": "p_demo_0",
+      "productName": "Azure",
+      "subProduct": "Azure Pay As Go Direct Acc",
+      "country": "🇺🇸 United States",
+      "quantity": 1,
+      "unitPrice": 499,
+      "totalPaid": 499,
+      "paymentStatus": "PAID",
+      "txHash": "WEB3-VERIFIED-TX-1786563102700",
+      "deliveryStatus": "DELIVERED",
+      "deliveredItem": "AZURE-DIRECT-PASS-9901 | Pass: Azure#2026! | Sub: Active",
+      "createdAt": "2026-08-12T19:31:42.754Z"
+    },
+    {
+      "_id": "ord_1786563509718",
+      "userId": "u_1786562387773",
+      "userName": "King Legend",
+      "userPhone": "8986269256",
+      "productId": "p_demo_0",
+      "productName": "Azure",
+      "subProduct": "Azure Pay As Go Direct Acc",
+      "country": "🇺🇸 United States",
+      "quantity": 1,
+      "unitPrice": 499,
+      "totalPaid": 499,
+      "paymentStatus": "PAID",
+      "txHash": "WEB3-VERIFIED-TX-1786563509675",
+      "deliveryStatus": "DELIVERED",
+      "deliveredItem": "AZURE-DIRECT-PASS-9902 | Pass: Azure#2026! | Sub: Active",
+      "createdAt": "2026-08-12T19:38:29.718Z"
+    },
+    {
+      "_id": "ord_1786564087422",
+      "userId": "u_1786562387773",
+      "userName": "King Legend",
+      "userPhone": "8986269256",
+      "productId": "p_demo_1",
+      "productName": "Gmail",
+      "subProduct": "Aged Gmail Acc (PVA 2022)",
+      "country": "🇮🇳 India",
+      "quantity": 1,
+      "unitPrice": 149,
+      "totalPaid": 149,
+      "paymentStatus": "PAID",
+      "txHash": "WEB3-VERIFIED-TX-1786564087419",
+      "deliveryStatus": "DELIVERED",
+      "deliveredItem": "aged_user_7701@gmail.com | Pass: CloudPass#99 | Recovery: rec7701@mail.com",
+      "createdAt": "2026-08-12T19:48:07.452Z"
+    }
+  ],
+  "stocks": [
+    {
+      "_id": "stk_demo_0_0",
+      "productId": "p_demo_0",
+      "productName": "Azure",
+      "subProduct": "Azure Pay As Go Direct Acc",
+      "content": "AZURE-DIRECT-PASS-9901 | Pass: Azure#2026! | Sub: Active",
+      "status": "SOLD",
+      "createdAt": "2026-08-12T19:18:12.465Z",
+      "soldToUserId": "u_1786562387773",
+      "soldToUserName": "King Legend",
+      "soldToUserPhone": "8986269256",
+      "orderId": "ord_1786563102746",
+      "soldAt": "2026-08-12T19:31:42.755Z"
+    },
+    {
+      "_id": "stk_demo_0_1",
+      "productId": "p_demo_0",
+      "productName": "Azure",
+      "subProduct": "Azure Pay As Go Direct Acc",
+      "content": "AZURE-DIRECT-PASS-9902 | Pass: Azure#2026! | Sub: Active",
+      "status": "SOLD",
+      "createdAt": "2026-08-12T19:18:12.465Z",
+      "soldToUserId": "u_1786562387773",
+      "soldToUserName": "King Legend",
+      "soldToUserPhone": "8986269256",
+      "orderId": "ord_1786563509718",
+      "soldAt": "2026-08-12T19:38:29.718Z"
+    },
+    {
+      "_id": "stk_demo_0_2",
+      "productId": "p_demo_0",
+      "productName": "Azure",
+      "subProduct": "Azure Pay As Go Direct Acc",
+      "content": "AZURE-DIRECT-PASS-9903 | Pass: Azure#2026! | Sub: Active",
+      "status": "AVAILABLE",
+      "createdAt": "2026-08-12T19:18:12.465Z"
+    },
+    {
+      "_id": "stk_demo_0_3",
+      "productId": "p_demo_0",
+      "productName": "Azure",
+      "subProduct": "Azure Pay As Go Direct Acc",
+      "content": "AZURE-DIRECT-PASS-9904 | Pass: Azure#2026! | Sub: Active",
+      "status": "AVAILABLE",
+      "createdAt": "2026-08-12T19:18:12.465Z"
+    },
+    {
+      "_id": "stk_demo_0_4",
+      "productId": "p_demo_0",
+      "productName": "Azure",
+      "subProduct": "Azure Pay As Go Direct Acc",
+      "content": "AZURE-DIRECT-PASS-9905 | Pass: Azure#2026! | Sub: Active",
+      "status": "AVAILABLE",
+      "createdAt": "2026-08-12T19:18:12.465Z"
+    },
+    {
+      "_id": "stk_demo_1_0",
+      "productId": "p_demo_1",
+      "productName": "Gmail",
+      "subProduct": "Aged Gmail Acc (PVA 2022)",
+      "content": "aged_user_7701@gmail.com | Pass: CloudPass#99 | Recovery: rec7701@mail.com",
+      "status": "SOLD",
+      "createdAt": "2026-08-12T19:18:12.465Z",
+      "soldToUserId": "u_1786562387773",
+      "soldToUserName": "King Legend",
+      "soldToUserPhone": "8986269256",
+      "orderId": "ord_1786564087422",
+      "soldAt": "2026-08-12T19:48:07.452Z"
+    },
+    {
+      "_id": "stk_demo_1_1",
+      "productId": "p_demo_1",
+      "productName": "Gmail",
+      "subProduct": "Aged Gmail Acc (PVA 2022)",
+      "content": "aged_user_7702@gmail.com | Pass: CloudPass#99 | Recovery: rec7702@mail.com",
+      "status": "AVAILABLE",
+      "createdAt": "2026-08-12T19:18:12.465Z"
+    },
+    {
+      "_id": "stk_demo_1_2",
+      "productId": "p_demo_1",
+      "productName": "Gmail",
+      "subProduct": "Aged Gmail Acc (PVA 2022)",
+      "content": "aged_user_7703@gmail.com | Pass: CloudPass#99 | Recovery: rec7703@mail.com",
+      "status": "AVAILABLE",
+      "createdAt": "2026-08-12T19:18:12.465Z"
+    },
+    {
+      "_id": "stk_demo_1_3",
+      "productId": "p_demo_1",
+      "productName": "Gmail",
+      "subProduct": "Aged Gmail Acc (PVA 2022)",
+      "content": "aged_user_7704@gmail.com | Pass: CloudPass#99 | Recovery: rec7704@mail.com",
+      "status": "AVAILABLE",
+      "createdAt": "2026-08-12T19:18:12.466Z"
+    },
+    {
+      "_id": "stk_demo_1_4",
+      "productId": "p_demo_1",
+      "productName": "Gmail",
+      "subProduct": "Aged Gmail Acc (PVA 2022)",
+      "content": "aged_user_7705@gmail.com | Pass: CloudPass#99 | Recovery: rec7705@mail.com",
+      "status": "AVAILABLE",
+      "createdAt": "2026-08-12T19:18:12.466Z"
+    },
+    {
+      "_id": "stk_demo_1_5",
+      "productId": "p_demo_1",
+      "productName": "Gmail",
+      "subProduct": "Aged Gmail Acc (PVA 2022)",
+      "content": "aged_user_7706@gmail.com | Pass: CloudPass#99 | Recovery: rec7706@mail.com",
+      "status": "AVAILABLE",
+      "createdAt": "2026-08-12T19:18:12.466Z"
+    },
+    {
+      "_id": "stk_demo_1_6",
+      "productId": "p_demo_1",
+      "productName": "Gmail",
+      "subProduct": "Aged Gmail Acc (PVA 2022)",
+      "content": "aged_user_7707@gmail.com | Pass: CloudPass#99 | Recovery: rec7707@mail.com",
+      "status": "AVAILABLE",
+      "createdAt": "2026-08-12T19:18:12.466Z"
+    },
+    {
+      "_id": "stk_demo_1_7",
+      "productId": "p_demo_1",
+      "productName": "Gmail",
+      "subProduct": "Aged Gmail Acc (PVA 2022)",
+      "content": "aged_user_7708@gmail.com | Pass: CloudPass#99 | Recovery: rec7708@mail.com",
+      "status": "AVAILABLE",
+      "createdAt": "2026-08-12T19:18:12.466Z"
+    },
+    {
+      "_id": "stk_demo_2_0",
+      "productId": "p_demo_2",
+      "productName": "WhatsApp Numbers",
+      "subProduct": "Indian WhatsApp Numbers",
+      "content": "+91 9823411001 | SessionKey: WA-KEY-8811",
+      "status": "AVAILABLE",
+      "createdAt": "2026-08-12T19:18:12.466Z"
+    },
+    {
+      "_id": "stk_demo_2_1",
+      "productId": "p_demo_2",
+      "productName": "WhatsApp Numbers",
+      "subProduct": "Indian WhatsApp Numbers",
+      "content": "+91 9823411002 | SessionKey: WA-KEY-8812",
+      "status": "AVAILABLE",
+      "createdAt": "2026-08-12T19:18:12.466Z"
+    },
+    {
+      "_id": "stk_demo_2_2",
+      "productId": "p_demo_2",
+      "productName": "WhatsApp Numbers",
+      "subProduct": "Indian WhatsApp Numbers",
+      "content": "+91 9823411003 | SessionKey: WA-KEY-8813",
+      "status": "AVAILABLE",
+      "createdAt": "2026-08-12T19:18:12.466Z"
+    },
+    {
+      "_id": "stk_demo_2_3",
+      "productId": "p_demo_2",
+      "productName": "WhatsApp Numbers",
+      "subProduct": "Indian WhatsApp Numbers",
+      "content": "+91 9823411004 | SessionKey: WA-KEY-8814",
+      "status": "AVAILABLE",
+      "createdAt": "2026-08-12T19:18:12.466Z"
+    },
+    {
+      "_id": "stk_demo_2_4",
+      "productId": "p_demo_2",
+      "productName": "WhatsApp Numbers",
+      "subProduct": "Indian WhatsApp Numbers",
+      "content": "+91 9823411005 | SessionKey: WA-KEY-8815",
+      "status": "AVAILABLE",
+      "createdAt": "2026-08-12T19:18:12.466Z"
+    },
+    {
+      "_id": "stk_demo_2_5",
+      "productId": "p_demo_2",
+      "productName": "WhatsApp Numbers",
+      "subProduct": "Indian WhatsApp Numbers",
+      "content": "+91 9823411006 | SessionKey: WA-KEY-8816",
+      "status": "AVAILABLE",
+      "createdAt": "2026-08-12T19:18:12.466Z"
+    },
+    {
+      "_id": "stk_demo_2_6",
+      "productId": "p_demo_2",
+      "productName": "WhatsApp Numbers",
+      "subProduct": "Indian WhatsApp Numbers",
+      "content": "+91 9823411007 | SessionKey: WA-KEY-8817",
+      "status": "AVAILABLE",
+      "createdAt": "2026-08-12T19:18:12.466Z"
+    },
+    {
+      "_id": "stk_demo_2_7",
+      "productId": "p_demo_2",
+      "productName": "WhatsApp Numbers",
+      "subProduct": "Indian WhatsApp Numbers",
+      "content": "+91 9823411008 | SessionKey: WA-KEY-8818",
+      "status": "AVAILABLE",
+      "createdAt": "2026-08-12T19:18:12.466Z"
+    },
+    {
+      "_id": "stk_demo_2_8",
+      "productId": "p_demo_2",
+      "productName": "WhatsApp Numbers",
+      "subProduct": "Indian WhatsApp Numbers",
+      "content": "+91 9823411009 | SessionKey: WA-KEY-8819",
+      "status": "AVAILABLE",
+      "createdAt": "2026-08-12T19:18:12.466Z"
+    },
+    {
+      "_id": "stk_demo_2_9",
+      "productId": "p_demo_2",
+      "productName": "WhatsApp Numbers",
+      "subProduct": "Indian WhatsApp Numbers",
+      "content": "+91 9823411010 | SessionKey: WA-KEY-8820",
+      "status": "AVAILABLE",
+      "createdAt": "2026-08-12T19:18:12.466Z"
+    },
+    {
+      "_id": "stk_demo_3_0",
+      "productId": "p_demo_3",
+      "productName": "GCP",
+      "subProduct": "Paid Acc ($300 Credit)",
+      "content": "gcp_paid_5501@cloud.org | Pass: GcpCloud#2026 | Credit: $300 Active",
+      "status": "AVAILABLE",
+      "createdAt": "2026-08-12T19:18:12.466Z"
+    },
+    {
+      "_id": "stk_demo_3_1",
+      "productId": "p_demo_3",
+      "productName": "GCP",
+      "subProduct": "Paid Acc ($300 Credit)",
+      "content": "gcp_paid_5502@cloud.org | Pass: GcpCloud#2026 | Credit: $300 Active",
+      "status": "AVAILABLE",
+      "createdAt": "2026-08-12T19:18:12.466Z"
+    },
+    {
+      "_id": "stk_demo_3_2",
+      "productId": "p_demo_3",
+      "productName": "GCP",
+      "subProduct": "Paid Acc ($300 Credit)",
+      "content": "gcp_paid_5503@cloud.org | Pass: GcpCloud#2026 | Credit: $300 Active",
+      "status": "AVAILABLE",
+      "createdAt": "2026-08-12T19:18:12.466Z"
+    },
+    {
+      "_id": "stk_demo_3_3",
+      "productId": "p_demo_3",
+      "productName": "GCP",
+      "subProduct": "Paid Acc ($300 Credit)",
+      "content": "gcp_paid_5504@cloud.org | Pass: GcpCloud#2026 | Credit: $300 Active",
+      "status": "AVAILABLE",
+      "createdAt": "2026-08-12T19:18:12.466Z"
+    },
+    {
+      "_id": "stk_demo_3_4",
+      "productId": "p_demo_3",
+      "productName": "GCP",
+      "subProduct": "Paid Acc ($300 Credit)",
+      "content": "gcp_paid_5505@cloud.org | Pass: GcpCloud#2026 | Credit: $300 Active",
+      "status": "AVAILABLE",
+      "createdAt": "2026-08-12T19:18:12.466Z"
+    },
+    {
+      "_id": "stk_demo_4_0",
+      "productId": "p_demo_4",
+      "productName": "Windows 365",
+      "subProduct": "Windows 365 Cloud PC 4vCPU",
+      "content": "win365_uk_3301 | RDP: 104.28.11.45 | User: Admin | Pass: Win365#Pass!01",
+      "status": "AVAILABLE",
+      "createdAt": "2026-08-12T19:18:12.466Z"
+    },
+    {
+      "_id": "stk_demo_4_1",
+      "productId": "p_demo_4",
+      "productName": "Windows 365",
+      "subProduct": "Windows 365 Cloud PC 4vCPU",
+      "content": "win365_uk_3302 | RDP: 104.28.11.46 | User: Admin | Pass: Win365#Pass!02",
+      "status": "AVAILABLE",
+      "createdAt": "2026-08-12T19:18:12.466Z"
+    },
+    {
+      "_id": "stk_demo_4_2",
+      "productId": "p_demo_4",
+      "productName": "Windows 365",
+      "subProduct": "Windows 365 Cloud PC 4vCPU",
+      "content": "win365_uk_3303 | RDP: 104.28.11.47 | User: Admin | Pass: Win365#Pass!03",
+      "status": "AVAILABLE",
+      "createdAt": "2026-08-12T19:18:12.466Z"
+    },
+    {
+      "_id": "stk_demo_4_3",
+      "productId": "p_demo_4",
+      "productName": "Windows 365",
+      "subProduct": "Windows 365 Cloud PC 4vCPU",
+      "content": "win365_uk_3304 | RDP: 104.28.11.48 | User: Admin | Pass: Win365#Pass!04",
+      "status": "AVAILABLE",
+      "createdAt": "2026-08-12T19:18:12.466Z"
+    },
+    {
+      "_id": "stk_demo_5_0",
+      "productId": "p_demo_5",
+      "productName": "AWS",
+      "subProduct": "AWS 8 vCPU Account",
+      "content": "aws_user_1101@cloudnet.io | Pass: AwsMaster#2026 | Quota: 8 vCPU All Regions",
+      "status": "AVAILABLE",
+      "createdAt": "2026-08-12T19:18:12.466Z"
+    },
+    {
+      "_id": "stk_demo_5_1",
+      "productId": "p_demo_5",
+      "productName": "AWS",
+      "subProduct": "AWS 8 vCPU Account",
+      "content": "aws_user_1102@cloudnet.io | Pass: AwsMaster#2026 | Quota: 8 vCPU All Regions",
+      "status": "AVAILABLE",
+      "createdAt": "2026-08-12T19:18:12.466Z"
+    },
+    {
+      "_id": "stk_demo_5_2",
+      "productId": "p_demo_5",
+      "productName": "AWS",
+      "subProduct": "AWS 8 vCPU Account",
+      "content": "aws_user_1103@cloudnet.io | Pass: AwsMaster#2026 | Quota: 8 vCPU All Regions",
+      "status": "AVAILABLE",
+      "createdAt": "2026-08-12T19:18:12.466Z"
+    },
+    {
+      "_id": "stk_demo_5_3",
+      "productId": "p_demo_5",
+      "productName": "AWS",
+      "subProduct": "AWS 8 vCPU Account",
+      "content": "aws_user_1104@cloudnet.io | Pass: AwsMaster#2026 | Quota: 8 vCPU All Regions",
+      "status": "AVAILABLE",
+      "createdAt": "2026-08-12T19:18:12.466Z"
+    },
+    {
+      "_id": "stk_demo_5_4",
+      "productId": "p_demo_5",
+      "productName": "AWS",
+      "subProduct": "AWS 8 vCPU Account",
+      "content": "aws_user_1105@cloudnet.io | Pass: AwsMaster#2026 | Quota: 8 vCPU All Regions",
+      "status": "AVAILABLE",
+      "createdAt": "2026-08-12T19:18:12.466Z"
+    },
+    {
+      "_id": "stk_1786565401907830",
+      "productId": "p_1786565141614",
+      "productName": "RDP",
+      "subProduct": "16",
+      "content": "2",
+      "status": "AVAILABLE",
+      "soldToUserId": null,
+      "soldToUserName": null,
+      "soldToUserPhone": null,
+      "orderId": null,
+      "soldAt": null,
+      "createdAt": "2026-08-12T20:10:01.908Z"
+    },
+    {
+      "_id": "stk_1786565401908871",
+      "productId": "p_1786565141614",
+      "productName": "RDP",
+      "subProduct": "16",
+      "content": "3",
+      "status": "AVAILABLE",
+      "soldToUserId": null,
+      "soldToUserName": null,
+      "soldToUserPhone": null,
+      "orderId": null,
+      "soldAt": null,
+      "createdAt": "2026-08-12T20:10:01.908Z"
+    }
+  ],
   "settings": {
     "ownerPhone": "+91 9507325677",
     "ownerUpiId": "9507325677-1@naviaxis",
