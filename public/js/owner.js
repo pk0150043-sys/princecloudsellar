@@ -1946,26 +1946,53 @@ async function handleTestWhatsAppSimulate() {
 }
 
 async function fetchWhatsAppLiveQR() {
-  const phone = (document.getElementById('wa-link-phone-input') ? document.getElementById('wa-link-phone-input').value : '+919507325000').trim();
+  const phoneInput = document.getElementById('wa-link-phone-input');
+  const phone = (phoneInput ? phoneInput.value : '+919507325677').trim();
   const spinner = document.getElementById('wa-qr-loading-spinner');
   const qrImg = document.getElementById('wa-live-qr-img');
-
-  if (spinner) spinner.style.display = 'flex';
-  if (qrImg) qrImg.style.display = 'none';
 
   try {
     const res = await fetch(`/api/owner/bots/whatsapp/qr?phone=${encodeURIComponent(phone)}`);
     const data = await res.json();
 
-    if (data.success && data.qrDataUrl) {
-      if (qrImg) {
-        qrImg.src = data.qrDataUrl;
-        qrImg.style.display = 'block';
-      }
-      if (spinner) spinner.style.display = 'none';
-
+    if (data.success) {
+      const waBadge = document.getElementById('wa-session-status-badge');
+      const phoneDisp = document.getElementById('wa-connected-phone-display');
       const codeVal = document.getElementById('wa-pairing-code-val');
-      if (codeVal && data.pairingCode) codeVal.innerText = data.pairingCode;
+
+      if (data.sessionLinked) {
+        if (waBadge) {
+          waBadge.className = 'badge badge-success';
+          waBadge.innerText = '🟢 SESSION PAIRED & ONLINE';
+        }
+        if (phoneDisp && data.connectedNumber) {
+          phoneDisp.innerText = data.connectedNumber;
+        }
+        if (qrImg) qrImg.style.display = 'none';
+        if (spinner) {
+          spinner.style.display = 'flex';
+          spinner.innerHTML = '<div style="text-align:center; padding:10px;"><div style="font-size:1.6rem; margin-bottom:4px;">✅</div><strong style="color:#22c55e; font-size:0.85rem;">WhatsApp Connected!</strong><p style="color:#94a3b8; font-size:0.7rem; margin-top:2px;">Session Active</p></div>';
+        }
+        if (codeVal) codeVal.innerText = 'ACTIVE';
+      } else if (data.qrDataUrl) {
+        if (waBadge) {
+          waBadge.className = 'badge badge-yellow';
+          waBadge.innerText = '🟡 SCAN QR TO PAIR';
+        }
+        if (qrImg) {
+          qrImg.src = data.qrDataUrl;
+          qrImg.style.display = 'block';
+        }
+        if (spinner) spinner.style.display = 'none';
+
+        if (codeVal && data.pairingCode) codeVal.innerText = data.pairingCode;
+      } else {
+        if (qrImg) qrImg.style.display = 'none';
+        if (spinner) {
+          spinner.style.display = 'flex';
+          spinner.innerHTML = '⏳ Loading QR...';
+        }
+      }
     }
   } catch (err) {
     console.error('WhatsApp QR fetch error:', err);

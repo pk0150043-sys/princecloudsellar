@@ -2628,6 +2628,7 @@ app.post('/api/owner/bots/telegram/configure', async (req, res) => {
       saveLocalDB,
       verifyPaymentOnChainStrict,
       sendInvoiceEmail: emailTransporter,
+      sendFormattedOtpMail,
       getDBStatus,
       User,
       Product,

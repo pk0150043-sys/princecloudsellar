@@ -39,14 +39,21 @@ function getLogoBuffer() {
 }
 
 function getWhatsAppBotStatus() {
+  const hasCreds = fs.existsSync(path.join(authDir, 'creds.json'));
+  const rawUser = sockInstance?.user?.id || '';
+  const userPhone = rawUser ? (rawUser.split(':')[0] || rawUser.split('@')[0]) : '';
+  const isLinked = whatsappBotConfig.sessionLinked || !!userPhone || (hasCreds && whatsappBotConfig.status === 'ONLINE');
+  const num = userPhone ? ('+' + userPhone) : (whatsappBotConfig.connectedNumber || (hasCreds ? 'Linked Session' : ''));
+
   return {
     isActive: whatsappBotConfig.enabled,
-    status: whatsappBotConfig.sessionLinked ? 'ONLINE' : whatsappBotConfig.status,
+    status: isLinked ? 'ONLINE' : (whatsappBotConfig.status || 'READY_TO_PAIR'),
     groupUrl: whatsappBotConfig.groupUrl,
-    sessionLinked: whatsappBotConfig.sessionLinked,
-    connectedNumber: whatsappBotConfig.connectedNumber,
+    sessionLinked: !!isLinked,
+    hasSessionFile: hasCreds,
+    connectedNumber: num,
     pairingCode: latestPairingCode || whatsappBotConfig.pairingCode,
-    currentQR: currentQRDataUrl || whatsappBotConfig.currentQR
+    currentQR: isLinked ? '' : (currentQRDataUrl || whatsappBotConfig.currentQR)
   };
 }
 
