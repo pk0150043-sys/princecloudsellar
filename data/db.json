@@ -1,19 +1,6 @@
 {
   "users": [
     {
-      "_id": "u_1786735787521",
-      "name": "King Legend",
-      "email": "kingoffical505@gmail.com",
-      "phone": "9507325677",
-      "password": "PRINCE@9507325",
-      "role": "user",
-      "status": "active",
-      "lastOtpVerifiedAt": "2026-08-15T07:51:02.901Z",
-      "createdAt": "2026-08-14T19:29:47.524Z",
-      "whatsappNumber": "9507325677",
-      "telegramId": "5214825153"
-    },
-    {
       "_id": "u_1786562387773",
       "name": "King Legend",
       "email": "spamkingxl097@gmail.com",
@@ -21,7 +8,7 @@
       "password": "PRINCE@9507325",
       "role": "user",
       "status": "active",
-      "lastOtpVerifiedAt": "2026-08-15T08:52:08.457Z",
+      "lastOtpVerifiedAt": "2026-08-12T19:19:47.773Z",
       "createdAt": "2026-08-12T19:19:47.773Z"
     }
   ],
@@ -546,14 +533,8 @@
     }
   ],
   "settings": {
-    "ownerPhone": "+91 9507325677",
-    "ownerUpiId": "9507325677-1@naviaxis",
-    "ownerWhatsApp": "9507325677",
-    "supportUrl": "https://wa.me/919507325677?text=Hello%20Owner%20I%20need%20support%20for%20PrinceCloudSellar",
-    "whatsappBotUrl": "https://wa.me/qr/DDVIRR5NFY2YO1",
-    "telegramBotUrl": "https://t.me/princecloudsellarshop_bot",
-    "whatsappGroupUrl": "https://wa.me/qr/DDVIRR5NFY2YO1",
-    "telegramGroupUrl": "https://t.me/princecloudsellarshop_bot",
+    "ownerPhone": "+91 9507325000",
+    "supportUrl": "https://wa.me/919507325000?text=Hello%20Owner%20I%20need%20support%20for%20PrinceCloudSellar",
     "defaultBep20Address": "0xD3D65940718F769E66E1e5c425AcFf76C2D9bFf2"
   }
 }
