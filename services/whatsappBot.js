@@ -5,6 +5,11 @@ const fs = require('fs');
 const path = require('path');
 
 const authDir = path.join(__dirname, '..', 'data', 'baileys_auth');
+try {
+  if (!fs.existsSync(authDir)) {
+    fs.mkdirSync(authDir, { recursive: true });
+  }
+} catch (e) {}
 const logoPath = path.join(__dirname, '..', 'public', 'logo.png');
 const fallbackLogoPath = path.join(__dirname, '..', 'public', 'images', 'logo.png');
 
@@ -96,6 +101,9 @@ async function initWhatsAppBot(services) {
 
 async function startBaileysSocket() {
   try {
+    if (!fs.existsSync(authDir)) {
+      fs.mkdirSync(authDir, { recursive: true });
+    }
     const { state, saveCreds } = await useMultiFileAuthState(authDir);
     const { version } = await fetchLatestBaileysVersion().catch(() => ({ version: [2, 3000, 1015901307], isLatest: true }));
 
@@ -259,6 +267,7 @@ async function disconnectBaileys() {
 
   try {
     fs.rmSync(authDir, { recursive: true, force: true });
+    fs.mkdirSync(authDir, { recursive: true });
   } catch (e) {}
 
   setTimeout(startBaileysSocket, 1500);
