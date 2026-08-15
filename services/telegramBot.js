@@ -95,6 +95,21 @@ async function sendTelegramDirectDocument(chatId, fileBuffer, fileName, caption 
   }
 }
 
+async function broadcastToTelegramGroup(title, message, targetChannelId) {
+  if (!botInstance) return { success: false, message: 'Telegram bot not running' };
+  const targetId = targetChannelId || currentChannelId;
+  if (!targetId) return { success: false, message: 'No Telegram Channel ID configured' };
+
+  try {
+    const text = `📢 *${title}*\n\n${message}`;
+    await botInstance.sendMessage(targetId, text, { parse_mode: 'Markdown' });
+    return { success: true };
+  } catch (err) {
+    console.error('broadcastToTelegramGroup error:', err.message);
+    return { success: false, message: err.message };
+  }
+}
+
 function setupTelegramHandlers(bot, services) {
   const {
     getPersistentStore,
@@ -1659,7 +1674,9 @@ function sendSupportPrompt(bot, chatId, services) {
 
 module.exports = {
   initTelegramBot,
+  startBot,
   getTelegramBotStatus,
+  broadcastToTelegramGroup,
   sendTelegramDirectMessage,
   sendTelegramDirectDocument
 };
