@@ -4231,8 +4231,8 @@ app.post('/api/smm/orders/:id/sync-status', async (req, res) => {
   }
 });
 
-// 8. Owner: Approve SMM UPI Payment & Auto-Dispatch to IndianSMMHub
-app.post('/api/owner/smm/orders/:id/approve-upi', async (req, res) => {
+// 8. Owner: Approve SMM Payment & Auto-Dispatch to IndianSMMHub
+app.post(['/api/owner/smm/orders/:id/approve-upi', '/api/owner/smm/orders/:id/approve'], async (req, res) => {
   try {
     const { id } = req.params;
     const order = (persistentStore.smmOrders || []).find(o => o.orderId === id || o._id === id);

@@ -2868,23 +2868,24 @@ function renderOwnerSmmOrdersTable() {
         </td>
         <td style="text-align:right;">
           <div style="display:flex; justify-content:flex-end; gap:5px; flex-wrap:wrap;">
-            ${(o.paymentStatus === 'PENDING_UPI_VERIFICATION' || o.status === 'Pending Admin Approval') ? `
-              <button type="button" class="btn btn-primary" onclick="approveOwnerSmmOrder('${o.orderId}')" style="padding:3px 7px; font-size:0.72rem; font-weight:700; background:#22c55e; color:#000;" title="Verify UPI & Dispatch Order">
-                ✅ Approve
+            ${(o.paymentStatus === 'PENDING_UPI_VERIFICATION' || o.paymentStatus === 'PENDING_BEP20_VERIFICATION' || o.status === 'Pending Admin Approval' || !o.providerOrderId) ? `
+              <button type="button" class="btn btn-primary" onclick="approveOwnerSmmOrder('${o.orderId}')" style="padding:4px 8px; font-size:0.75rem; font-weight:800; background:#22c55e; color:#000; box-shadow:0 0 8px rgba(34,197,94,0.3);" title="Verify Payment & Start on IndianSMMHub">
+                ✅ Approve & Start
               </button>
             ` : ''}
-            ${(!o.providerOrderId || isNaN(Number(o.providerOrderId))) ? `
-              <button type="button" class="btn btn-primary" onclick="retryOwnerSmmDispatch('${o.orderId}')" style="padding:3px 7px; font-size:0.72rem; font-weight:700;" title="Dispatch order to IndianSMMHub">
+            ${(!o.providerOrderId || isNaN(Number(o.providerOrderId))) && o.status !== 'Pending Admin Approval' ? `
+              <button type="button" class="btn btn-primary" onclick="retryOwnerSmmDispatch('${o.orderId}')" style="padding:4px 8px; font-size:0.72rem; font-weight:700;" title="Dispatch order to IndianSMMHub">
                 🚀 Dispatch
               </button>
-            ` : `
-              <button type="button" class="btn btn-secondary" onclick="syncSinglePeakerrOrderStatus('${o.orderId}')" style="padding:3px 7px; font-size:0.72rem;" title="Sync Live Status from IndianSMMHub">
+            ` : ''}
+            ${o.providerOrderId && !isNaN(Number(o.providerOrderId)) ? `
+              <button type="button" class="btn btn-secondary" onclick="syncSinglePeakerrOrderStatus('${o.orderId}')" style="padding:4px 8px; font-size:0.72rem;" title="Sync Live Status from IndianSMMHub">
                 🔄 Sync
               </button>
-            `}
+            ` : ''}
             ${o.status !== 'Canceled' && o.status !== 'Completed' ? `
-              <button type="button" class="btn btn-danger" onclick="cancelOwnerSmmOrder('${o.orderId}')" style="padding:3px 7px; font-size:0.72rem; background:rgba(239,68,68,0.2); border:1px solid #ef4444; color:#ef4444;" title="Cancel / Reject Order">
-                ❌ Cancel
+              <button type="button" class="btn btn-danger" onclick="cancelOwnerSmmOrder('${o.orderId}')" style="padding:4px 8px; font-size:0.72rem; font-weight:700; background:rgba(239,68,68,0.2); border:1px solid #ef4444; color:#ef4444;" title="Cancel / Reject Order">
+                ❌ Reject / Cancel
               </button>
             ` : ''}
             <button type="button" class="btn btn-secondary" onclick="openOwnerSmmOrderModal('${o.orderId}')" style="padding:3px 7px; font-size:0.72rem;">
