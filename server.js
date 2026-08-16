@@ -3916,44 +3916,14 @@ app.post(['/api/smm/indiansmm-order', '/api/smm/order'], express.json(), async (
       }
     }
 
-    // Call IndianSMMHub API
-    const apiUrl = persistentStore.settings.smmProviderUrl || persistentStore.settings.peakerrApiUrl || INDIANSMM_API_URL;
-    const apiKey = persistentStore.settings.smmApiKey || persistentStore.settings.peakerrApiKey || INDIANSMM_API_KEY;
-
-    let providerOrderId = '';
-    let providerError = '';
-
-    const payload = {
-      key: apiKey,
-      action: 'add',
-      service: cleanServiceId,
-      link: cleanTargetUrl,
-      quantity: qty
-    };
-
     const finalComments = (comments || customComments || '').trim();
-    if (finalComments) {
-      payload.comments = finalComments;
-    }
-
-    try {
-      const orderRes = await axios.post(apiUrl, payload, { timeout: 20000 });
-      if (orderRes.data && orderRes.data.order) {
-        providerOrderId = String(orderRes.data.order);
-      } else if (orderRes.data && orderRes.data.error) {
-        providerError = String(orderRes.data.error);
-        console.warn(`IndianSMMHub API notice for service #${cleanServiceId}:`, providerError);
-      }
-    } catch (apiErr) {
-      providerError = apiErr.message;
-      console.error('IndianSMMHub API dispatch failed:', apiErr.message);
-    }
-
     const orderId = 'SMM-' + Date.now().toString().slice(-6);
+    const isCrypto = cleanPaymentMethod === 'BEP20';
+
     const newOrder = {
       _id: 'smm_' + Date.now() + '_' + Math.floor(Math.random() * 1000),
       orderId: orderId,
-      providerOrderId: providerOrderId,
+      providerOrderId: '',
       userId: userId || 'guest',
       userName: userName || 'Customer',
       userPhone: userPhone || '',
@@ -3969,16 +3939,16 @@ app.post(['/api/smm/indiansmm-order', '/api/smm/order'], express.json(), async (
       totalCost: totalCost,
       customComments: finalComments,
       paymentMethod: cleanPaymentMethod,
-      paymentStatus: cleanPaymentMethod === 'BEP20' ? 'PAID' : (utrId ? 'PENDING_UPI_VERIFICATION' : 'PAID'),
+      paymentStatus: isCrypto ? 'PENDING_BEP20_VERIFICATION' : 'PENDING_UPI_VERIFICATION',
       txHash: txHash || '',
       utrId: utrId || '',
-      status: providerOrderId ? 'Processing' : 'Processing (Queued)',
+      status: 'Pending Admin Approval',
       remains: qty,
       startCount: 0,
       refillable: isRefillable,
       refillStatus: isRefillable ? 'Eligible' : 'Not Supported',
       refillId: '',
-      notes: providerError ? `IndianSMMHub Notice: ${providerError}` : 'Live Dispatched to IndianSMMHub API',
+      notes: 'Awaiting Owner Approval & Payment Verification in Dashboard',
       createdAt: new Date(),
       updatedAt: new Date()
     };

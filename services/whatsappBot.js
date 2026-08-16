@@ -960,41 +960,18 @@ async function handleWhatsAppIncomingMessage(sock, jid, fromNumber, text, servic
       rate: srv.rate,
       totalCost,
       paymentMethod: 'BEP20',
-      paymentStatus: 'PAID (CRYPTO BEP20)',
+      paymentStatus: 'PENDING_BEP20_VERIFICATION',
       txHash: cleanTx,
       utrId: '',
-      status: 'Processing',
+      status: 'Pending Admin Approval',
       remains: qty,
       startCount: 0,
       refillable: true,
       refillStatus: 'Eligible',
-      notes: 'Paid via BEP20 USDT - Dispatched to IndianSMMHub',
+      notes: 'Awaiting Owner Crypto Verification in Dashboard',
       createdAt: new Date(),
       updatedAt: new Date()
     };
-
-    // Auto-dispatch to IndianSMMHub API
-    try {
-      const axios = require('axios');
-      const apiUrl = store.settings?.smmProviderUrl || process.env.INDIANSMM_API_URL || 'https://indiansmmhub.com/api/v2';
-      const apiKey = store.settings?.smmApiKey || process.env.INDIANSMM_API_KEY || 'be0066920ea511dc79addd45a1c7bb554fca5798';
-      
-      const apiRes = await axios.post(apiUrl, {
-        key: apiKey,
-        action: 'add',
-        service: newOrder.serviceId,
-        link: newOrder.targetUrl,
-        quantity: newOrder.quantity
-      }, { timeout: 12000 });
-
-      if (apiRes.data && apiRes.data.order) {
-        newOrder.providerOrderId = String(apiRes.data.order);
-        newOrder.status = 'Processing';
-        newOrder.notes = `Live Dispatched to IndianSMMHub #${newOrder.providerOrderId}`;
-      }
-    } catch (apiErr) {
-      console.warn('WhatsApp Crypto SMM auto-dispatch notice:', apiErr.message);
-    }
 
     store.smmOrders = store.smmOrders || [];
     store.smmOrders.unshift(newOrder);
@@ -1014,7 +991,7 @@ async function handleWhatsAppIncomingMessage(sock, jid, fromNumber, text, servic
       userId: '',
       userEmail: '',
       title: `💎 New BEP20 SMM Growth Order: ₹${totalCost}`,
-      message: `WhatsApp customer +${fromNumber} paid BEP20 USDT for ${qty}x ${srv.name} (TxHash: ${cleanTx}). Target: ${targetUrl}`,
+      message: `WhatsApp customer +${fromNumber} submitted BEP20 USDT for ${qty}x ${srv.name} (TxHash: ${cleanTx}). Target: ${targetUrl}`,
       type: 'SMM_ORDER',
       orderId,
       deliveredItem: '',
@@ -1035,19 +1012,24 @@ async function handleWhatsAppIncomingMessage(sock, jid, fromNumber, text, servic
     session.smmLink = null;
     session.smmQty = null;
 
-    const receipt = `🎉 *SMM ORDER PLACED & DISPATCHED!* 🎉\n` +
+    const ownerWaNum = (store.settings && store.settings.ownerWhatsApp) ? store.settings.ownerWhatsApp : '9507325677';
+    const waSupportUrl = `https://wa.me/91${ownerWaNum}?text=Hello%20Owner%2C%20I%20have%20paid%20via%20BEP20%20USDT%20for%20SMM%20Order%3A%0AOrder%20ID%3A%20${orderId}%0AService%3A%20${encodeURIComponent(srv.name)}%0ATarget%3A%20${encodeURIComponent(targetUrl)}%0AQty%3A%20${qty}%0ATxHash%3A%20${cleanTx}%0APlease%20verify%20and%20approve%20my%20order.`;
+
+    const receipt = `🧾 *OFFICIAL SMM ORDER INVOICE & RECEIPT* 🧾\n` +
       `━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
       `📦 *Order ID:* \`${orderId}\`\n` +
-      (newOrder.providerOrderId ? `⚡ *Provider Order ID:* \`#${newOrder.providerOrderId}\`\n` : '') +
       `⚡ *Service:* *${srv.name}*\n` +
       `🎯 *Target Link:* \`${targetUrl}\`\n` +
       `🔢 *Quantity:* *${qty.toLocaleString()} Units*\n` +
       `💰 *Total Amount:* *₹${totalCost.toLocaleString()}* (~${(totalCost / 88).toFixed(2)} USDT)\n` +
-      `💎 *TxHash:* \`${cleanTx}\`\n` +
-      `📊 *Status:* 🟢 *Processing (Live on IndianSMMHub)*\n` +
-      `🛡️ *Guarantee:* Lifetime Auto-Refill Active\n` +
+      `💎 *Submitted TxHash:* \`${cleanTx}\`\n` +
+      `📊 *Status:* 🟡 *PENDING OWNER VERIFICATION & APPROVAL*\n` +
       `━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n` +
-      `⚡ Your order has been dispatched directly to IndianSMMHub servers!\n` +
+      `⚠️ *NEXT STEP TO GET INSTANT START:*\n` +
+      `Please send your *Transaction Screenshot* along with your *Order ID* to Customer Support on WhatsApp:\n\n` +
+      `👉 *WhatsApp Support:* ${waSupportUrl}\n` +
+      `📞 *Support Hotline:* +91 9507325677\n\n` +
+      `_⚡ Once Owner verifies your transaction in the Owner Panel, automated boosting will start immediately on IndianSMMHub!_\n\n` +
       `👉 Reply *3* anytime to track all your orders live!`;
 
     await sendReply(receipt);

@@ -1711,43 +1711,18 @@ async function finalizeTelegramSmmOrder(bot, chatId, paymentMethod, paymentId, s
     rate: srv.rate,
     totalCost,
     paymentMethod,
-    paymentStatus: isUpi ? 'PENDING_UPI_VERIFICATION' : 'PAID',
+    paymentStatus: isUpi ? 'PENDING_UPI_VERIFICATION' : 'PENDING_BEP20_VERIFICATION',
     utrId: isUpi ? paymentId : '',
     txHash: !isUpi ? paymentId : '',
-    status: isUpi ? 'Pending Admin Approval' : 'Processing',
+    status: 'Pending Admin Approval',
     remains: qty,
     startCount: 0,
     refillable: !!srv.refill,
     refillStatus: srv.refill ? 'Eligible' : 'Not Supported',
-    notes: isUpi ? 'Awaiting Owner UPI Approval' : 'Paid via BEP20 USDT (Auto-Dispatched)',
+    notes: isUpi ? 'Awaiting Owner UPI Approval in Dashboard' : 'Awaiting Owner Crypto Verification in Dashboard',
     createdAt: new Date(),
     updatedAt: new Date()
   };
-
-  // If Crypto paid, dispatch immediately to IndianSMMHub
-  if (!isUpi) {
-    try {
-      const axios = require('axios');
-      const apiUrl = store.settings?.smmProviderUrl || process.env.INDIANSMM_API_URL || 'https://indiansmmhub.com/api/v2';
-      const apiKey = store.settings?.smmApiKey || process.env.INDIANSMM_API_KEY || 'be0066920ea511dc79addd45a1c7bb554fca5798';
-      
-      const apiRes = await axios.post(apiUrl, {
-        key: apiKey,
-        action: 'add',
-        service: newOrder.serviceId,
-        link: newOrder.targetUrl,
-        quantity: newOrder.quantity
-      }, { timeout: 15000 });
-
-      if (apiRes.data && apiRes.data.order) {
-        newOrder.providerOrderId = String(apiRes.data.order);
-        newOrder.status = 'Processing';
-        newOrder.notes = `Live Dispatched to IndianSMMHub #${newOrder.providerOrderId}`;
-      }
-    } catch (apiErr) {
-      console.warn('Telegram Crypto SMM dispatch notice:', apiErr.message);
-    }
-  }
 
   store.smmOrders = store.smmOrders || [];
   store.smmOrders.unshift(newOrder);
@@ -1765,7 +1740,7 @@ async function finalizeTelegramSmmOrder(bot, chatId, paymentMethod, paymentId, s
     userId: '',
     userEmail: '',
     title: isUpi ? `🏦 New SMM UPI Order: ₹${totalCost}` : `💎 New SMM Crypto Order: ₹${totalCost}`,
-    message: `Telegram user (${chatId}) placed SMM order for ${qty}x ${srv.name} (Amount: ₹${totalCost}${isUpi ? `, UTR: ${paymentId}` : ''}). Target: ${targetUrl}`,
+    message: `Telegram user (${chatId}) placed SMM order for ${qty}x ${srv.name} (Amount: ₹${totalCost}, ${isUpi ? `UTR: ${paymentId}` : `TxHash: ${paymentId}`}). Target: ${targetUrl}`,
     type: 'SMM_ORDER',
     orderId,
     deliveredItem: '',
@@ -1775,69 +1750,49 @@ async function finalizeTelegramSmmOrder(bot, chatId, paymentMethod, paymentId, s
   if (!store.notifications) store.notifications = [];
   store.notifications.unshift(ownerNotif);
   if (services.getDBStatus && services.getDBStatus() && services.Notification) {
-    services.Notification.create(ownerNotif).catch(() => {});
+    try {
+      services.Notification.create(ownerNotif).catch(() => {});
+    } catch (e) {}
   }
   services.saveLocalDB();
 
-  // Reset session
+  // Clear active SMM session state
   session.step = null;
   session.selectedSmmService = null;
   session.smmLink = null;
   session.smmQty = null;
 
   const ownerWaNum = (store.settings && store.settings.ownerWhatsApp) ? store.settings.ownerWhatsApp : '9507325677';
-  const waSupportUrl = `https://wa.me/91${ownerWaNum}?text=Hello%20Owner%2C%20I%20have%20paid%20Rs.${totalCost}%20via%20UPI%20for%20SMM%20Order%3A%0AOrder%20ID%3A%20${orderId}%0AService%3A%20${encodeURIComponent(srv.name)}%0ATarget%3A%20${encodeURIComponent(targetUrl)}%0AQty%3A%20${qty}%0AUTR%20ID%3A%20${paymentId}%0APlease%20verify%20and%20start%20my%20order.`;
+  const waSupportUrl = `https://wa.me/91${ownerWaNum}?text=Hello%20Owner%2C%20I%20have%20submitted%20payment%20for%20SMM%20Order%3A%0AOrder%20ID%3A%20${orderId}%0AService%3A%20${encodeURIComponent(srv.name)}%0ATarget%3A%20${encodeURIComponent(targetUrl)}%0AQty%3A%20${qty}%0APayment%20Method%3A%20${paymentMethod}%0A${isUpi ? `UTR%20ID%3A%20${paymentId}` : `TxHash%3A%20${paymentId}`}%0APlease%20verify%20and%20approve%20my%20order.`;
 
-  if (isUpi) {
-    const billMsg = `🧾 *OFFICIAL SMM ORDER INVOICE & RECEIPT* 🧾\n` +
-      `━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
-      `📦 *Order ID:* \`${orderId}\`\n` +
-      `⚡ *Service:* *${srv.name}*\n` +
-      `🎯 *Target Link:* \`${targetUrl}\`\n` +
-      `🔢 *Quantity:* *${qty.toLocaleString()} Units*\n` +
-      `💰 *Total Amount:* *₹${totalCost.toLocaleString()}*\n` +
-      `🏷️ *Submitted UTR:* \`${paymentId}\`\n` +
-      `📊 *Status:* 🟡 *PENDING OWNER UPI VERIFICATION*\n` +
-      `━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n` +
-      `⚠️ *NEXT STEP TO GET INSTANT START:*\n` +
-      `Please send your *Payment Screenshot* along with your *Order ID* to Customer Support on WhatsApp:\n\n` +
-      `👉 *WhatsApp Support:* ${waSupportUrl}\n` +
-      `📞 *Support Hotline:* +91 9507325677\n\n` +
-      `_⚡ Once Owner verifies your UTR in the Owner Panel, automated boosting will start immediately on IndianSMMHub!_`;
+  const billReceipt = `🧾 *OFFICIAL SMM ORDER INVOICE & RECEIPT* 🧾\n` +
+    `━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+    `📦 *Order ID:* \`${orderId}\`\n` +
+    `⚡ *Service:* *${srv.name}*\n` +
+    `🎯 *Target Link:* \`${targetUrl}\`\n` +
+    `🔢 *Quantity:* *${qty.toLocaleString()} Units*\n` +
+    `💰 *Total Amount:* *₹${totalCost.toLocaleString()}* (~${(totalCost / 88).toFixed(2)} USDT)\n` +
+    `💳 *Payment Method:* *${paymentMethod}*\n` +
+    (isUpi ? `🏷️ *Submitted UTR:* \`${paymentId}\`\n` : `💎 *Submitted TxHash:* \`${paymentId}\`\n`) +
+    `📊 *Status:* 🟡 *PENDING OWNER VERIFICATION & APPROVAL*\n` +
+    `━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n` +
+    `⚠️ *NEXT STEP TO GET INSTANT START:*\n` +
+    `Please send your *Payment Screenshot* along with your *Order ID* to Customer Support on WhatsApp:\n\n` +
+    `👉 *WhatsApp Support:* ${waSupportUrl}\n` +
+    `📞 *Support Hotline:* +91 9507325677\n\n` +
+    `_⚡ Once Owner verifies your payment in the Owner Panel, automated boosting will start immediately on IndianSMMHub!_\n\n` +
+    `👉 Use /orders anytime to track live status.`;
 
-    bot.sendMessage(chatId, billMsg, {
-      parse_mode: 'Markdown',
-      reply_markup: {
-        inline_keyboard: [
-          [{ text: '💬 Send Screenshot on WhatsApp', url: waSupportUrl }],
-          [{ text: '📦 View My Orders', callback_data: 'menu_orders' }],
-          [{ text: '🏠 Main Menu', callback_data: 'menu_main' }]
-        ]
-      }
-    });
-  } else {
-    const cryptoReceipt = `🎉 *SMM ORDER PLACED & ACTIVATED!* 🎉\n\n` +
-      `📦 *Order ID:* \`${orderId}\`\n` +
-      (newOrder.providerOrderId ? `⚡ *IndianSMMHub Order:* \`#${newOrder.providerOrderId}\`\n` : '') +
-      `⚡ *Service:* *${srv.name}*\n` +
-      `🎯 *Target Link:* \`${targetUrl}\`\n` +
-      `🔢 *Quantity:* *${qty.toLocaleString()} Units*\n` +
-      `💰 *Amount Paid:* *₹${totalCost.toLocaleString()}* (BEP20 USDT)\n` +
-      `🔗 *TxHash:* \`${paymentId}\`\n` +
-      `📊 *Status:* 🟢 *Processing (Live Delivery Active)*\n\n` +
-      `⚡ Growth server dispatched! Track live via /orders or on Website.`;
-
-    bot.sendMessage(chatId, cryptoReceipt, {
-      parse_mode: 'Markdown',
-      reply_markup: {
-        inline_keyboard: [
-          [{ text: '📦 View My Orders', callback_data: 'menu_orders' }],
-          [{ text: '🚀 Order More Growth', callback_data: 'menu_smm_growth' }],
-          [{ text: '🏠 Main Menu', callback_data: 'menu_main' }]
-        ]
-      }
-    });
-  }
+  bot.sendMessage(chatId, billReceipt, {
+    parse_mode: 'Markdown',
+    reply_markup: {
+      inline_keyboard: [
+        [{ text: '💬 Send Screenshot on WhatsApp', url: waSupportUrl }],
+        [{ text: '📦 View My Orders', callback_data: 'menu_orders' }],
+        [{ text: '🏠 Main Menu', callback_data: 'menu_main' }]
+      ]
+    }
+  });
 
   // Notify Owner
   try {
