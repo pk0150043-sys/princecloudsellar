@@ -32,10 +32,19 @@ let whatsappBotConfig = {
   pairingCode: ''
 };
 
+let cachedLogoBuffer = null;
+try {
+  if (fs.existsSync(logoPath)) cachedLogoBuffer = fs.readFileSync(logoPath);
+  else if (fs.existsSync(fallbackLogoPath)) cachedLogoBuffer = fs.readFileSync(fallbackLogoPath);
+} catch (e) {}
+
 function getLogoBuffer() {
-  if (fs.existsSync(logoPath)) return fs.readFileSync(logoPath);
-  if (fs.existsSync(fallbackLogoPath)) return fs.readFileSync(fallbackLogoPath);
-  return null;
+  if (cachedLogoBuffer) return cachedLogoBuffer;
+  try {
+    if (fs.existsSync(logoPath)) cachedLogoBuffer = fs.readFileSync(logoPath);
+    else if (fs.existsSync(fallbackLogoPath)) cachedLogoBuffer = fs.readFileSync(fallbackLogoPath);
+  } catch (e) {}
+  return cachedLogoBuffer;
 }
 
 function getWhatsAppBotStatus() {
@@ -398,6 +407,19 @@ async function handleWhatsAppIncomingMessage(sock, jid, fromNumber, text, servic
       `*5* - 🏦 UPI & Crypto Payment Details\n` +
       `*6* - 🎫 Customer Support\n\n` +
       `_Reply with a number (e.g. 1 or 2) or type !buy <number> to proceed!_`;
+
+    const logoBuf = getLogoBuffer();
+    if (logoBuf && sock) {
+      try {
+        await sock.sendMessage(jid, {
+          image: logoBuf,
+          caption: welcomeMsg
+        });
+        return;
+      } catch (e) {
+        console.error('WhatsApp send logo menu error:', e.message);
+      }
+    }
 
     await sendReply(welcomeMsg);
   };
