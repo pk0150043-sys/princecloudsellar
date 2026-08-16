@@ -155,6 +155,7 @@ function initStore() {
   loadCachedCatalogFirst();
   fetchCatalog();
   fetchSupportSettings();
+  fetchSmmServices();
   setupEventListeners();
 }
 
@@ -511,7 +512,11 @@ async function handleInlineUserLogin() {
 
     if (data.success) {
       if (data.requireOtp) {
-        document.getElementById('inline-login-otp-target-email').innerText = data.email || emailOrPhone;
+        const targetEl = document.getElementById('inline-login-otp-target-email');
+        if (targetEl) {
+          targetEl.innerText = data.maskedEmail || data.email || emailOrPhone;
+          targetEl.setAttribute('data-real-email', data.email || emailOrPhone);
+        }
         document.getElementById('inline-login-otp-step').style.display = 'block';
         const otpFld = document.getElementById('inline-login-otp-input');
         if (otpFld) {
@@ -539,7 +544,9 @@ async function handleInlineUserLogin() {
 }
 
 async function verifyInlineLoginOTP() {
-  const email = (document.getElementById('inline-login-otp-target-email')?.innerText || document.getElementById('inline-login-email-phone')?.value || '').trim();
+  const targetEl = document.getElementById('inline-login-otp-target-email');
+  const emailInput = document.getElementById('inline-login-email-phone');
+  const email = (targetEl?.getAttribute('data-real-email') || emailInput?.value || targetEl?.innerText || '').trim();
   const otpInput = document.getElementById('inline-login-otp-input');
   const userOTP = otpInput ? otpInput.value.replace(/[^0-9]/g, '') : '';
 
@@ -572,10 +579,11 @@ async function verifyInlineLoginOTP() {
       showToast(data.message, 'error');
     }
   } catch (err) {
-    showToast('Login OTP verification failed: ' + err.message, 'error');
+    showToast('Verify OTP error: ' + err.message, 'error');
   }
 }
 
+let regOtpCooldownTimer = null;
 async function sendInlineRegistrationEmailOTP() {
   const emailInput = document.getElementById('inline-reg-email');
   const email = emailInput ? emailInput.value.trim() : '';
@@ -603,12 +611,25 @@ async function sendInlineRegistrationEmailOTP() {
     if (data.success) {
       showToast(data.message, 'success');
       document.getElementById('inline-reg-otp-group').style.display = 'block';
-      if (btn) {
-        btn.innerText = '🔄 Resend';
-        btn.disabled = false;
-      }
       const otpFld = document.getElementById('inline-reg-otp');
       if (otpFld) otpFld.focus();
+
+      // Start 30s Cooldown
+      let seconds = 30;
+      if (btn) {
+        btn.innerText = `⏳ Wait ${seconds}s`;
+        clearInterval(regOtpCooldownTimer);
+        regOtpCooldownTimer = setInterval(() => {
+          seconds--;
+          if (seconds <= 0) {
+            clearInterval(regOtpCooldownTimer);
+            btn.disabled = false;
+            btn.innerText = '🔄 Resend OTP';
+          } else {
+            btn.innerText = `⏳ Wait ${seconds}s`;
+          }
+        }, 1000);
+      }
     } else {
       highlightErrorField('inline-reg-email');
       showToast(data.message, 'error');
@@ -1249,6 +1270,7 @@ async function handleUserLogin() {
         const targetEmailEl = document.getElementById('login-otp-target-email');
         if (targetEmailEl) {
           targetEmailEl.innerText = data.maskedEmail || data.email || emailOrPhone;
+          targetEmailEl.setAttribute('data-real-email', data.email || emailOrPhone);
         }
         const otpStep = document.getElementById('login-modal-otp-step');
         if (otpStep) {
@@ -1291,7 +1313,7 @@ async function handleUserLogin() {
 async function verifyLoginOTP() {
   const targetEmailEl = document.getElementById('login-otp-target-email');
   const inputEmail = document.getElementById('login-email-phone');
-  const email = (targetEmailEl?.innerText || inputEmail?.value || '').trim();
+  const email = (targetEmailEl?.getAttribute('data-real-email') || inputEmail?.value || targetEmailEl?.innerText || '').trim();
   const otpInput = document.getElementById('login-otp-input');
   const verifyBtn = document.getElementById('login-verify-otp-btn');
   const userOTP = otpInput ? otpInput.value.replace(/[^0-9]/g, '') : '';
@@ -1346,6 +1368,7 @@ async function verifyLoginOTP() {
 // REGISTRATION EMAIL OTP VERIFICATION
 // ----------------------------------------------------
 
+let regModalCooldownTimer = null;
 async function sendRegistrationEmailOTP() {
   const emailInput = document.getElementById('reg-email');
   const email = emailInput ? emailInput.value.trim() : '';
@@ -1382,13 +1405,26 @@ async function sendRegistrationEmailOTP() {
         badge.innerText = 'Code Sent';
       }
 
-      if (btn) {
-        btn.innerText = '🔄 Resend OTP';
-        btn.disabled = false;
-      }
       const otpFld = document.getElementById('reg-otp');
       if (otpFld) {
         otpFld.focus();
+      }
+
+      // Start 30s Cooldown
+      let seconds = 30;
+      if (btn) {
+        btn.innerText = `⏳ Wait ${seconds}s`;
+        clearInterval(regModalCooldownTimer);
+        regModalCooldownTimer = setInterval(() => {
+          seconds--;
+          if (seconds <= 0) {
+            clearInterval(regModalCooldownTimer);
+            btn.disabled = false;
+            btn.innerText = '🔄 Resend OTP';
+          } else {
+            btn.innerText = `⏳ Wait ${seconds}s`;
+          }
+        }, 1000);
       }
       return true;
     } else {
@@ -1511,10 +1547,8 @@ async function handleUserRegister() {
       const verified = await verifyRegistrationEmailOTP();
       if (!verified) return;
     } else {
-      // If user hasn't sent OTP yet, auto send OTP for them
-      await sendRegistrationEmailOTP();
       highlightErrorField('reg-otp');
-      showToast('📩 OTP Code sent to your Gmail! Please enter 6-digit code in the OTP box.', 'info');
+      showToast('⚠️ Please enter the 6-digit OTP code sent to your Gmail inbox!', 'warning');
       if (otpInput) otpInput.focus();
       return;
     }
@@ -1573,6 +1607,10 @@ function handleUserLogout() {
   updateUserNavUI();
 }
 
+let currentOrdersTab = 'cloud';
+let userLoadedCloudOrders = [];
+let userLoadedSmmOrders = [];
+
 async function openMyOrdersModal() {
   if (!currentUser) {
     showToast('Please Sign In to view your orders.', 'info');
@@ -1581,70 +1619,197 @@ async function openMyOrdersModal() {
   }
 
   try {
-    const res = await fetch(`/api/user/orders/${currentUser.id}`);
-    const data = await res.json();
-    if (data.success) {
-      renderMyOrders(data.orders);
-      openModal('my-orders-modal');
-    }
+    const [cloudRes, smmRes] = await Promise.all([
+      fetch(`/api/user/orders/${currentUser.id}`),
+      fetch(`/api/smm/orders/user/${currentUser.id || currentUser.phone || currentUser.email}`)
+    ]);
+
+    const cloudData = await cloudRes.json();
+    const smmData = await smmRes.json();
+
+    userLoadedCloudOrders = cloudData.success ? cloudData.orders : [];
+    userLoadedSmmOrders = smmData.success ? smmData.orders : [];
+
+    renderCombinedOrdersView();
+    openModal('my-orders-modal');
   } catch (err) {
     showToast('Error loading orders: ' + err.message, 'error');
   }
 }
 
-function renderMyOrders(orders) {
+function switchOrdersTab(tab) {
+  currentOrdersTab = tab;
+  renderCombinedOrdersView();
+}
+
+function renderCombinedOrdersView() {
   const container = document.getElementById('my-orders-container');
   if (!container) return;
 
-  if (!orders || orders.length === 0) {
-    container.innerHTML = `<p style="text-align:center; color:var(--text-muted); padding:30px;">You haven't placed any orders yet.</p>`;
+  const headerTabs = `
+    <div style="display:flex; gap:8px; margin-bottom:18px; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:10px;">
+      <button type="button" class="btn ${currentOrdersTab === 'cloud' ? 'btn-primary' : 'btn-secondary'}" onclick="switchOrdersTab('cloud')" style="flex:1; padding:8px 12px; font-size:0.85rem; font-weight:700;">
+        ☁️ Cloud & RDPs (${userLoadedCloudOrders.length})
+      </button>
+      <button type="button" class="btn ${currentOrdersTab === 'smm' ? 'btn-primary' : 'btn-secondary'}" onclick="switchOrdersTab('smm')" style="flex:1; padding:8px 12px; font-size:0.85rem; font-weight:700;">
+        ⚡ Social Growth SMM (${userLoadedSmmOrders.length})
+      </button>
+    </div>
+  `;
+
+  if (currentOrdersTab === 'cloud') {
+    if (userLoadedCloudOrders.length === 0) {
+      container.innerHTML = headerTabs + `<p style="text-align:center; color:var(--text-muted); padding:30px;">You haven't placed any Cloud or RDP orders yet.</p>`;
+      return;
+    }
+
+    const listHtml = userLoadedCloudOrders.map(ord => {
+      const isDelivered = ord.deliveryStatus === 'DELIVERED';
+      const isRejected = ord.deliveryStatus === 'REJECTED';
+      const isPending = ord.deliveryStatus === 'PENDING_APPROVAL' || ord.deliveryStatus === 'PENDING_DELIVERY';
+      const isUpi = ord.paymentMethod === 'UPI' || (ord.utrId && ord.utrId.length > 0);
+
+      let statusBadgeClass = 'badge-success';
+      if (isPending) statusBadgeClass = 'badge-warning';
+      if (isRejected) statusBadgeClass = 'badge-danger';
+
+      return `
+        <div style="background:rgba(255,255,255,0.03); border:1px solid var(--glass-border); border-radius:var(--radius-md); padding:16px; margin-bottom:14px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; flex-wrap:wrap; gap:8px;">
+            <div>
+              <strong style="font-size:1.05rem; color:#ffffff;">${escapeHtml(ord.productName)}</strong>
+              ${ord.subProduct ? `<span style="font-size:0.85rem; color:var(--pink-accent); margin-left:6px;">(${escapeHtml(ord.subProduct)})</span>` : ''}
+              <span class="badge ${isUpi ? 'badge-primary' : 'badge-yellow'}" style="margin-left:6px; font-size:0.72rem;">
+                ${isUpi ? '🏦 UPI' : '💎 BEP20'}
+              </span>
+            </div>
+            <span class="badge ${statusBadgeClass}">${escapeHtml(ord.deliveryStatus)}</span>
+          </div>
+          <div style="font-size:0.85rem; color:var(--text-muted); margin-bottom:8px;">
+            Country: ${escapeHtml(ord.country || '🌐 Global')} | Qty: ${ord.quantity} | Paid: <strong>${formatPriceDisplay(ord.totalPaid)}</strong> | Date: ${new Date(ord.createdAt).toLocaleDateString()}
+            ${ord.utrId ? `<br><span style="color:#22c55e;">UTR: <code>${escapeHtml(ord.utrId)}</code></span>` : ''}
+          </div>
+          <div style="margin-top:10px;">
+            <label style="font-size:0.75rem; color:var(--yellow-primary); text-transform:uppercase; font-weight:700;">Your Delivered Item / Key:</label>
+            <div class="code-box" style="margin:4px 0 0 0; white-space:pre-wrap;">${escapeHtml(ord.deliveredItem)}</div>
+          </div>
+          <div style="display:flex; gap:8px; margin-top:12px; flex-wrap:wrap;">
+            <a href="/invoice/${ord._id}" target="_blank" class="btn btn-secondary" style="flex:1; min-width:140px; padding:7px 12px; font-size:0.82rem; text-decoration:none; text-align:center; display:inline-flex; align-items:center; justify-content:center; gap:6px;">
+              🧾 Invoice Slip
+            </a>
+            <a href="/invoice/${ord._id}/pdf" target="_blank" class="btn btn-secondary" style="flex:1; min-width:140px; padding:7px 12px; font-size:0.82rem; text-decoration:none; text-align:center; display:inline-flex; align-items:center; justify-content:center; gap:6px; border-color:var(--yellow-primary); color:var(--yellow-primary);">
+              📥 Download PDF
+            </a>
+            <button type="button" class="btn btn-secondary" onclick="reportOrderIssue('${escapeHtml(ord._id)}', '${escapeHtml(ord.productId)}', '${escapeHtml(ord.productName)}', '${escapeHtml(ord.subProduct || '')}', '${escapeHtml(ord.country || '')}', '${escapeHtml(ord.txHash || '')}', '${escapeHtml(ord.totalPaid)}')" style="flex:1; min-width:140px; padding:7px 12px; font-size:0.82rem; border-color:#f87171; color:#f87171; font-weight:700; display:flex; align-items:center; justify-content:center; gap:6px;">
+              ⚠️ Report Issue
+            </button>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    container.innerHTML = headerTabs + listHtml;
     return;
   }
 
-  container.innerHTML = orders.map(ord => {
-    const isDelivered = ord.deliveryStatus === 'DELIVERED';
-    const isRejected = ord.deliveryStatus === 'REJECTED';
-    const isPending = ord.deliveryStatus === 'PENDING_APPROVAL' || ord.deliveryStatus === 'PENDING_DELIVERY';
-    const isUpi = ord.paymentMethod === 'UPI' || (ord.utrId && ord.utrId.length > 0);
+  // SMM Tab
+  if (userLoadedSmmOrders.length === 0) {
+    container.innerHTML = headerTabs + `<p style="text-align:center; color:var(--text-muted); padding:30px;">You haven't placed any Social Growth (SMM) orders yet.</p>`;
+    return;
+  }
 
-    let statusBadgeClass = 'badge-success';
-    if (isPending) statusBadgeClass = 'badge-warning';
-    if (isRejected) statusBadgeClass = 'badge-danger';
+  const smmHtml = userLoadedSmmOrders.map(ord => {
+    const isCompleted = ord.status === 'Completed';
+    const isProcessing = ord.status === 'Processing' || ord.status === 'In progress';
+    const isPendingUpi = ord.paymentStatus === 'PENDING_UPI_VERIFICATION';
+    const remains = ord.remains !== undefined ? ord.remains : 0;
+    const progressPercent = ord.quantity > 0 ? Math.min(100, Math.max(0, Math.round(((ord.quantity - remains) / ord.quantity) * 100))) : 0;
+
+    let badgeColor = '#38bdf8';
+    if (isCompleted) badgeColor = '#22c55e';
+    if (isPendingUpi) badgeColor = '#facc15';
 
     return `
-      <div style="background:rgba(255,255,255,0.03); border:1px solid var(--glass-border); border-radius:var(--radius-md); padding:16px; margin-bottom:14px;">
+      <div id="smm-order-card-${escapeHtml(ord._id || ord.orderId)}" style="background:rgba(20,10,40,0.6); border:1px solid rgba(56,189,248,0.3); border-radius:var(--radius-md); padding:16px; margin-bottom:14px;">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; flex-wrap:wrap; gap:8px;">
           <div>
-            <strong style="font-size:1.05rem; color:#ffffff;">${escapeHtml(ord.productName)}</strong>
-            ${ord.subProduct ? `<span style="font-size:0.85rem; color:var(--pink-accent); margin-left:6px;">(${escapeHtml(ord.subProduct)})</span>` : ''}
-            <span class="badge ${isUpi ? 'badge-primary' : 'badge-yellow'}" style="margin-left:6px; font-size:0.72rem;">
-              ${isUpi ? '🏦 UPI' : '💎 BEP20'}
+            <strong style="font-size:1.05rem; color:#ffffff;">${escapeHtml(ord.serviceName || 'Social Growth Package')}</strong>
+            <span class="badge" style="background:${badgeColor}20; border:1px solid ${badgeColor}; color:${badgeColor}; font-size:0.72rem; margin-left:6px;">
+              ${escapeHtml(ord.status || 'Processing')}
             </span>
           </div>
-          <span class="badge ${statusBadgeClass}">${escapeHtml(ord.deliveryStatus)}</span>
+          <span style="font-family:monospace; font-size:0.8rem; color:var(--text-dim);">
+            #${escapeHtml(ord.orderId || ord._id)}
+          </span>
         </div>
+
         <div style="font-size:0.85rem; color:var(--text-muted); margin-bottom:8px;">
-          Country: ${escapeHtml(ord.country || '🌐 Global')} | Qty: ${ord.quantity} | Paid: <strong>${formatPriceDisplay(ord.totalPaid)}</strong> | Date: ${new Date(ord.createdAt).toLocaleDateString()}
-          ${ord.utrId ? `<br><span style="color:#22c55e;">UTR: <code>${escapeHtml(ord.utrId)}</code></span>` : ''}
+          🎯 <strong>Target Link:</strong> <a href="${escapeHtml(ord.targetUrl)}" target="_blank" style="color:#38bdf8; word-break:break-all;">${escapeHtml(ord.targetUrl)}</a><br>
+          🔢 <strong>Quantity:</strong> ${ord.quantity?.toLocaleString()} | 💰 <strong>Paid:</strong> ₹${ord.totalCost} (${ord.paymentMethod}) | 📅 <strong>Date:</strong> ${new Date(ord.createdAt).toLocaleDateString()}
+          ${ord.utrId ? `<br><span style="color:#22c55e;">🏷️ UTR: <code>${escapeHtml(ord.utrId)}</code></span>` : ''}
         </div>
-        <div style="margin-top:10px;">
-          <label style="font-size:0.75rem; color:var(--yellow-primary); text-transform:uppercase; font-weight:700;">Your Delivered Item / Key:</label>
-          <div class="code-box" style="margin:4px 0 0 0; white-space:pre-wrap;">${escapeHtml(ord.deliveredItem)}</div>
+
+        <!-- Live Progress Bar -->
+        <div style="margin:10px 0 6px 0;">
+          <div style="display:flex; justify-content:space-between; font-size:0.75rem; color:var(--text-dim); margin-bottom:4px;">
+            <span>Delivered: ${Math.max(0, ord.quantity - remains).toLocaleString()} / ${ord.quantity?.toLocaleString()}</span>
+            <span style="color:${badgeColor}; font-weight:700;">${progressPercent}%</span>
+          </div>
+          <div style="width:100%; height:6px; background:rgba(255,255,255,0.08); border-radius:10px; overflow:hidden;">
+            <div style="width:${progressPercent}%; height:100%; background:linear-gradient(90deg, #38bdf8, #22c55e); transition:width 0.4s ease;"></div>
+          </div>
         </div>
+
         <div style="display:flex; gap:8px; margin-top:12px; flex-wrap:wrap;">
-          <a href="/invoice/${ord._id}" target="_blank" class="btn btn-secondary" style="flex:1; min-width:140px; padding:7px 12px; font-size:0.82rem; text-decoration:none; text-align:center; display:inline-flex; align-items:center; justify-content:center; gap:6px;">
-            🧾 Invoice Slip
-          </a>
-          <a href="/invoice/${ord._id}/pdf" target="_blank" class="btn btn-secondary" style="flex:1; min-width:140px; padding:7px 12px; font-size:0.82rem; text-decoration:none; text-align:center; display:inline-flex; align-items:center; justify-content:center; gap:6px; border-color:var(--yellow-primary); color:var(--yellow-primary);">
-            📥 Download PDF
-          </a>
-          <button type="button" class="btn btn-secondary" onclick="reportOrderIssue('${escapeHtml(ord._id)}', '${escapeHtml(ord.productId)}', '${escapeHtml(ord.productName)}', '${escapeHtml(ord.subProduct || '')}', '${escapeHtml(ord.country || '')}', '${escapeHtml(ord.txHash || '')}', '${escapeHtml(ord.totalPaid)}')" style="flex:1; min-width:140px; padding:7px 12px; font-size:0.82rem; border-color:#f87171; color:#f87171; font-weight:700; display:flex; align-items:center; justify-content:center; gap:6px;">
-            ⚠️ Report Issue
+          <button type="button" id="btn-sync-smm-${escapeHtml(ord._id || ord.orderId)}" onclick="syncCustomerSmmOrderStatus('${escapeHtml(ord._id || ord.orderId)}')" class="btn btn-secondary" style="flex:1; min-width:130px; padding:7px 12px; font-size:0.82rem; display:inline-flex; align-items:center; justify-content:center; gap:6px; border-color:#38bdf8; color:#38bdf8;">
+            🔄 Live Status
           </button>
+          <a href="/invoice/smm/${escapeHtml(ord.orderId || ord._id)}" target="_blank" class="btn btn-secondary" style="flex:1; min-width:110px; padding:7px 12px; font-size:0.82rem; text-decoration:none; text-align:center; display:inline-flex; align-items:center; justify-content:center; gap:6px;">
+            🧾 Bill Slip
+          </a>
+          <a href="/invoice/smm/${escapeHtml(ord.orderId || ord._id)}/pdf" target="_blank" class="btn btn-secondary" style="flex:1; min-width:110px; padding:7px 12px; font-size:0.82rem; text-decoration:none; text-align:center; display:inline-flex; align-items:center; justify-content:center; gap:6px; border-color:#facc15; color:#facc15;">
+            📥 PDF Bill
+          </a>
+          <a href="https://wa.me/919507325677?text=Hello%20Owner%20I%20have%20an%20inquiry%20regarding%20SMM%20Order%20${escapeHtml(ord.orderId)}" target="_blank" class="btn btn-secondary" style="flex:1; min-width:110px; padding:7px 12px; font-size:0.82rem; text-decoration:none; text-align:center; display:inline-flex; align-items:center; justify-content:center; gap:6px;">
+            💬 Support
+          </a>
         </div>
       </div>
     `;
   }).join('');
+
+  container.innerHTML = headerTabs + smmHtml;
+}
+
+async function syncCustomerSmmOrderStatus(orderId) {
+  const btn = document.getElementById(`btn-sync-smm-${orderId}`);
+  if (btn) {
+    btn.disabled = true;
+    btn.innerText = '⏳ Syncing...';
+  }
+
+  try {
+    const res = await fetch(`/api/smm/orders/${orderId}/sync-status`, { method: 'POST' });
+    const data = await res.json();
+    if (data.success) {
+      showToast(`✅ Live Status: ${data.status}`, 'success');
+      // Update local array and re-render
+      const match = userLoadedSmmOrders.find(o => o._id === orderId || o.orderId === orderId);
+      if (match && data.order) {
+        Object.assign(match, data.order);
+        renderCombinedOrdersView();
+      }
+    } else {
+      showToast(data.message || 'Could not sync status at this moment.', 'info');
+    }
+  } catch (err) {
+    showToast('Sync error: ' + err.message, 'error');
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerText = '🔄 Refresh Live Status';
+    }
+  }
 }
 
 async function fetchSupportSettings() {
@@ -2116,3 +2281,706 @@ async function markNotificationsAsRead() {
     showToast('Error marking read: ' + err.message, 'error');
   }
 }
+
+// ============================================================
+// STORE LAYOUT VIEW SWITCHER (DUAL SPLIT / PRODUCTS / SMM)
+// ============================================================
+
+function switchStoreView(view) {
+  const allBtn = document.getElementById('view-tab-all');
+  const prodBtn = document.getElementById('view-tab-products');
+  const smmBtn = document.getElementById('view-tab-smm');
+  const layout = document.getElementById('store-main-layout');
+  const prodCol = document.getElementById('store-products-column');
+  const smmCol = document.getElementById('store-smm-column');
+
+  if (allBtn) allBtn.classList.remove('active');
+  if (prodBtn) prodBtn.classList.remove('active');
+  if (smmBtn) smmBtn.classList.remove('active');
+
+  if (view === 'all') {
+    if (allBtn) allBtn.classList.add('active');
+    if (layout) {
+      layout.style.display = 'grid';
+      layout.className = 'store-dual-layout';
+    }
+    if (prodCol) prodCol.style.display = 'block';
+    if (smmCol) {
+      smmCol.style.display = 'block';
+      smmCol.style.maxWidth = '100%';
+      smmCol.style.margin = '0';
+    }
+  } else if (view === 'products') {
+    if (prodBtn) prodBtn.classList.add('active');
+    if (layout) {
+      layout.style.display = 'block';
+    }
+    if (prodCol) prodCol.style.display = 'block';
+    if (smmCol) smmCol.style.display = 'none';
+  } else if (view === 'smm') {
+    if (smmBtn) smmBtn.classList.add('active');
+    if (layout) {
+      layout.style.display = 'block';
+    }
+    if (prodCol) prodCol.style.display = 'none';
+    if (smmCol) {
+      smmCol.style.display = 'block';
+      smmCol.style.maxWidth = '780px';
+      smmCol.style.margin = '0 auto';
+    }
+  }
+}
+
+// ============================================================
+// PEAKERR LIVE SMM SERVICES & SOCIAL GROWTH AUTOMATION ENGINE
+// ============================================================
+
+let allPeakerrServices = [];
+let peakerrCategories = [];
+let currentSmmPlatform = 'Instagram';
+let currentSelectedCategory = '';
+let currentSearchQuery = '';
+let selectedSmmServiceObj = null;
+
+// Fetch live Peakerr SMM Services from Backend API
+async function fetchSmmServices() {
+  try {
+    const res = await fetch('/api/smm/services');
+    const data = await res.json();
+    if (data.success && Array.isArray(data.services) && data.services.length > 0) {
+      allPeakerrServices = data.services;
+      peakerrCategories = data.categories || [];
+
+      const badge = document.getElementById('smm-total-services-badge');
+      if (badge) {
+        badge.innerText = `${allPeakerrServices.length.toLocaleString()} Live Services`;
+      }
+
+      selectSmmPlatform(currentSmmPlatform);
+    }
+  } catch (err) {
+    console.error('Peakerr services fetch error:', err.message);
+  }
+}
+
+// Select SMM Platform Tab Pill
+function selectSmmPlatform(platform) {
+  currentSmmPlatform = platform;
+
+  document.querySelectorAll('.smm-platform-selector .platform-pill-btn').forEach(btn => {
+    btn.classList.remove('active');
+  });
+
+  const platIdMap = {
+    'Instagram': 'smm-plat-instagram',
+    'Telegram': 'smm-plat-telegram',
+    'YouTube': 'smm-plat-youtube',
+    'Facebook': 'smm-plat-facebook',
+    'TikTok': 'smm-plat-tiktok',
+    'Twitter / X': 'smm-plat-twitter',
+    'ALL': 'smm-plat-all'
+  };
+
+  const activeBtn = document.getElementById(platIdMap[platform]);
+  if (activeBtn) activeBtn.classList.add('active');
+
+  // Set target link placeholder
+  const linkInput = document.getElementById('smm-target-url');
+  const linkLabel = document.getElementById('smm-link-type-label');
+
+  if (platform === 'Instagram') {
+    if (linkInput) linkInput.placeholder = 'https://instagram.com/username or https://instagram.com/p/...';
+    if (linkLabel) linkLabel.innerText = 'Instagram Profile / Post / Reel URL';
+  } else if (platform === 'Telegram') {
+    if (linkInput) linkInput.placeholder = 'https://t.me/channel_name or https://t.me/joinchat/...';
+    if (linkLabel) linkLabel.innerText = 'Telegram Channel / Group Link';
+  } else if (platform === 'YouTube') {
+    if (linkInput) linkInput.placeholder = 'https://youtube.com/@channel or https://youtu.be/video_id';
+    if (linkLabel) linkLabel.innerText = 'YouTube Channel / Video URL';
+  } else if (platform === 'Facebook') {
+    if (linkInput) linkInput.placeholder = 'https://facebook.com/page or post URL';
+    if (linkLabel) linkLabel.innerText = 'Facebook Page / Profile / Post URL';
+  } else if (platform === 'TikTok') {
+    if (linkInput) linkInput.placeholder = 'https://tiktok.com/@username/video/...';
+    if (linkLabel) linkLabel.innerText = 'TikTok Profile / Video URL';
+  } else if (platform === 'Twitter / X') {
+    if (linkInput) linkInput.placeholder = 'https://x.com/username or https://x.com/status/...';
+    if (linkLabel) linkLabel.innerText = 'Twitter / X Profile or Tweet URL';
+  } else {
+    if (linkInput) linkInput.placeholder = 'https://... (Target Link)';
+    if (linkLabel) linkLabel.innerText = 'Target Link (URL)';
+  }
+
+  populateSmmCategories();
+}
+
+// Populate Categories Dropdown based on Platform
+function populateSmmCategories() {
+  const catSelect = document.getElementById('smm-category-select');
+  if (!catSelect) return;
+
+  catSelect.innerHTML = '';
+
+  let cats = peakerrCategories;
+  if (currentSmmPlatform !== 'ALL') {
+    cats = cats.filter(c => c.platform && c.platform.toLowerCase() === currentSmmPlatform.toLowerCase());
+  }
+
+  if (cats.length === 0) {
+    catSelect.innerHTML = '<option value="">All Categories</option>';
+    currentSelectedCategory = '';
+    populateSmmServices();
+    return;
+  }
+
+  cats.forEach((catObj) => {
+    const opt = document.createElement('option');
+    opt.value = catObj.category;
+    opt.textContent = `${catObj.category} (${catObj.count || 0})`;
+    catSelect.appendChild(opt);
+  });
+
+  currentSelectedCategory = cats[0].category;
+  catSelect.value = currentSelectedCategory;
+  populateSmmServices();
+}
+
+// Category selection changed
+function onSmmCategoryChanged() {
+  const catSelect = document.getElementById('smm-category-select');
+  if (catSelect) {
+    currentSelectedCategory = catSelect.value;
+  }
+  populateSmmServices();
+}
+
+// Live Search Input handler
+function onSmmSearchInput() {
+  const searchInput = document.getElementById('smm-search-input');
+  currentSearchQuery = searchInput ? searchInput.value.trim().toLowerCase() : '';
+  populateSmmServices();
+}
+
+// Populate Services Dropdown based on Category and Search
+function populateSmmServices() {
+  const srvSelect = document.getElementById('smm-service-select');
+  if (!srvSelect) return;
+
+  srvSelect.innerHTML = '';
+
+  let list = allPeakerrServices;
+
+  // Filter by search query or category
+  if (currentSearchQuery.length > 0) {
+    list = list.filter(s =>
+      s.name.toLowerCase().includes(currentSearchQuery) ||
+      s.category.toLowerCase().includes(currentSearchQuery) ||
+      String(s.service).includes(currentSearchQuery)
+    );
+  } else if (currentSelectedCategory) {
+    list = list.filter(s => s.category === currentSelectedCategory);
+  } else if (currentSmmPlatform !== 'ALL') {
+    list = list.filter(s => s.platform.toLowerCase() === currentSmmPlatform.toLowerCase());
+  }
+
+  if (list.length === 0) {
+    srvSelect.innerHTML = '<option value="">❌ No services found matching criteria</option>';
+    selectedSmmServiceObj = null;
+    return;
+  }
+
+  list.forEach((srv) => {
+    const opt = document.createElement('option');
+    opt.value = srv.service;
+    opt.textContent = `[#${srv.service}] ${srv.name} — ₹${srv.rateInr}/1K (${srv.refill ? '🛡️ Refill' : '⚡ Fast'})`;
+    srvSelect.appendChild(opt);
+  });
+
+  srvSelect.selectedIndex = 0;
+  onSmmServiceChanged();
+}
+
+// Service Selection Change Trigger
+function onSmmServiceChanged() {
+  const srvSelect = document.getElementById('smm-service-select');
+  if (!srvSelect) return;
+
+  const serviceId = parseInt(srvSelect.value, 10);
+  const srv = allPeakerrServices.find(s => s.service === serviceId);
+  selectedSmmServiceObj = srv || allPeakerrServices[0];
+
+  if (!selectedSmmServiceObj) return;
+
+  // Update Info Box
+  const tierBadge = document.getElementById('smm-tier-badge');
+  const tierDesc = document.getElementById('smm-tier-desc');
+  const tierSpeed = document.getElementById('smm-tier-speed');
+  const refillTag = document.getElementById('smm-tier-refill-tag');
+  const minmaxTag = document.getElementById('smm-tier-minmax-tag');
+  const typeTag = document.getElementById('smm-tier-type-tag');
+  const limitsHint = document.getElementById('smm-qty-limits-hint');
+  const rateInd = document.getElementById('smm-rate-indicator');
+
+  if (tierBadge) {
+    tierBadge.textContent = selectedSmmServiceObj.refill ? '🛡️ Refill Protected Service' : '⚡ High Speed Delivery';
+    tierBadge.className = selectedSmmServiceObj.refill ? 'badge badge-success' : 'badge badge-yellow';
+  }
+
+  if (tierDesc) {
+    tierDesc.textContent = `${selectedSmmServiceObj.name} • High-Retention Server Delivery (${selectedSmmServiceObj.category}).`;
+  }
+
+  if (tierSpeed) {
+    tierSpeed.textContent = selectedSmmServiceObj.cancel ? '⚡ Instant (Cancelable)' : '⚡ Instant Automated Start';
+  }
+
+  if (refillTag) {
+    refillTag.textContent = selectedSmmServiceObj.refill ? '🛡️ Auto-Refill Guarantee' : '⚡ Standard Drop (No Refill)';
+    refillTag.className = selectedSmmServiceObj.refill ? 'badge badge-success' : 'badge badge-secondary';
+  }
+
+  if (minmaxTag) {
+    minmaxTag.textContent = `🔢 Min: ${selectedSmmServiceObj.min.toLocaleString()} | Max: ${selectedSmmServiceObj.max.toLocaleString()}`;
+  }
+
+  if (typeTag) {
+    typeTag.textContent = selectedSmmServiceObj.type || 'Default';
+  }
+
+  if (limitsHint) {
+    limitsHint.textContent = `Min: ${selectedSmmServiceObj.min.toLocaleString()} | Max: ${selectedSmmServiceObj.max.toLocaleString()}`;
+  }
+
+  if (rateInd) {
+    rateInd.textContent = `Rate: ₹${selectedSmmServiceObj.rateInr} / 1,000 (~ $${selectedSmmServiceObj.rateUsd})`;
+  }
+
+  // Comments visibility
+  const commentsGroup = document.getElementById('smm-custom-comments-group');
+  if (commentsGroup) {
+    if (selectedSmmServiceObj.type === 'Custom Comments' || selectedSmmServiceObj.name.toLowerCase().includes('custom comment')) {
+      commentsGroup.style.display = 'block';
+    } else {
+      commentsGroup.style.display = 'none';
+    }
+  }
+
+  // Set default qty based on service minimum
+  const qtyInput = document.getElementById('smm-quantity-input');
+  const serviceMin = selectedSmmServiceObj.min || 1000;
+  const serviceMax = selectedSmmServiceObj.max || 100000;
+
+  if (qtyInput) {
+    qtyInput.min = serviceMin;
+    qtyInput.max = serviceMax;
+    const currentVal = parseInt(qtyInput.value, 10) || 0;
+    if (currentVal < serviceMin) {
+      qtyInput.value = serviceMin;
+    }
+  }
+
+  // Update dynamic quantity chips container
+  const chipsContainer = document.querySelector('.smm-qty-chips');
+  if (chipsContainer) {
+    let chipValues = [];
+    if (serviceMin >= 1000) {
+      chipValues = [serviceMin, serviceMin * 2, serviceMin * 5, serviceMin * 10, serviceMin * 25].filter(v => v <= serviceMax);
+    } else {
+      chipValues = [serviceMin, 500, 1000, 2500, 5000].filter(v => v >= serviceMin && v <= serviceMax);
+    }
+    if (chipValues.length === 0) chipValues = [serviceMin, serviceMin * 2];
+
+    const currentQty = parseInt(qtyInput ? qtyInput.value : serviceMin, 10);
+    chipsContainer.innerHTML = chipValues.map(val => `
+      <button type="button" class="smm-chip-btn ${val === currentQty ? 'active' : ''}" onclick="setSmmQuantity(${val})">
+        ${val.toLocaleString()}
+      </button>
+    `).join('');
+  }
+
+  calculateSmmPrice();
+}
+
+// Quick Quantity Chip Button Handler
+function setSmmQuantity(qty) {
+  const qtyInput = document.getElementById('smm-quantity-input');
+  if (!qtyInput) return;
+
+  const min = selectedSmmServiceObj ? (selectedSmmServiceObj.min || 1000) : 1000;
+  if (qty < min) {
+    qty = min;
+  }
+  qtyInput.value = qty;
+
+  document.querySelectorAll('.smm-qty-chips .smm-chip-btn').forEach(btn => {
+    btn.classList.remove('active');
+    if (btn.textContent.trim() === qty.toLocaleString() || btn.textContent.trim() === `+${qty.toLocaleString()}`) {
+      btn.classList.add('active');
+    }
+  });
+
+  calculateSmmPrice();
+}
+
+// Custom comments line count sync
+function onCustomCommentsInput() {
+  const textarea = document.getElementById('smm-custom-comments');
+  const countLabel = document.getElementById('smm-comments-count');
+  const qtyInput = document.getElementById('smm-quantity-input');
+
+  if (!textarea) return;
+  const lines = textarea.value.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+  const count = lines.length;
+
+  if (countLabel) countLabel.innerText = count;
+  if (qtyInput && count > 0) {
+    const min = selectedSmmServiceObj ? (selectedSmmServiceObj.min || 10) : 10;
+    qtyInput.value = Math.max(min, count);
+  }
+  calculateSmmPrice();
+}
+
+// Dynamic Price Calculation
+function calculateSmmPrice() {
+  if (!selectedSmmServiceObj) return;
+
+  const qtyInput = document.getElementById('smm-quantity-input');
+  const priceDisplay = document.getElementById('smm-total-price-display');
+  const usdtDisplay = document.getElementById('smm-total-usdt-display');
+  const limitsHint = document.getElementById('smm-qty-limits-hint');
+
+  const min = selectedSmmServiceObj.min || 1000;
+  const max = selectedSmmServiceObj.max || 100000;
+  const qty = parseInt(qtyInput ? qtyInput.value : min, 10) || 0;
+
+  if (limitsHint) {
+    if (qty < min) {
+      limitsHint.innerHTML = `<span style="color:#ef4444; font-weight:800;">⚠️ Min: ${min.toLocaleString()} Required!</span> | Max: ${max.toLocaleString()}`;
+    } else {
+      limitsHint.innerHTML = `Min: ${min.toLocaleString()} | Max: ${max.toLocaleString()}`;
+    }
+  }
+
+  const rateInr = selectedSmmServiceObj.rateInr || 100;
+  const total = Math.max(1, Math.round(((qty / 1000) * rateInr) * 100) / 100);
+  const usdt = (total / 88).toFixed(2);
+
+  if (priceDisplay) priceDisplay.innerText = `₹${total.toFixed(2)}`;
+  if (usdtDisplay) usdtDisplay.innerText = `(~ ${usdt} USDT)`;
+}
+
+// Open SMM Checkout Modal
+function openSmmCheckoutModal() {
+  if (!selectedSmmServiceObj) {
+    showToast('Please select a valid service first.', 'error');
+    return;
+  }
+
+  // Mandatory Login Enforcement
+  if (!currentUser) {
+    showToast('🔐 Please log in or register with Email OTP first to order followers & social growth!', 'warning');
+    openModal('login-modal');
+    return;
+  }
+
+  const targetUrl = (document.getElementById('smm-target-url')?.value || '').trim();
+  if (!targetUrl || targetUrl.length < 4) {
+    showToast('❌ Please enter a valid Target Link (Channel / Profile / Post URL)!', 'error');
+    document.getElementById('smm-target-url')?.focus();
+    return;
+  }
+
+  const qtyInput = document.getElementById('smm-quantity-input');
+  const qty = parseInt(qtyInput ? qtyInput.value : 0, 10) || 0;
+  const min = selectedSmmServiceObj.min || 1000;
+  const max = selectedSmmServiceObj.max || 100000;
+
+  if (qty < min) {
+    showToast(`⚠️ Minimum quantity for ${selectedSmmServiceObj.name} is ${min.toLocaleString()}! (${min.toLocaleString()} se kam order nahi kar sakte)`, 'error');
+    if (qtyInput) {
+      qtyInput.value = min;
+      calculateSmmPrice();
+    }
+    return;
+  }
+
+  if (qty > max) {
+    showToast(`❌ Maximum quantity allowed for this service is ${max.toLocaleString()}!`, 'error');
+    return;
+  }
+
+  const rateInr = selectedSmmServiceObj.rateInr || 100;
+  const total = Math.max(1, Math.round(((qty / 1000) * rateInr) * 100) / 100);
+  const usdt = (total / 88).toFixed(2);
+
+  const titleEl = document.getElementById('smm-checkout-title');
+  const badgeEl = document.getElementById('smm-checkout-tier-badge');
+  const urlEl = document.getElementById('smm-checkout-url');
+  const qtyEl = document.getElementById('smm-checkout-qty');
+  const totalInrEl = document.getElementById('smm-checkout-total-inr');
+  const totalUsdtEl = document.getElementById('smm-checkout-total-usdt');
+  const upiHintEl = document.getElementById('smm-upi-amount-hint');
+
+  if (titleEl) titleEl.innerText = `[ID #${selectedSmmServiceObj.service}] ${selectedSmmServiceObj.name}`;
+  if (badgeEl) badgeEl.innerText = selectedSmmServiceObj.category;
+  if (urlEl) urlEl.innerText = targetUrl;
+  if (qtyEl) qtyEl.innerText = qty.toLocaleString();
+  if (totalInrEl) totalInrEl.innerText = `₹${total.toFixed(2)}`;
+  if (totalUsdtEl) totalUsdtEl.innerText = `(~ ${usdt} USDT)`;
+  if (upiHintEl) upiHintEl.innerText = `₹${total.toFixed(2)}`;
+
+  // Populate merchant details from owner settings
+  const upiMerchantEl = document.getElementById('smm-upi-merchant-id');
+  const bep20AddrEl = document.getElementById('smm-bep20-addr');
+  if (upiMerchantEl) upiMerchantEl.innerText = ownerGlobalUpiId || '9507325677-1@naviaxis';
+  if (bep20AddrEl) bep20AddrEl.innerText = ownerGlobalBep20Address || '0xD3D65940718F769E66E1e5c425AcFf76C2D9bFf2';
+
+  // Customer contact info from logged in user
+  const nameInput = document.getElementById('smm-user-name');
+  const phoneInput = document.getElementById('smm-user-phone');
+  if (currentUser) {
+    if (nameInput) nameInput.value = currentUser.name || '';
+    if (phoneInput) phoneInput.value = currentUser.phone || '';
+  }
+
+  // Clear previous UTR and TxHash
+  const utrInput = document.getElementById('smm-upi-utr');
+  const txInput = document.getElementById('smm-tx-hash');
+  if (utrInput) utrInput.value = '';
+  if (txInput) txInput.value = '';
+
+  openModal('smm-checkout-modal');
+}
+
+// Confirm and Submit SMM Order to Peakerr
+async function confirmSmmOrderPlacement(paymentMethod) {
+  if (!selectedSmmServiceObj) return;
+
+  if (!currentUser) {
+    showToast('🔐 Please log in first to submit your order.', 'error');
+    openModal('login-modal');
+    return;
+  }
+
+  const targetUrl = (document.getElementById('smm-target-url')?.value || '').trim();
+  const qty = parseInt(document.getElementById('smm-quantity-input')?.value || 0, 10);
+  const userName = (document.getElementById('smm-user-name')?.value || '').trim();
+  const userPhone = (document.getElementById('smm-user-phone')?.value || '').trim();
+  const customComments = (document.getElementById('smm-custom-comments')?.value || '').trim();
+
+  if (!userName) {
+    showToast('Please enter your name.', 'error');
+    document.getElementById('smm-user-name')?.focus();
+    return;
+  }
+  if (!userPhone || userPhone.length < 7) {
+    showToast('Please enter your WhatsApp/Phone number.', 'error');
+    document.getElementById('smm-user-phone')?.focus();
+    return;
+  }
+
+  const utrId = (document.getElementById('smm-upi-utr')?.value || '').trim();
+  const txHash = (document.getElementById('smm-tx-hash')?.value || '').trim();
+
+  if (paymentMethod === 'UPI' && !utrId) {
+    showToast('⚠️ Please enter 12-digit UPI UTR / Transaction ID after paying!', 'error');
+    document.getElementById('smm-upi-utr')?.focus();
+    return;
+  }
+  if (paymentMethod === 'BEP20' && !txHash) {
+    showToast('⚠️ Please paste 0x... Crypto Transaction Hash from your wallet!', 'error');
+    document.getElementById('smm-tx-hash')?.focus();
+    return;
+  }
+
+  const submitBtn = paymentMethod === 'UPI' ? document.getElementById('btn-submit-smm-upi') : document.getElementById('btn-submit-smm-crypto');
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.innerText = '⏳ Placing Peakerr Order...';
+  }
+
+  try {
+    const payload = {
+      serviceId: selectedSmmServiceObj.service,
+      targetUrl: targetUrl,
+      quantity: qty,
+      customComments: customComments,
+      userId: currentUser ? currentUser._id : 'guest',
+      userName: userName,
+      userPhone: userPhone,
+      userEmail: currentUser ? currentUser.email : '',
+      paymentMethod: paymentMethod,
+      utrId: utrId,
+      txHash: txHash
+    };
+
+    const res = await fetch('/api/smm/order', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+
+    const data = await res.json();
+    if (data.success) {
+      closeModal('smm-checkout-modal');
+
+      // Populate Success Modal
+      const succOrderId = document.getElementById('smm-success-order-id');
+      const succService = document.getElementById('smm-success-service');
+      const succLink = document.getElementById('smm-success-link');
+      const succQty = document.getElementById('smm-success-qty');
+
+      if (succOrderId) succOrderId.innerText = data.orderId || 'PK-ORDER';
+      if (succService) succService.innerText = `[ID #${selectedSmmServiceObj.service}] ${selectedSmmServiceObj.name}`;
+      if (succLink) succLink.innerText = targetUrl;
+      if (succQty) succQty.innerText = `${qty.toLocaleString()} Units`;
+
+      openModal('smm-success-modal');
+      showToast(data.message || `🎉 SMM Order placed on Peakerr! Order ID: ${data.orderId}`, 'success');
+
+      // Clear link input
+      const linkInput = document.getElementById('smm-target-url');
+      if (linkInput) linkInput.value = '';
+    } else {
+      showToast(`❌ Error: ${data.message}`, 'error');
+    }
+  } catch (err) {
+    showToast(`Order submission failed: ${err.message}`, 'error');
+  } finally {
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.innerText = paymentMethod === 'UPI' ? '🏦 Submit UPI Order' : '⚡ Pay BEP20 Crypto';
+    }
+  }
+}
+
+// Open SMM Tracker Modal & Fetch Orders
+function openSmmOrdersTracker() {
+  openModal('smm-tracker-modal');
+  fetchUserSmmOrders();
+}
+
+async function fetchUserSmmOrders() {
+  const container = document.getElementById('smm-tracker-orders-list');
+  if (!container) return;
+
+  container.innerHTML = `<div style="text-align:center; color:var(--text-muted); padding:30px;">🔍 Fetching your Peakerr growth orders...</div>`;
+
+  try {
+    const userId = currentUser ? currentUser._id : 'guest';
+    const phone = currentUser ? (currentUser.phone || '') : '';
+    const email = currentUser ? (currentUser.email || '') : '';
+
+    const res = await fetch(`/api/smm/orders/user/${userId}?phone=${encodeURIComponent(phone)}&email=${encodeURIComponent(email)}`);
+    const data = await res.json();
+
+    if (data.success && data.orders && data.orders.length > 0) {
+      container.innerHTML = data.orders.map(o => {
+        const dateStr = new Date(o.createdAt).toLocaleDateString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+
+        const qty = o.quantity || 1;
+        const remains = o.remains !== undefined ? o.remains : (o.status === 'Completed' ? 0 : qty);
+        const delivered = Math.max(0, Math.min(qty, qty - remains));
+        const progressPercent = o.status === 'Completed' ? 100 : Math.min(100, Math.round((delivered / qty) * 100));
+
+        let statusBadge = `<span class="badge badge-warning">🟡 Processing</span>`;
+        if (o.status === 'Completed') statusBadge = `<span class="badge badge-success">🟢 Completed (100%)</span>`;
+        else if (o.status === 'In Progress' || o.status === 'In progress') statusBadge = `<span class="badge badge-primary">🔵 Delivering (${progressPercent}%)</span>`;
+        else if (o.status === 'Partial') statusBadge = `<span class="badge badge-yellow">🟠 Partial (${delivered}/${qty})</span>`;
+        else if (o.status === 'Canceled') statusBadge = `<span class="badge badge-danger">🔴 Canceled</span>`;
+
+        return `
+          <div class="smm-order-item-card" style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:12px; padding:16px; margin-bottom:14px;">
+            <div class="smm-order-item-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+              <div>
+                <strong style="color:var(--yellow-primary); font-family:monospace; font-size:0.95rem;">${escapeHtml(o.orderId)}</strong>
+                ${o.providerOrderId ? `<span style="font-size:0.75rem; color:#38bdf8; font-family:monospace; margin-left:6px;">[Peakerr #${escapeHtml(o.providerOrderId)}]</span>` : ''}
+                <span style="font-size:0.75rem; color:var(--text-dim); margin-left:8px;">${dateStr}</span>
+              </div>
+              <div style="display:flex; gap:6px; align-items:center;">
+                ${statusBadge}
+                ${o.refillable ? `<span class="badge badge-yellow" style="font-size:0.7rem;">🛡️ Auto-Refill</span>` : ''}
+              </div>
+            </div>
+
+            <div style="font-size:0.92rem; font-weight:700; color:#ffffff; margin-bottom:6px;">
+              ${escapeHtml(o.serviceName || 'Social Growth Service')}
+            </div>
+
+            <div style="font-size:0.82rem; color:#38bdf8; font-family:monospace; word-break:break-all; margin-bottom:10px;">
+              🔗 <a href="${escapeHtml(o.targetUrl)}" target="_blank" style="color:#38bdf8; text-decoration:underline;">${escapeHtml(o.targetUrl)}</a>
+            </div>
+
+            <!-- LIVE REAL-TIME PROGRESS BAR -->
+            <div style="background:rgba(0,0,0,0.3); border-radius:6px; overflow:hidden; height:10px; margin-bottom:8px; border:1px solid rgba(255,255,255,0.1);">
+              <div style="background:linear-gradient(90deg, #38bdf8, #22c55e); height:100%; width:${progressPercent}%; transition:width 0.4s ease;"></div>
+            </div>
+
+            <!-- METRIC COUNTERS -->
+            <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.8rem; color:var(--text-muted); margin-bottom:10px;">
+              <div>Ordered: <strong style="color:#ffffff;">${qty.toLocaleString()}</strong></div>
+              <div>Delivered: <strong style="color:#22c55e;">${delivered.toLocaleString()}</strong></div>
+              <div>Remains: <strong style="color:#facc15;">${remains.toLocaleString()}</strong></div>
+              <div>Total: <strong style="color:#22c55e;">₹${o.totalCost || 0}</strong></div>
+            </div>
+
+            <div style="display:flex; justify-content:flex-end; gap:8px; border-top:1px solid rgba(255,255,255,0.06); padding-top:8px;">
+              <button type="button" class="btn btn-secondary" onclick="checkSingleOrderStatus('${o.orderId}')" style="padding:4px 10px; font-size:0.75rem;">
+                🔄 Refresh Live Status
+              </button>
+              ${o.refillable ? `
+                <button type="button" class="btn btn-secondary" onclick="triggerSmmUserRefill('${o.orderId}')" style="padding:4px 10px; font-size:0.75rem; border-color:var(--yellow-primary); color:var(--yellow-primary);">
+                  🛡️ Request Refill
+                </button>
+              ` : ''}
+            </div>
+          </div>
+        `;
+      }).join('');
+    } else {
+      container.innerHTML = `
+        <div style="text-align:center; padding:40px 20px; color:var(--text-muted);">
+          <div style="font-size:3rem; margin-bottom:10px;">🚀</div>
+          <h3>No Growth Orders Found</h3>
+          <p style="font-size:0.85rem; margin-top:6px;">Place an order from the Social Growth Portal above and track it live right here!</p>
+        </div>
+      `;
+    }
+  } catch (err) {
+    container.innerHTML = `<div style="text-align:center; color:#f87171; padding:30px;">Error loading orders: ${escapeHtml(err.message)}</div>`;
+  }
+}
+
+// Check single order status
+async function checkSingleOrderStatus(orderId) {
+  try {
+    const res = await fetch(`/api/smm/status/${orderId}`);
+    const data = await res.json();
+    if (data.success) {
+      showToast(`Order status: ${data.status || 'Active'} | Delivered: ${data.delivered || 0} / ${data.quantity || 0} (${data.progressPercent || 0}%)`, 'info');
+      fetchUserSmmOrders();
+    }
+  } catch (e) {}
+}
+
+// User trigger auto refill
+async function triggerSmmUserRefill(orderId) {
+  try {
+    const res = await fetch('/api/smm/refill', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ orderId })
+    });
+    const data = await res.json();
+    if (data.success) {
+      showToast(`🔄 Refill request submitted! Refill ID: ${data.refillId}`, 'success');
+      fetchUserSmmOrders();
+    } else {
+      showToast(`❌ Refill failed: ${data.message}`, 'error');
+    }
+  } catch (err) {
+    showToast(`Refill error: ${err.message}`, 'error');
+  }
+}
+
+

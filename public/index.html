@@ -138,23 +138,220 @@
     </p>
   </section>
 
-  <!-- CATEGORY FILTER BAR (IMMEDIATELY VISIBLE ON HOMEPAGE) -->
-  <section class="container" style="margin-bottom: 24px;">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 10px;">
-      <div style="font-size: 0.95rem; font-weight: 800; color: var(--yellow-primary); text-transform: uppercase; letter-spacing: 1px; display: flex; align-items: center; gap: 8px;">
-        <span>📁</span> Available Store Products &amp; Stock:
+  <!-- STORE VIEW SWITCHER (3D CARD SELECTOR BOXES) -->
+  <section class="container" style="margin-bottom: 25px;">
+    <div class="store-views-card-grid">
+      
+      <!-- BOX 1: DUAL SPLIT -->
+      <div id="view-tab-all" class="store-mode-card active" onclick="switchStoreView('all')">
+        <div class="mode-card-header">
+          <div class="mode-card-icon" style="background: linear-gradient(135deg, rgba(250,204,21,0.2), rgba(245,158,11,0.3)); color: #facc15;">🌟</div>
+          <span class="mode-card-badge" style="background: rgba(250,204,21,0.15); color: #facc15; border: 1px solid rgba(250,204,21,0.3);">Dual Split View</span>
+        </div>
+        <div class="mode-card-title">🌟 Split View (All In One)</div>
+        <div class="mode-card-desc">Cloud Accounts &amp; RDPs + Social Media Growth side-by-side on screen.</div>
       </div>
-      <span class="badge badge-success" style="font-size: 0.78rem;">🟢 Real-Time Verified Stock</span>
-    </div>
-    <div id="category-filter-bar" class="category-nav-bar">
-      <!-- Dynamic category tabs rendered by user.js -->
+
+      <!-- BOX 2: CLOUD PRODUCTS -->
+      <div id="view-tab-products" class="store-mode-card" onclick="switchStoreView('products')">
+        <div class="mode-card-header">
+          <div class="mode-card-icon" style="background: linear-gradient(135deg, rgba(56,189,248,0.2), rgba(37,99,235,0.3)); color: #38bdf8;">☁️</div>
+          <span class="mode-card-badge" style="background: rgba(56,189,248,0.15); color: #38bdf8; border: 1px solid rgba(56,189,248,0.3);">11 Cloud Categories</span>
+        </div>
+        <div class="mode-card-title">☁️ Cloud Accounts &amp; RDPs Store</div>
+        <div class="mode-card-desc">Azure, Gmail, WhatsApp PVA, GCP, Windows 365, AWS 8vCPU &amp; DO.</div>
+      </div>
+
+      <!-- BOX 3: SOCIAL GROWTH AUTOMATION -->
+      <div id="view-tab-smm" class="store-mode-card" onclick="switchStoreView('smm')">
+        <div class="mode-card-header">
+          <div class="mode-card-icon" style="background: linear-gradient(135deg, rgba(34,197,94,0.2), rgba(16,185,129,0.3)); color: #22c55e;">🚀</div>
+          <span class="mode-card-badge" style="background: rgba(34,197,94,0.15); color: #22c55e; border: 1px solid rgba(34,197,94,0.3);">7,600+ Live Services</span>
+        </div>
+        <div class="mode-card-title">⚡ Social Growth Automation</div>
+        <div class="mode-card-desc">YouTube, Instagram, Telegram, Facebook Followers, Likes &amp; Views.</div>
+      </div>
+
     </div>
   </section>
 
-  <!-- PRODUCTS GRID SECTION -->
+  <!-- STORE DUAL / SPLIT SECTION -->
   <section class="container" style="margin-bottom: 50px;">
-    <div id="store-products-container" class="store-grid">
-      <!-- Dynamic products rendered by user.js -->
+    <div id="store-main-layout" class="store-dual-layout">
+      
+      <!-- LEFT COLUMN: CLOUD & RDP PRODUCTS CATALOG -->
+      <div id="store-products-column">
+        <!-- CATEGORY FILTER BAR -->
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 10px;">
+          <div style="font-size: 0.95rem; font-weight: 800; color: var(--yellow-primary); text-transform: uppercase; letter-spacing: 1px; display: flex; align-items: center; gap: 8px;">
+            <span>📁</span> Available Accounts &amp; Stock:
+          </div>
+          <span class="badge badge-success" style="font-size: 0.78rem;">🟢 Real-Time Verified Stock</span>
+        </div>
+        <div id="category-filter-bar" class="category-nav-bar" style="margin-bottom: 18px;">
+          <!-- Dynamic category tabs rendered by user.js -->
+        </div>
+
+        <div id="store-products-container" class="store-grid">
+          <!-- Dynamic products rendered by user.js -->
+        </div>
+      </div>
+
+      <!-- RIGHT COLUMN: SOCIAL GROWTH AUTOMATION PORTAL (YT, IG, FB, TG SMM SERVICES) -->
+      <div id="store-smm-column">
+        <div class="smm-portal-card">
+          <div class="smm-portal-header">
+            <div>
+              <span class="badge badge-pink" style="font-size: 0.72rem; margin-bottom: 6px; display: inline-block;">⚡ 100% PRODUCTION API LINKED</span>
+              <h2 class="smm-portal-title">
+                <span>🚀</span> Social Growth Portal
+              </h2>
+              <p style="font-size: 0.84rem; color: var(--text-muted); margin-top: 4px;">
+                Instant High-Retention Followers, Likes, Subs &amp; Comments with Non-Drop Refill Guarantee.
+              </p>
+            </div>
+            <button type="button" class="btn btn-secondary" onclick="openSmmOrdersTracker()" style="padding: 6px 12px; font-size: 0.78rem; border-color: var(--yellow-primary); color: var(--yellow-primary); white-space: nowrap;">
+              🔍 Track Orders
+            </button>
+          </div>
+
+          <!-- STEP 1: SELECT PLATFORM -->
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+            <label style="font-weight:700; font-size:0.88rem; color:var(--text-main);">
+              1. Select Platform:
+            </label>
+            <span id="smm-total-services-badge" class="badge badge-success" style="font-size:0.7rem;">7,600+ Live Services</span>
+          </div>
+          <div class="smm-platform-selector" style="display:flex; gap:6px; overflow-x:auto; padding-bottom:6px; margin-bottom:12px;">
+            <div id="smm-plat-instagram" class="platform-pill-btn active platform-instagram" onclick="selectSmmPlatform('Instagram')">
+              <span style="font-size:1.15rem;">📸</span>
+              <span style="font-weight:700; font-size:0.75rem;">Instagram</span>
+            </div>
+            <div id="smm-plat-telegram" class="platform-pill-btn platform-telegram" onclick="selectSmmPlatform('Telegram')">
+              <span style="font-size:1.15rem;">✈️</span>
+              <span style="font-weight:700; font-size:0.75rem;">Telegram</span>
+            </div>
+            <div id="smm-plat-youtube" class="platform-pill-btn platform-youtube" onclick="selectSmmPlatform('YouTube')">
+              <span style="font-size:1.15rem;">▶️</span>
+              <span style="font-weight:700; font-size:0.75rem;">YouTube</span>
+            </div>
+            <div id="smm-plat-facebook" class="platform-pill-btn platform-facebook" onclick="selectSmmPlatform('Facebook')">
+              <span style="font-size:1.15rem;">👍</span>
+              <span style="font-weight:700; font-size:0.75rem;">Facebook</span>
+            </div>
+            <div id="smm-plat-tiktok" class="platform-pill-btn" onclick="selectSmmPlatform('TikTok')">
+              <span style="font-size:1.15rem;">🎵</span>
+              <span style="font-weight:700; font-size:0.75rem;">TikTok</span>
+            </div>
+            <div id="smm-plat-twitter" class="platform-pill-btn" onclick="selectSmmPlatform('Twitter / X')">
+              <span style="font-size:1.15rem;">🐦</span>
+              <span style="font-weight:700; font-size:0.75rem;">Twitter/X</span>
+            </div>
+            <div id="smm-plat-all" class="platform-pill-btn" onclick="selectSmmPlatform('ALL')">
+              <span style="font-size:1.15rem;">🌐</span>
+              <span style="font-weight:700; font-size:0.75rem;">All Services</span>
+            </div>
+          </div>
+
+          <!-- STEP 2: CATEGORY & LIVE SEARCH -->
+          <div style="margin-bottom:12px;">
+            <label style="display:block; margin-bottom:6px; font-weight:700; font-size:0.88rem; color:var(--text-main);">
+              2. Select Category &amp; Quick Search:
+            </label>
+            <div style="display:grid; grid-template-columns: 1.2fr 1fr; gap:8px; margin-bottom:8px;">
+              <select id="smm-category-select" onchange="onSmmCategoryChanged()" class="form-control" style="font-size:0.85rem; font-weight:600; background:#120724; color:#fff; border-color:var(--glass-border);">
+                <option value="">⏳ Loading Categories...</option>
+              </select>
+              <input type="text" id="smm-search-input" placeholder="🔍 Quick Search (e.g. non drop, 30d, reel)..." oninput="onSmmSearchInput()" class="form-control" style="font-size:0.82rem; background:#120724; color:#fff;" />
+            </div>
+          </div>
+
+          <!-- STEP 3: SELECT SPECIFIC SERVICE -->
+          <label style="display:block; margin-bottom:6px; font-weight:700; font-size:0.88rem; color:var(--text-main);">
+            3. Choose Service (Non-Drop / Guaranteed):
+          </label>
+          <select id="smm-service-select" onchange="onSmmServiceChanged()" class="form-control" style="font-size:0.86rem; font-weight:600; margin-bottom:12px; background:#120724; color:#fff; border-color:var(--glass-border);">
+            <option value="">-- Choose Category First --</option>
+          </select>
+
+          <!-- LIVE TIER GUARANTEE INFO BOX -->
+          <div id="smm-tier-info-box" class="smm-tier-info-box" style="margin-bottom:14px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+              <span id="smm-tier-badge" class="badge badge-success">🛡️ Refill Protected Service</span>
+              <span id="smm-tier-speed" style="font-size:0.75rem; color:#38bdf8;">⚡ Instant Automated Start</span>
+            </div>
+            <div id="smm-tier-desc" style="color:var(--text-muted); font-size:0.82rem; line-height:1.4; margin-bottom:8px;">
+              Real High-Retention organic traffic delivered directly from Peakerr API servers.
+            </div>
+            <div class="smm-tier-tags" style="display:flex; gap:6px; flex-wrap:wrap;">
+              <span id="smm-tier-refill-tag" class="badge badge-yellow" style="font-size:0.72rem;">🛡️ Auto-Refill Guarantee</span>
+              <span id="smm-tier-minmax-tag" class="badge badge-primary" style="font-size:0.72rem;">🔢 Min: 1,000 | Max: 100,000</span>
+              <span id="smm-tier-type-tag" class="badge badge-secondary" style="font-size:0.72rem;">Default</span>
+            </div>
+          </div>
+
+          <!-- STEP 4: TARGET LINK (CHANNEL / PROFILE / POST) -->
+          <label style="display:block; margin-bottom:6px; font-weight:700; font-size:0.88rem; color:var(--text-main);">
+            4. Target Link (<span id="smm-link-type-label">Channel / Post / Profile URL</span>) <span class="required-star">*</span>:
+          </label>
+          <input type="url" id="smm-target-url" class="form-control" placeholder="https://instagram.com/username or https://t.me/channel" style="font-family:monospace; font-size:0.88rem; margin-bottom:14px; background:#120724; color:#fff;" required />
+
+          <!-- CONDITIONAL: CUSTOM COMMENTS INPUT (SHOWS IF COMMENTS SERVICE SELECTED) -->
+          <div id="smm-custom-comments-group" style="display:none; margin-bottom:14px;">
+            <label style="display:block; margin-bottom:6px; font-weight:700; font-size:0.88rem; color:var(--pink-accent);">
+              💬 Custom Comments (1 Comment per line) <span class="required-star">*</span>:
+            </label>
+            <textarea id="smm-custom-comments" class="form-control" rows="3" placeholder="Great video brother!&#10;Very informative content!&#10;Keep it up! 🔥" oninput="onCustomCommentsInput()" style="font-size:0.85rem; background:#120724; color:#fff;"></textarea>
+            <small style="color:var(--text-dim); display:block; margin-top:4px;">
+              Lines entered: <span id="smm-comments-count" style="color:var(--yellow-primary); font-weight:700;">0</span> (Quantity will sync with lines count).
+            </small>
+          </div>
+
+          <!-- STEP 5: ORDER QUANTITY -->
+          <div style="margin-bottom:16px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+              <label style="font-weight:700; font-size:0.88rem; color:var(--text-main);">
+                5. Order Quantity (Min: 1,000):
+              </label>
+              <span id="smm-qty-limits-hint" style="font-size:0.75rem; color:var(--text-dim);">Min: 1,000 | Max: 100,000</span>
+            </div>
+            <input type="number" id="smm-quantity-input" value="1000" min="1000" oninput="calculateSmmPrice()" class="form-control" style="font-size:1.1rem; font-weight:800; text-align:center; background:#120724; color:#fff;" required />
+            
+            <!-- Quick Chips -->
+            <div class="smm-qty-chips">
+              <button type="button" class="smm-chip-btn active" onclick="setSmmQuantity(1000)">1,000</button>
+              <button type="button" class="smm-chip-btn" onclick="setSmmQuantity(2000)">2,000</button>
+              <button type="button" class="smm-chip-btn" onclick="setSmmQuantity(5000)">5,000</button>
+              <button type="button" class="smm-chip-btn" onclick="setSmmQuantity(10000)">10,000</button>
+              <button type="button" class="smm-chip-btn" onclick="setSmmQuantity(25000)">25,000</button>
+            </div>
+          </div>
+
+          <!-- PRICE SUMMARY BANNER -->
+          <div class="smm-price-summary-banner">
+            <div>
+              <div style="font-size:0.75rem; color:var(--text-dim); text-transform:uppercase; letter-spacing:0.5px;">Total Order Cost</div>
+              <div id="smm-rate-indicator" style="font-size:0.82rem; color:var(--yellow-primary); font-weight:600;">Rate: ₹350 / 1K</div>
+            </div>
+            <div style="text-align:right;">
+              <div id="smm-total-price-display" class="smm-total-amount">₹350.00</div>
+              <div id="smm-total-usdt-display" style="font-size:0.75rem; color:var(--yellow-primary);">(~ 4.07 USDT)</div>
+            </div>
+          </div>
+
+          <!-- ACTION BUTTON -->
+          <button id="btn-submit-smm-order" onclick="openSmmCheckoutModal()" class="btn btn-primary btn-block" style="padding:14px; font-size:1rem; font-weight:800; letter-spacing:0.5px; box-shadow:0 0 20px rgba(250,204,21,0.3);">
+            🚀 Proceed to Instant Order Checkout
+          </button>
+          
+          <div style="display:flex; justify-content:center; gap:12px; margin-top:12px; font-size:0.76rem; color:var(--text-dim);">
+            <span>⚡ Dual Payment: UPI &amp; BEP20 USDT</span>
+            <span>•</span>
+            <span>🛡️ Refill Protected</span>
+          </div>
+        </div>
+      </div>
+
     </div>
   </section>
 
@@ -525,7 +722,7 @@
         <p style="font-size: 0.85rem; color: var(--text-muted);">Enter your registered Email/Phone & Password</p>
       </div>
 
-      <form id="user-login-form" onsubmit="event.preventDefault(); handleUserLogin();">
+      <form id="user-login-form">
         <div class="form-group">
           <label class="form-label">Email or Phone Number <span class="required-star">*</span></label>
           <input type="text" id="login-email-phone" class="form-control" placeholder="e.g. user@gmail.com or 9876543210" required>
@@ -637,7 +834,7 @@
         <p style="font-size: 0.85rem; color: var(--text-muted);">Unified account with instant automated Gmail OTP verification</p>
       </div>
 
-      <form id="user-register-form" onsubmit="event.preventDefault(); handleUserRegister();">
+      <form id="user-register-form">
         <div class="form-group">
           <label class="form-label">Full Name <span class="required-star">*</span></label>
           <input type="text" id="reg-name" class="form-control" placeholder="e.g. Prince Kumar" required>
@@ -1008,6 +1205,186 @@
       <div id="user-notifications-list" style="overflow-y: auto; flex: 1; padding-right: 4px;">
         <div style="text-align: center; color: var(--text-muted); padding: 30px;">
           🔍 Loading notifications...
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SMM CHECKOUT & PAYMENT MODAL -->
+  <div id="smm-checkout-modal" class="modal-overlay">
+    <div class="modal-container glass-card" style="max-width: 600px;">
+      <button class="modal-close-btn" onclick="closeModal('smm-checkout-modal')" title="Close Window">&times;</button>
+      
+      <div style="text-align: center; margin-bottom: 18px;">
+        <div id="smm-checkout-plat-icon" style="font-size: 2.2rem; margin-bottom: 4px;">🚀</div>
+        <h2 id="smm-checkout-title" style="color: var(--yellow-primary); font-size: 1.4rem; line-height: 1.3;">
+          Confirm Growth Order
+        </h2>
+        <span id="smm-checkout-tier-badge" class="badge badge-success" style="font-weight: 700; margin-top: 4px;">Tier 1: 100% Non-Drop Lifetime</span>
+      </div>
+
+      <!-- ORDER DETAILS OVERVIEW -->
+      <div style="background: rgba(0, 0, 0, 0.4); border: 1px solid var(--glass-border); border-radius: var(--radius-md); padding: 14px; margin-bottom: 16px; font-size: 0.88rem;">
+        <div style="display:flex; justify-content:space-between; margin-bottom:6px;">
+          <span style="color:var(--text-muted);">Target Link:</span>
+          <span id="smm-checkout-url" style="color:#38bdf8; font-family:monospace; word-break:break-all; max-width:280px; text-align:right;"></span>
+        </div>
+        <div style="display:flex; justify-content:space-between; margin-bottom:6px;">
+          <span style="color:var(--text-muted);">Quantity:</span>
+          <strong id="smm-checkout-qty" style="color:#ffffff;">1,000</strong>
+        </div>
+        <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px dashed var(--glass-border); padding-top:8px; margin-top:8px;">
+          <span style="font-weight:700; color:var(--yellow-primary);">Total Amount Payable:</span>
+          <div style="text-align:right;">
+            <span id="smm-checkout-total-inr" style="font-size:1.25rem; font-weight:800; color:#22c55e;">₹350.00</span>
+            <span id="smm-checkout-total-usdt" style="font-size:0.8rem; color:var(--yellow-primary); display:block;">(~ 4.07 USDT)</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- CUSTOMER CONTACT DETAILS -->
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:16px;">
+        <div>
+          <label style="font-size:0.8rem; font-weight:700; color:var(--text-muted);">Your Name *</label>
+          <input type="text" id="smm-user-name" class="form-control" placeholder="Your Name" style="font-size:0.88rem;" required>
+        </div>
+        <div>
+          <label style="font-size:0.8rem; font-weight:700; color:var(--text-muted);">WhatsApp / Phone *</label>
+          <input type="text" id="smm-user-phone" class="form-control" placeholder="e.g. 9876543210" style="font-size:0.88rem;" required>
+        </div>
+      </div>
+
+      <!-- PAYMENT SELECTION TABS -->
+      <!-- METHOD 1: UPI DIRECT -->
+      <div class="upi-card" style="background: rgba(34,197,94,0.06); border: 1px solid #22c55e; border-radius: var(--radius-md); padding: 16px; margin-bottom: 16px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+          <strong style="color: #22c55e; font-size: 0.95rem;">
+            🏦 Method 1: Pay via UPI (GPay / PhonePe / Paytm / BHIM)
+          </strong>
+          <span class="badge badge-success">Instant</span>
+        </div>
+        <p style="font-size: 0.82rem; color: var(--text-muted); margin-bottom: 10px;">
+          Pay exact <strong id="smm-upi-amount-hint" style="color:#22c55e;">₹350</strong> to Owner's Official Merchant UPI ID:
+        </p>
+
+        <div style="background: #000; padding: 10px 14px; border-radius: 8px; border: 1px dashed #22c55e; font-family: monospace; font-size: 0.92rem; color: #22c55e; word-break: break-all; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; gap: 8px;">
+          <span id="smm-upi-merchant-id">9507325677-1@naviaxis</span>
+          <button type="button" class="btn btn-secondary" onclick="copyUpiId()" style="padding: 4px 10px; font-size: 0.75rem; white-space: nowrap; border-color: #22c55e; color: #22c55e;">
+            📋 Copy UPI
+          </button>
+        </div>
+
+        <div>
+          <label style="font-size: 0.84rem; color: #ffffff; font-weight: 600; display: block; margin-bottom: 4px;">
+            Enter 12-Digit UPI UTR / Ref Number:
+          </label>
+          <input type="text" id="smm-upi-utr" class="form-control" placeholder="12-digit UTR ID (e.g. 423456789012)" style="font-family: monospace; font-size: 0.88rem;">
+        </div>
+      </div>
+
+      <!-- METHOD 2: BEP20 USDT -->
+      <div class="bep20-card" style="background: rgba(236,72,153,0.06); border: 1px solid var(--pink-accent); border-radius: var(--radius-md); padding: 16px; margin-bottom: 18px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+          <strong style="color: var(--pink-accent); font-size: 0.95rem;">
+            💎 Method 2: Binance / Trust Wallet (BEP20 USDT)
+          </strong>
+          <span class="badge badge-yellow">Crypto</span>
+        </div>
+        <div style="background: #000; padding: 10px 12px; border-radius: 8px; border: 1px dashed var(--yellow-primary); font-family: monospace; font-size: 0.82rem; color: var(--yellow-primary); word-break: break-all; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; gap: 8px;">
+          <span id="smm-bep20-addr">0xD3D65940718F769E66E1e5c425AcFf76C2D9bFf2</span>
+          <button type="button" class="btn btn-secondary" onclick="copyBep20Address()" style="padding: 3px 8px; font-size: 0.72rem; white-space: nowrap;">
+            📋 Copy
+          </button>
+        </div>
+        <div>
+          <label style="font-size: 0.82rem; color: #ffffff; display: block; margin-bottom: 4px;">
+            Crypto Tx Hash (0x... if paying with BEP20 USDT):
+          </label>
+          <input type="text" id="smm-tx-hash" class="form-control" placeholder="Paste 66-character 0x... TxID from Binance / Wallet" style="font-family: monospace; font-size: 0.82rem;">
+        </div>
+      </div>
+
+      <!-- BUTTONS -->
+      <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+        <button type="button" class="btn btn-secondary" onclick="closeModal('smm-checkout-modal')" style="padding: 12px 18px; font-weight: 700; flex: 1;">
+          ❌ Cancel
+        </button>
+        <button type="button" id="btn-submit-smm-upi" class="btn btn-primary" onclick="confirmSmmOrderPlacement('UPI')" style="padding: 12px 18px; font-weight: 800; flex: 1.5; background: #22c55e; border-color: #22c55e; color: #000;">
+          🏦 Submit UPI Order
+        </button>
+        <button type="button" id="btn-submit-smm-crypto" class="btn btn-success" onclick="confirmSmmOrderPlacement('BEP20')" style="padding: 12px 18px; font-weight: 800; flex: 1.5;">
+          ⚡ Pay BEP20 Crypto
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- SMM ORDER SUCCESS MODAL -->
+  <div id="smm-success-modal" class="modal-overlay">
+    <div class="modal-container glass-card" style="max-width: 540px; text-align: center;">
+      <div style="font-size: 3rem; margin-bottom: 10px; animation: pulse 1.5s infinite;">🎉</div>
+      <h2 style="color: var(--green-bright); font-size: 1.5rem; margin-bottom: 6px;">
+        Order Placed Successfully!
+      </h2>
+      <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 18px;">
+        Your growth order has been recorded in the automation pipeline and is now processing.
+      </p>
+
+      <div style="background: rgba(0, 0, 0, 0.4); border: 1px solid var(--glass-border); border-radius: var(--radius-md); padding: 16px; margin-bottom: 20px; text-align: left; font-size: 0.88rem;">
+        <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
+          <span style="color:var(--text-muted);">Order Reference ID:</span>
+          <strong id="smm-success-order-id" style="color:var(--yellow-primary); font-family:monospace; font-size:1.05rem;">SMM-123456</strong>
+        </div>
+        <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
+          <span style="color:var(--text-muted);">Service:</span>
+          <span id="smm-success-service" style="color:#ffffff; font-weight:600;"></span>
+        </div>
+        <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
+          <span style="color:var(--text-muted);">Target Link:</span>
+          <span id="smm-success-link" style="color:#38bdf8; font-family:monospace; word-break:break-all; max-width:240px;"></span>
+        </div>
+        <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
+          <span style="color:var(--text-muted);">Quantity:</span>
+          <strong id="smm-success-qty" style="color:#ffffff;"></strong>
+        </div>
+        <div style="display:flex; justify-content:space-between;">
+          <span style="color:var(--text-muted);">Status:</span>
+          <span class="badge badge-warning">⚡ Processing</span>
+        </div>
+      </div>
+
+      <div style="display: flex; gap: 10px;">
+        <button type="button" class="btn btn-secondary" onclick="closeModal('smm-success-modal')" style="padding: 12px; flex: 1; font-weight: 700;">
+          Close Window
+        </button>
+        <button type="button" class="btn btn-primary" onclick="closeModal('smm-success-modal'); openSmmOrdersTracker();" style="padding: 12px; flex: 1.5; font-weight: 800;">
+          🔍 Track This Order
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- SMM ORDERS TRACKER MODAL -->
+  <div id="smm-tracker-modal" class="modal-overlay">
+    <div class="modal-container glass-card" style="max-width: 700px; max-height: 85vh; display: flex; flex-direction: column;">
+      <button class="modal-close-btn" onclick="closeModal('smm-tracker-modal')" title="Close Window">&times;</button>
+      
+      <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--glass-border); padding-bottom: 14px; margin-bottom: 16px;">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <span style="font-size: 1.6rem;">📊</span>
+          <div>
+            <h2 style="color: var(--yellow-primary); font-size: 1.25rem; line-height: 1.2;">Growth Orders Tracker</h2>
+            <p style="font-size: 0.78rem; color: var(--text-muted); margin: 0;">Live status, start counts, remains &amp; 1-click refill</p>
+          </div>
+        </div>
+        <button type="button" class="btn btn-secondary" onclick="fetchUserSmmOrders()" style="padding: 6px 12px; font-size: 0.78rem; border-color: rgba(255,255,255,0.2);">
+          🔄 Refresh
+        </button>
+      </div>
+
+      <div id="smm-tracker-orders-list" style="overflow-y: auto; flex: 1; padding-right: 4px;">
+        <div style="text-align: center; color: var(--text-muted); padding: 40px 20px;">
+          🔍 Loading your growth orders...
         </div>
       </div>
     </div>

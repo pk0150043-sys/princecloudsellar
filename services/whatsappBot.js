@@ -92,6 +92,24 @@ async function sendWhatsAppDirectDocument(toNumber, fileBuffer, fileName, captio
   }
 }
 
+// Broadcast to ALL WhatsApp customers who have messaged the bot
+async function broadcastToAllWhatsAppUsers(title, message, getPersistentStore) {
+  if (!sockInstance) return { success: false, message: 'WhatsApp socket not connected' };
+  const store = getPersistentStore ? getPersistentStore() : (savedServices ? savedServices.getPersistentStore() : null);
+  const jids = store?.whatsappCustomerJids || [];
+  const text = `📢 *${title}*\n\n${message}\n\n🌐 Visit Store: http://localhost:5000\n⚡ PrinceCloudSellar Official`;
+
+  let sent = 0;
+  for (const jid of jids) {
+    try {
+      await sockInstance.sendMessage(jid, { text });
+      sent++;
+      await new Promise(r => setTimeout(r, 200));
+    } catch (e) {}
+  }
+  return { success: true, sent, totalJids: jids.length };
+}
+
 async function initWhatsAppBot(services) {
   savedServices = services;
   const store = services.getPersistentStore();
@@ -207,6 +225,20 @@ async function startBaileysSocket() {
 
         const jid = msg.key.remoteJid;
         if (jid === 'status@broadcast') continue;
+
+        // Auto-record customer JID for multi-channel broadcasts
+        if (savedServices) {
+          try {
+            const store = savedServices.getPersistentStore();
+            if (store) {
+              if (!store.whatsappCustomerJids) store.whatsappCustomerJids = [];
+              if (!store.whatsappCustomerJids.includes(jid)) {
+                store.whatsappCustomerJids.push(jid);
+                savedServices.saveLocalDB();
+              }
+            }
+          } catch (e) {}
+        }
 
         const fromNumber = jid.split('@')[0];
         const text = msg.message.conversation ||
@@ -349,35 +381,24 @@ async function handleWhatsAppIncomingMessage(sock, jid, fromNumber, text, servic
     const userGreeting = session.linkedUser ? `👤 *Welcome back, ${session.linkedUser.name}!*\n\n` : '';
 
     const welcomeMsg = `👑 *WELCOME TO PRINCE CLOUD SELLAR* 👑\n` +
-      `⚡ *24/7 Automated Cloud Accounts, RDPs, Servers & PVAs*\n\n` +
+      `⚡ *24/7 Automated Cloud Accounts & Social Growth Automation*\n\n` +
       userGreeting +
-      `🌐 *About Our Website & Platform:*\n` +
-      `Prince Cloud Sellar is the premier automated marketplace providing instant, verified cloud developer accounts (Azure, AWS, GCP, Oracle, Windows 365, Aged PVAs, etc.) with real-time stock delivery.\n\n` +
+      `🌐 *About Our Platform:*\n` +
+      `Instant cloud developer accounts (Azure, AWS, GCP, Windows 365, Aged PVAs) + High-Retention Social Media Growth (YT, IG, FB, TG).\n\n` +
       `📜 *Terms & Conditions:*\n` +
-      `1. All credentials are 100% freshly created and tested before dispatch.\n` +
+      `1. All credentials & services are 100% verified with automated dispatch.\n` +
       `2. 24-48 Hours replacement warranty on valid issues reported via support.\n` +
-      `3. No illegal activities or terms violation on cloud providers.\n` +
-      `4. Crypto BEP20 USDT payments are auto-verified on-chain. UPI payments are verified by Admin via WhatsApp proof.\n\n` +
+      `3. SMM Growth Orders have minimum 1,000 units with refill protection.\n` +
+      `4. Crypto BEP20 USDT & UPI Instant payments supported.\n\n` +
       `🤖 *QUICK MENU OPTIONS (Reply with Number):*\n` +
-      `*1* - 🛍️ Available Products & Stock\n` +
-      `*2* - 📦 My Orders\n` +
-      `*3* - 👤 Account / Login / Register\n` +
-      `*4* - 🏦 UPI Payment Details\n` +
-      `*5* - 🎫 Customer Support\n\n` +
-      `_Reply with a number (e.g. 1) or type !buy <number> to proceed!_`;
+      `*1* - 🛍️ Cloud & RDP Accounts Store\n` +
+      `*2* - 🚀 Social Growth (YT, IG, FB, TG Followers, Likes)\n` +
+      `*3* - 📦 My Orders & Tracking\n` +
+      `*4* - 👤 Account / Login / Register\n` +
+      `*5* - 🏦 UPI & Crypto Payment Details\n` +
+      `*6* - 🎫 Customer Support\n\n` +
+      `_Reply with a number (e.g. 1 or 2) or type !buy <number> to proceed!_`;
 
-    const logoBuf = getLogoBuffer();
-    if (logoBuf) {
-      try {
-        await sock.sendMessage(jid, {
-          image: logoBuf,
-          caption: welcomeMsg
-        });
-        return;
-      } catch (e) {
-        console.error('Send welcome image error:', e.message);
-      }
-    }
     await sendReply(welcomeMsg);
   };
 
@@ -397,6 +418,13 @@ async function handleWhatsAppIncomingMessage(sock, jid, fromNumber, text, servic
   // Global Start / Menu / Greetings
   if (lower === '!start' || lower === '!menu' || lower === '/start' || lower === '/menu' || lower === 'hi' || lower === 'hello' || lower === 'hey' || lower === 'menu' || lower === 'start') {
     await sendWelcome();
+    return;
+  }
+
+  // Social Growth / SMM Shortcut Command
+  if (lower === '!growth' || lower === '/growth' || lower === '!smm' || lower === '/smm' || lower === 'growth' || lower === 'smm' || lower === 'followers' || lower === 'subscribers') {
+    session.step = null;
+    await sendWhatsAppSmmGrowthMenu(sendReply, fromNumber, store);
     return;
   }
 
@@ -490,19 +518,23 @@ async function handleWhatsAppIncomingMessage(sock, jid, fromNumber, text, servic
       await sendProductsCatalog(sendReply, fromNumber, store);
       return;
     }
-    if (text === '2') {
-      await sendUserOrders(sendReply, fromNumber, store);
+    if (text === '2' || lower === 'growth' || lower === 'smm' || lower === 'followers' || lower === 'subscribers') {
+      await sendWhatsAppSmmGrowthMenu(sendReply, fromNumber, store);
       return;
     }
     if (text === '3') {
-      await sendAccountProfile(sendReply, fromNumber, store);
+      await sendUserOrders(sendReply, fromNumber, store);
       return;
     }
     if (text === '4') {
-      await sendUpiInfo(sendReply, store);
+      await sendAccountProfile(sendReply, fromNumber, store);
       return;
     }
     if (text === '5') {
+      await sendUpiInfo(sendReply, store);
+      return;
+    }
+    if (text === '6') {
       const supportUrl = store.settings.supportUrl || 'https://wa.me/919507325677';
       await sendReply(`🎫 *PRINCE CLOUD SELLAR CUSTOMER SUPPORT*\n\n💬 Owner WhatsApp: ${supportUrl}\n📞 Phone: +91 9507325677`);
       return;
@@ -524,6 +556,294 @@ async function handleWhatsAppIncomingMessage(sock, jid, fromNumber, text, servic
     }
 
     await sendWelcome();
+    return;
+  }
+
+  // 1.5. Step: SMM Platform Selection
+  if (session.step === 'SMM_AWAITING_PLATFORM') {
+    if (text === '0' || lower === 'cancel' || lower === 'back') {
+      session.step = null;
+      await sendWelcome();
+      return;
+    }
+
+    if (text === '1' || lower === 'ig' || lower === 'instagram') {
+      session.smmPlatform = 'instagram';
+      session.smmPlatformServices = [
+        { serviceId: 31850, key: 'ig_followers_nondrop', name: 'Instagram 100% Non-Drop Followers (Lifetime Refill)', rate: 180, min: 1000 },
+        { serviceId: 31714, key: 'ig_followers_drop5', name: 'Instagram Low Drop Followers (30D Refill)', rate: 120, min: 1000 },
+        { serviceId: 31905, key: 'ig_likes_nondrop', name: 'Instagram HQ Post/Reel Likes', rate: 45, min: 1000 },
+        { serviceId: 31850, key: 'ig_comments_nondrop', name: 'Instagram Custom Comments', rate: 380, min: 1000 }
+      ];
+      session.step = 'SMM_AWAITING_SERVICE';
+      await sendReply(`📸 *INSTAGRAM GROWTH SERVICES*\n\n` +
+        `*1* - ⚡ 100% Non-Drop Followers: ₹180 / 1K\n` +
+        `*2* - ⚡ Low Drop Followers (30D Refill): ₹120 / 1K\n` +
+        `*3* - ❤️ HQ Post/Reel Likes: ₹45 / 1K\n` +
+        `*4* - 💬 Custom Comments: ₹380 / 1K\n` +
+        `*0* - 🔙 Back to Platforms\n\n` +
+        `_Reply with 1, 2, 3, or 4 to choose package:_`);
+      return;
+    }
+
+    if (text === '2' || lower === 'yt' || lower === 'youtube') {
+      session.smmPlatform = 'youtube';
+      session.smmPlatformServices = [
+        { serviceId: 23304, key: 'yt_subs_nondrop', name: 'YouTube 100% Non-Drop Subscribers (Lifetime Refill)', rate: 350, min: 1000 },
+        { serviceId: 18403, key: 'yt_subs_drop5', name: 'YouTube Fast Subs (30D Refill)', rate: 220, min: 1000 },
+        { serviceId: 32112, key: 'yt_likes_nondrop', name: 'YouTube High Retention Likes', rate: 90, min: 1000 },
+        { serviceId: 23304, key: 'yt_comments_nondrop', name: 'YouTube Custom Comments', rate: 450, min: 1000 }
+      ];
+      session.step = 'SMM_AWAITING_SERVICE';
+      await sendReply(`▶️ *YOUTUBE GROWTH SERVICES*\n\n` +
+        `*1* - ⚡ 100% Non-Drop Subscribers: ₹350 / 1K\n` +
+        `*2* - ⚡ Fast Subs (30D Refill): ₹220 / 1K\n` +
+        `*3* - 👍 High Retention Video Likes: ₹90 / 1K\n` +
+        `*4* - 💬 Custom Comments: ₹450 / 1K\n` +
+        `*0* - 🔙 Back to Platforms\n\n` +
+        `_Reply with 1, 2, 3, or 4 to choose package:_`);
+      return;
+    }
+
+    if (text === '3' || lower === 'tg' || lower === 'telegram') {
+      session.smmPlatform = 'telegram';
+      session.smmPlatformServices = [
+        { serviceId: 31703, key: 'tg_members_nondrop', name: 'Telegram 100% Non-Drop Members (365D Refill)', rate: 160, min: 1000 },
+        { serviceId: 31702, key: 'tg_members_drop5', name: 'Telegram 30D Refill Channel Members', rate: 110, min: 1000 },
+        { serviceId: 31702, key: 'tg_members_drop10', name: 'Telegram Standard Channel Members', rate: 65, min: 1000 }
+      ];
+      session.step = 'SMM_AWAITING_SERVICE';
+      await sendReply(`✈️ *TELEGRAM GROWTH SERVICES*\n\n` +
+        `*1* - ⚡ 100% Non-Drop Channel Members (365D): ₹160 / 1K\n` +
+        `*2* - ⚡ 30D Refill Channel Members: ₹110 / 1K\n` +
+        `*3* - ⚡ Standard Channel Members: ₹65 / 1K\n` +
+        `*0* - 🔙 Back to Platforms\n\n` +
+        `_Reply with 1, 2, or 3 to choose package:_`);
+      return;
+    }
+
+    if (text === '4' || lower === 'fb' || lower === 'facebook') {
+      session.smmPlatform = 'facebook';
+      session.smmPlatformServices = [
+        { serviceId: 32148, key: 'fb_followers_nondrop', name: 'Facebook 100% Non-Drop Followers', rate: 210, min: 1000 },
+        { serviceId: 32147, key: 'fb_followers_drop5', name: 'Facebook Instant Page Followers', rate: 140, min: 1000 },
+        { serviceId: 32147, key: 'fb_likes_nondrop', name: 'Facebook Post Likes & Reactions', rate: 60, min: 1000 }
+      ];
+      session.step = 'SMM_AWAITING_SERVICE';
+      await sendReply(`👍 *FACEBOOK GROWTH SERVICES*\n\n` +
+        `*1* - ⚡ 100% Non-Drop Page/Profile Followers: ₹210 / 1K\n` +
+        `*2* - ⚡ Instant Page Followers: ₹140 / 1K\n` +
+        `*3* - ❤️ Post Likes & Love Reactions: ₹60 / 1K\n` +
+        `*0* - 🔙 Back to Platforms\n\n` +
+        `_Reply with 1, 2, or 3 to choose package:_`);
+      return;
+    }
+
+    if (text === '5' || lower === 'tt' || lower === 'twitter' || lower === 'tiktok') {
+      session.smmPlatform = 'other';
+      session.smmPlatformServices = [
+        { serviceId: 31703, key: 'tt_followers', name: 'TikTok HQ Non-Drop Followers', rate: 190, min: 1000 },
+        { serviceId: 31703, key: 'tt_likes', name: 'TikTok Video Likes', rate: 50, min: 1000 },
+        { serviceId: 31703, key: 'x_followers', name: 'Twitter / X Profile Followers', rate: 240, min: 1000 }
+      ];
+      session.step = 'SMM_AWAITING_SERVICE';
+      await sendReply(`🎵 *TIKTOK & 🐦 TWITTER / X SERVICES*\n\n` +
+        `*1* - 🎵 TikTok Followers: ₹190 / 1K\n` +
+        `*2* - ❤️ TikTok Video Likes: ₹50 / 1K\n` +
+        `*3* - 🐦 Twitter / X Followers: ₹240 / 1K\n` +
+        `*0* - 🔙 Back to Platforms\n\n` +
+        `_Reply with 1, 2, or 3 to choose package:_`);
+      return;
+    }
+
+    await sendWhatsAppSmmGrowthMenu(sendReply, fromNumber, store);
+    return;
+  }
+
+  // Step: SMM Service Selection
+  if (session.step === 'SMM_AWAITING_SERVICE') {
+    if (text === '0' || lower === 'back' || lower === 'cancel') {
+      await sendWhatsAppSmmGrowthMenu(sendReply, fromNumber, store);
+      return;
+    }
+
+    const srvNum = parseInt(text, 10);
+    const servicesList = session.smmPlatformServices || [];
+    if (!isNaN(srvNum) && srvNum >= 1 && srvNum <= servicesList.length) {
+      const srv = servicesList[srvNum - 1];
+      session.selectedSmmService = srv;
+      session.step = 'SMM_AWAITING_LINK';
+      await sendReply(`🎯 *Selected Service:* *${srv.name}*\n` +
+        `💰 *Rate:* ₹${srv.rate} / 1,000 Units\n` +
+        `📌 *Min Quantity:* 1,000 Units\n\n` +
+        `👉 *Please reply with your Target Link (Profile/Channel/Post URL):*\n` +
+        `_Example:_ \`https://instagram.com/username\` or \`https://t.me/channel\`\n\n` +
+        `_(Or reply 0 to go back)_`);
+      return;
+    }
+
+    await sendReply(`⚠️ Invalid selection. Please reply with a number between 1 and ${servicesList.length} (or 0 for Back):`);
+    return;
+  }
+
+  // Step: SMM Link Input
+  if (session.step === 'SMM_AWAITING_LINK') {
+    if (text === '0' || lower === 'back' || lower === 'cancel') {
+      await sendWhatsAppSmmGrowthMenu(sendReply, fromNumber, store);
+      return;
+    }
+
+    if (!text.includes('.') || text.length < 5) {
+      await sendReply(`⚠️ *Invalid Link.* Please send a valid URL (e.g. \`https://instagram.com/username\` or \`https://t.me/channel\`):\n_(Or reply 0 for Back)_`);
+      return;
+    }
+
+    session.smmLink = text.trim();
+    session.step = 'SMM_AWAITING_QTY';
+    await sendReply(`🎯 *Target Link Saved:*\n\`${session.smmLink}\`\n\n` +
+      `👉 *Please enter Quantity (Minimum 1,000 Units):*\n` +
+      `_Examples: 1000, 2000, 5000, 10000_\n\n` +
+      `_(Or reply 0 to go back)_`);
+    return;
+  }
+
+  // Step: SMM Quantity Input
+  if (session.step === 'SMM_AWAITING_QTY') {
+    if (text === '0' || lower === 'back' || lower === 'cancel') {
+      await sendWhatsAppSmmGrowthMenu(sendReply, fromNumber, store);
+      return;
+    }
+
+    const qtyNum = parseInt(text.replace(/[^0-9]/g, ''), 10);
+    if (isNaN(qtyNum) || qtyNum < 1000) {
+      await sendReply(`⚠️ *Minimum Order Quantity is 1,000 Units.* Please enter 1000 or higher:\n_(Or reply 0 for Back)_`);
+      return;
+    }
+
+    const srv = session.selectedSmmService;
+    session.smmQty = qtyNum;
+    const totalCost = Math.ceil((qtyNum / 1000) * srv.rate);
+    session.smmTotalCost = totalCost;
+    session.step = 'SMM_AWAITING_UTR';
+
+    const upiId = store.settings?.ownerUpiId || '9507325677-1@naviaxis';
+    await sendReply(`📋 *SMM ORDER BILL & PAYMENT* 📋\n\n` +
+      `⚡ *Service:* *${srv.name}*\n` +
+      `🎯 *Target:* \`${session.smmLink}\`\n` +
+      `🔢 *Quantity:* *${qtyNum.toLocaleString()} Units*\n` +
+      `💰 *Total Amount:* *₹${totalCost.toLocaleString()}*\n\n` +
+      `🏦 *Pay via UPI:* \`${upiId}\`\n` +
+      `👤 *Payee Name:* Prince Kumar\n` +
+      `📱 *Apps:* Google Pay, PhonePe, Paytm, Navi, Cred\n\n` +
+      `👉 *After payment, please reply with your 12-digit UPI UTR Number:*\n` +
+      `_(Or reply 0 to cancel)_`);
+    return;
+  }
+
+  // Step: SMM UTR Input & Finalize Order
+  if (session.step === 'SMM_AWAITING_UTR') {
+    if (text === '0' || lower === 'cancel') {
+      session.step = null;
+      await sendWelcome();
+      return;
+    }
+
+    const cleanUtr = text.replace(/[^a-zA-Z0-9]/g, '').trim();
+    if (cleanUtr.length < 8) {
+      await sendReply(`⚠️ *Invalid UTR ID.* Please send the 12-digit transaction number from your UPI payment receipt:\n_(Or reply 0 to cancel)_`);
+      return;
+    }
+
+    const srv = session.selectedSmmService;
+    const qty = session.smmQty;
+    const totalCost = session.smmTotalCost;
+    const targetUrl = session.smmLink;
+    const orderId = 'SMM-' + Date.now().toString(36).toUpperCase();
+
+    const newOrder = {
+      _id: 'smm_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7),
+      orderId,
+      providerOrderId: '',
+      userId: session.linkedUser?._id || 'wa_' + fromNumber,
+      userName: session.linkedUser?.name || 'WhatsApp Customer',
+      userEmail: session.linkedUser?.email || '',
+      userPhone: session.linkedUser?.phone || fromNumber,
+      serviceKey: srv.key || 'smm_custom',
+      serviceId: srv.serviceId || 31850,
+      serviceName: srv.name,
+      tier: 'Social Growth',
+      targetUrl,
+      quantity: qty,
+      rate: srv.rate,
+      totalCost,
+      paymentMethod: 'UPI',
+      paymentStatus: 'PENDING_UPI_VERIFICATION',
+      utrId: cleanUtr,
+      status: 'Processing',
+      remains: qty,
+      startCount: 0,
+      refillable: true,
+      refillStatus: 'Eligible',
+      notes: 'Placed via WhatsApp Shop Bot',
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+
+    store.smmOrders = store.smmOrders || [];
+    store.smmOrders.unshift(newOrder);
+
+    if (getDBStatus() && SmmOrder) {
+      try {
+        await SmmOrder.create(newOrder);
+      } catch (e) {
+        console.error('SmmOrder.create error:', e.message);
+      }
+    }
+
+    // Owner Notification
+    const notif = {
+      _id: 'notif_' + Date.now(),
+      recipientType: 'ADMIN',
+      userId: '',
+      userEmail: '',
+      title: `⚡ New WhatsApp SMM Growth Order: ₹${totalCost}`,
+      message: `WhatsApp customer +${fromNumber} placed SMM order for ${qty}x ${srv.name} (UTR: ${cleanUtr}). Target: ${targetUrl}`,
+      type: 'SMM_ORDER',
+      orderId,
+      deliveredItem: '',
+      isRead: false,
+      createdAt: new Date()
+    };
+    if (!store.notifications) store.notifications = [];
+    store.notifications.unshift(notif);
+    if (getDBStatus() && Notification) {
+      try {
+        await Notification.create(notif);
+      } catch (e) {}
+    }
+    saveLocalDB();
+
+    // Reset session
+    session.step = null;
+    session.selectedSmmService = null;
+    session.smmLink = null;
+    session.smmQty = null;
+
+    const receipt = `🎉 *SMM ORDER PLACED SUCCESSFULLY!* 🎉\n\n` +
+      `📦 *Order ID:* \`${orderId}\`\n` +
+      `⚡ *Service:* *${srv.name}*\n` +
+      `🎯 *Target Link:* \`${targetUrl}\`\n` +
+      `🔢 *Quantity:* *${qty.toLocaleString()} Units*\n` +
+      `💰 *Amount Paid:* *₹${totalCost.toLocaleString()}*\n` +
+      `🏷️ *UTR ID:* \`${cleanUtr}\`\n` +
+      `📊 *Status:* 🟡 *Pending Admin Approval*\n` +
+      `🛡️ *Guarantee:* Lifetime Auto-Refill Guarantee Active\n\n` +
+      `🧾 *Invoice Slip:* https://princecloudsellar.onrender.com/invoice/smm/${orderId}\n` +
+      `📥 *Download PDF:* https://princecloudsellar.onrender.com/invoice/smm/${orderId}/pdf\n\n` +
+      `⚡ Once Owner verifies your payment, delivery begins automatically!\n` +
+      `👉 Reply *3* anytime to track all your orders live!`;
+
+    await sendReply(receipt);
     return;
   }
 
@@ -1401,37 +1721,92 @@ async function sendPaymentMethodOptions(sendReply, session) {
 }
 
 async function sendUserOrders(sendReply, fromNumber, store) {
-  const user = store.users.find(u => u.phone === fromNumber || u.whatsappNumber === fromNumber);
-  const userId = user ? user._id : `wa_${fromNumber}`;
-  const userPhone = user ? user.phone : fromNumber;
-
-  const orders = (store.orders || []).filter(o => 
-    o.userPhone === fromNumber || 
-    o.userPhone === userPhone || 
-    o.userId === userId || 
-    o.userId === `wa_${fromNumber}`
+  const cleanPhone = String(fromNumber).replace(/[^0-9]/g, '');
+  const user = store.users.find(u => 
+    (u.phone && u.phone.replace(/[^0-9]/g, '') === cleanPhone) || 
+    (u.whatsappNumber && u.whatsappNumber.replace(/[^0-9]/g, '') === cleanPhone)
   );
 
-  if (orders.length === 0) {
-    await sendReply('📦 *No past orders found for this WhatsApp account.*\n\nReply *1* to browse stock and place an order!');
+  const phoneKeys = new Set([cleanPhone]);
+  const idKeys = new Set([`wa_${fromNumber}`, `wa_${cleanPhone}`, fromNumber, cleanPhone]);
+  const emailKeys = new Set();
+
+  if (user) {
+    if (user._id) idKeys.add(String(user._id).toLowerCase());
+    if (user.phone) {
+      const p = user.phone.replace(/[^0-9]/g, '');
+      phoneKeys.add(p);
+      idKeys.add('wa_' + p);
+      idKeys.add('tg_' + p);
+    }
+    if (user.whatsappNumber) {
+      const p = user.whatsappNumber.replace(/[^0-9]/g, '');
+      phoneKeys.add(p);
+      idKeys.add('wa_' + p);
+    }
+    if (user.telegramId) {
+      idKeys.add(String(user.telegramId));
+      idKeys.add('tg_' + String(user.telegramId));
+    }
+    if (user.email) emailKeys.add(user.email.toLowerCase());
+  }
+
+  const matchFn = o => {
+    const oUserId = String(o.userId || '').toLowerCase();
+    const oUserPhone = String(o.userPhone || '').replace(/[^0-9]/g, '');
+    const oUserEmail = String(o.userEmail || '').toLowerCase();
+    if (idKeys.has(oUserId)) return true;
+    if (oUserPhone && phoneKeys.has(oUserPhone)) return true;
+    if (oUserEmail && emailKeys.has(oUserEmail)) return true;
+    for (const p of phoneKeys) {
+      if (p.length >= 7 && (oUserId.includes(p) || oUserPhone.endsWith(p) || p.endsWith(oUserPhone))) return true;
+    }
+    return false;
+  };
+
+  const cloudOrders = (store.orders || []).filter(matchFn);
+  const smmOrders = (store.smmOrders || []).filter(matchFn);
+
+  if (cloudOrders.length === 0 && smmOrders.length === 0) {
+    await sendReply('📦 *No past orders found for this WhatsApp account.*\n\n• Reply *1* to browse Cloud Accounts & RDPs\n• Reply *2* to order Social Media Followers!');
     return;
   }
 
-  let out = `🛍️ *YOUR ORDERS & DELIVERED KEYS:*\n\n`;
-  orders.slice(0, 5).forEach((ord, i) => {
-    out += `*${i + 1}. ${ord.productName}* ${ord.subProduct ? `(${ord.subProduct})` : ''}\n` +
-      `🔖 Order ID: \`${ord._id}\`\n` +
-      `💵 Paid: ₹${ord.totalPaid} | Status: ${ord.deliveryStatus}\n` +
-      `📅 Date: ${new Date(ord.createdAt).toLocaleDateString()}\n`;
-    if (ord.deliveryStatus === 'DELIVERED') {
-      out += `🔑 Key:\n\`\`\`\n${ord.deliveredItem}\n\`\`\`\n` +
-        `🧾 Invoice: https://princecloudsellar.onrender.com/invoice/${ord._id}\n\n`;
-    } else {
-      out += `⏳ _Pending Admin UPI Verification (UTR: ${ord.utrId || 'Pending'})_\n` +
-        `🧾 Invoice: https://princecloudsellar.onrender.com/invoice/${ord._id}\n\n`;
-    }
-  });
+  let out = `🛍️ *PRINCE CLOUD SELLAR - YOUR ORDERS* 🛍️\n\n`;
 
+  // 1. Cloud Orders
+  if (cloudOrders.length > 0) {
+    out += `☁️ *CLOUD & RDP ORDERS (${cloudOrders.length}):*\n`;
+    cloudOrders.slice(0, 3).forEach((ord, i) => {
+      out += `*${i + 1}. ${ord.productName}* ${ord.subProduct ? `(${ord.subProduct})` : ''}\n` +
+        `🔖 Order ID: \`${ord._id}\`\n` +
+        `💵 Paid: ₹${ord.totalPaid} | Status: *${ord.deliveryStatus}*\n` +
+        `🧾 Invoice: https://princecloudsellar.onrender.com/invoice/${ord._id}\n`;
+      if (ord.deliveryStatus === 'DELIVERED') {
+        out += `🔑 Key:\n\`\`\`\n${ord.deliveredItem}\n\`\`\`\n\n`;
+      } else {
+        out += `⏳ _Pending Admin UPI Verification (UTR: ${ord.utrId || 'Pending'})_\n\n`;
+      }
+    });
+  }
+
+  // 2. SMM Orders
+  if (smmOrders.length > 0) {
+    out += `⚡ *SOCIAL GROWTH SMM ORDERS (${smmOrders.length}):*\n`;
+    smmOrders.slice(0, 3).forEach((ord, i) => {
+      const remains = ord.remains !== undefined ? ord.remains : 0;
+      const percent = ord.quantity > 0 ? Math.min(100, Math.max(0, Math.round(((ord.quantity - remains) / ord.quantity) * 100))) : 0;
+      out += `*${i + 1}. ${ord.serviceName}*\n` +
+        `🔖 Order ID: \`${ord.orderId || ord._id}\`\n` +
+        `🎯 Target: \`${ord.targetUrl}\`\n` +
+        `🔢 Qty: *${ord.quantity?.toLocaleString()}* | Progress: *${percent}%*\n` +
+        `📊 Status: *${ord.status}* | Paid: ₹${ord.totalCost} (${ord.paymentMethod})\n` +
+        `🧾 Invoice: https://princecloudsellar.onrender.com/invoice/smm/${ord.orderId || ord._id}\n` +
+        (ord.utrId ? `🏷️ UTR: \`${ord.utrId}\`\n\n` : `\n`);
+    });
+  }
+
+  out += `_Reply *1* to buy Cloud Accounts or *2* for Social Growth!_`;
   await sendReply(out);
 }
 
@@ -1470,11 +1845,33 @@ async function sendUpiInfo(sendReply, store) {
     `👉 To buy accounts using UPI, reply *1* -> choose product & quantity -> choose *Pay with UPI*!`);
 }
 
+async function sendWhatsAppSmmGrowthMenu(sendReply, fromNumber, store) {
+  if (fromNumber && whatsappSessions && whatsappSessions[fromNumber]) {
+    whatsappSessions[fromNumber].step = 'SMM_AWAITING_PLATFORM';
+  }
+
+  const text = `🚀 *SOCIAL GROWTH & SMM AUTOMATION* 🚀\n\n` +
+    `⚡ *High Retention Non-Drop Followers, Likes, Subs & Views*\n` +
+    `📌 *Minimum Order:* 1,000 Units (Auto-Refill Guarantee)\n\n` +
+    `👉 *Select a Platform to Order:* (Reply with number):\n\n` +
+    `*1* - 📸 Instagram Growth (Followers, Likes, Comments)\n` +
+    `*2* - ▶️ YouTube Growth (Subscribers, Likes, WatchTime)\n` +
+    `*3* - ✈️ Telegram Growth (Channel Members, Views)\n` +
+    `*4* - 👍 Facebook Growth (Page Followers, Reactions)\n` +
+    `*5* - 🎵 TikTok & 🐦 Twitter / X Growth\n` +
+    `*0* - 🏠 Main Menu\n\n` +
+    `_Reply with 1, 2, 3, 4, or 5 to select platform & view packages:_`;
+
+  await sendReply(text);
+}
+
 module.exports = {
   initWhatsAppBot,
   getWhatsAppBotStatus,
   requestPairingCodeForNumber,
   disconnectBaileys,
+  broadcastToAllWhatsAppUsers,
   sendWhatsAppDirectMessage,
-  sendWhatsAppDirectDocument
+  sendWhatsAppDirectDocument,
+  handleWhatsAppIncomingMessage
 };

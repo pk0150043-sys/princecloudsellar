@@ -478,3 +478,94 @@ body::after {
   white-space: pre-wrap;
   margin-top: 10px;
 }
+
+/* 3D STORE MODE SELECTOR CARDS */
+.store-views-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.store-mode-card {
+  background: rgba(18, 7, 36, 0.7);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-lg);
+  padding: 18px 20px;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+  user-select: none;
+}
+
+.store-mode-card:hover {
+  transform: translateY(-3px);
+  border-color: rgba(250, 204, 21, 0.4);
+  background: rgba(24, 10, 48, 0.85);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4);
+}
+
+.store-mode-card.active {
+  border-color: var(--yellow-primary);
+  background: linear-gradient(145deg, rgba(35, 15, 70, 0.9), rgba(18, 7, 36, 0.95));
+  box-shadow: 0 0 30px rgba(250, 204, 21, 0.22), inset 0 0 15px rgba(250, 204, 21, 0.05);
+}
+
+.store-mode-card.active::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 3px;
+  background: linear-gradient(90deg, #facc15, #38bdf8, #22c55e);
+}
+
+.mode-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.mode-card-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.4rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.mode-card-badge {
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 20px;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+}
+
+.mode-card-title {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: #ffffff;
+  margin-bottom: 4px;
+  letter-spacing: 0.2px;
+}
+
+.store-mode-card.active .mode-card-title {
+  color: var(--yellow-primary);
+}
+
+.mode-card-desc {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+

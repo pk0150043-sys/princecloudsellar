@@ -910,3 +910,443 @@
     width: 95% !important;
   }
 }
+
+/* ============================================================
+   SMM SOCIAL GROWTH AUTOMATION PORTAL STYLES (YT, IG, FB, TG)
+   ============================================================ */
+
+.store-views-toggle-bar {
+  display: flex;
+  background: rgba(18, 7, 36, 0.7);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  padding: 6px;
+  gap: 6px;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+}
+
+.store-view-btn {
+  flex: 1;
+  min-width: 180px;
+  padding: 10px 16px;
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-muted);
+  font-weight: 700;
+  font-size: 0.9rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: var(--transition);
+}
+
+.store-view-btn:hover {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.store-view-btn.active {
+  background: linear-gradient(135deg, rgba(250, 204, 21, 0.2) 0%, rgba(236, 72, 153, 0.2) 100%);
+  border-color: var(--yellow-primary);
+  color: var(--yellow-primary);
+  box-shadow: 0 0 15px rgba(250, 204, 21, 0.25);
+}
+
+/* Dual Column Split Layout: Products Left + SMM Portal Right */
+.store-dual-layout {
+  display: grid;
+  grid-template-columns: 1.25fr 1fr;
+  gap: 24px;
+  align-items: start;
+}
+
+@media (max-width: 1024px) {
+  .store-dual-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* SMM Portal Main Card */
+.smm-portal-card {
+  background: linear-gradient(165deg, rgba(20, 10, 42, 0.9) 0%, rgba(10, 5, 25, 0.95) 100%);
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), 0 0 20px rgba(56, 189, 248, 0.15);
+  position: relative;
+  overflow: hidden;
+}
+
+.smm-portal-card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, #ef4444, #ec4899, #38bdf8, #0088cc);
+}
+
+.smm-portal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.smm-portal-title {
+  font-size: 1.35rem;
+  font-weight: 800;
+  background: linear-gradient(90deg, #38bdf8, #facc15);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Platform Selectors */
+.smm-platform-selector {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin-bottom: 18px;
+}
+
+@media (max-width: 540px) {
+  .smm-platform-selector {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.platform-pill-btn {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-sm);
+  padding: 10px 6px;
+  text-align: center;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: var(--transition);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.platform-pill-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  transform: translateY(-2px);
+}
+
+.platform-pill-btn.active.platform-youtube {
+  background: rgba(239, 68, 68, 0.2);
+  border-color: #ef4444;
+  color: #fca5a5;
+  box-shadow: 0 0 12px rgba(239, 68, 68, 0.4);
+}
+
+.platform-pill-btn.active.platform-instagram {
+  background: rgba(236, 72, 153, 0.2);
+  border-color: #ec4899;
+  color: #f9a8d4;
+  box-shadow: 0 0 12px rgba(236, 72, 153, 0.4);
+}
+
+.platform-pill-btn.active.platform-facebook {
+  background: rgba(59, 130, 246, 0.2);
+  border-color: #3b82f6;
+  color: #93c5fd;
+  box-shadow: 0 0 12px rgba(59, 130, 246, 0.4);
+}
+
+.platform-pill-btn.active.platform-telegram {
+  background: rgba(14, 165, 233, 0.2);
+  border-color: #0ea5e9;
+  color: #7dd3fc;
+  box-shadow: 0 0 12px rgba(14, 165, 233, 0.4);
+}
+
+/* Tier Guarantee Info Badge Box */
+.smm-tier-info-box {
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px dashed rgba(56, 189, 248, 0.4);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  margin-bottom: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 0.85rem;
+}
+
+.smm-tier-tags {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* Quick Quantity Chips */
+.smm-qty-chips {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+
+.smm-chip-btn {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--glass-border);
+  border-radius: 20px;
+  padding: 4px 10px;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.smm-chip-btn:hover, .smm-chip-btn.active {
+  background: var(--yellow-primary);
+  border-color: var(--yellow-primary);
+  color: #080312;
+  font-weight: 800;
+}
+
+/* SMM Total Summary Banner */
+.smm-price-summary-banner {
+  background: linear-gradient(90deg, rgba(30, 41, 59, 0.9) 0%, rgba(15, 23, 42, 0.9) 100%);
+  border: 1px solid rgba(34, 197, 94, 0.4);
+  border-radius: var(--radius-md);
+  padding: 14px 18px;
+  margin-bottom: 18px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.smm-total-amount {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: #22c55e;
+  text-shadow: 0 0 10px rgba(34, 197, 94, 0.4);
+}
+
+/* SMM Order Tracker Items */
+.smm-order-item-card {
+  background: rgba(0, 0, 0, 0.45);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  margin-bottom: 12px;
+  transition: var(--transition);
+}
+
+.smm-order-item-card:hover {
+  border-color: rgba(56, 189, 248, 0.4);
+}
+
+.smm-order-item-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* ============================================================
+   ADVANCED MOBILE RESPONSIVE ENGINE (SMARTPHONE OPTIMIZATION)
+   ============================================================ */
+
+@media (max-width: 768px) {
+  /* Prevent horizontal overflow */
+  html, body {
+    overflow-x: hidden !important;
+    width: 100% !important;
+  }
+
+  .container {
+    padding: 0 12px !important;
+  }
+
+  /* Form input font size 16px to prevent iOS / Android zoom */
+  input[type="text"],
+  input[type="email"],
+  input[type="tel"],
+  input[type="password"],
+  input[type="number"],
+  input[type="url"],
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+
+  /* Top Community Bar */
+  .community-bar-inner {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 8px;
+  }
+
+  .community-bar-left {
+    justify-content: center;
+    gap: 6px;
+  }
+
+  .top-community-link {
+    font-size: 0.72rem;
+    padding: 3px 8px;
+  }
+
+  /* Navbar */
+  .user-navbar {
+    padding: 10px 0;
+  }
+
+  .user-nav-inner {
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .user-brand {
+    justify-content: center;
+  }
+
+  .brand-name {
+    font-size: 1.25rem;
+  }
+
+  .user-nav-links {
+    width: 100%;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .nav-social-btn {
+    padding: 6px 10px;
+    font-size: 0.78rem;
+  }
+
+  /* Hero Section */
+  .hero-title {
+    font-size: 1.8rem !important;
+    line-height: 1.25 !important;
+  }
+
+  .hero-subtitle {
+    font-size: 0.88rem !important;
+    line-height: 1.4 !important;
+  }
+
+  /* 3D Store View Selector Cards on Mobile */
+  .store-views-card-grid {
+    grid-template-columns: 1fr !important;
+    gap: 10px !important;
+  }
+
+  .store-mode-card {
+    padding: 14px 16px !important;
+    border-radius: 14px !important;
+  }
+
+  .mode-card-title {
+    font-size: 0.98rem !important;
+  }
+
+  .mode-card-desc {
+    font-size: 0.78rem !important;
+  }
+
+  /* Dual Layout on Mobile */
+  .store-dual-layout {
+    grid-template-columns: 1fr !important;
+    gap: 20px !important;
+  }
+
+  /* SMM Portal Card */
+  .smm-portal-card {
+    padding: 16px 14px !important;
+    border-radius: 16px !important;
+  }
+
+  .smm-platform-selector {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 8px !important;
+  }
+
+  .platform-pill-btn {
+    padding: 10px 6px !important;
+    font-size: 0.78rem !important;
+  }
+
+  .smm-qty-chips {
+    gap: 6px !important;
+  }
+
+  .smm-chip-btn {
+    padding: 8px 12px !important;
+    font-size: 0.82rem !important;
+    min-height: 38px !important;
+  }
+
+  /* Modals on Mobile */
+  .modal-overlay {
+    align-items: flex-start !important;
+    padding: 15px 0 !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .modal-container {
+    width: 95% !important;
+    max-width: 440px !important;
+    margin: 15px auto !important;
+    padding: 18px 14px !important;
+    border-radius: 16px !important;
+    max-height: 90vh !important;
+    overflow-y: auto !important;
+  }
+
+  .product-store-card {
+    padding: 16px 14px !important;
+  }
+
+  .custom-table {
+    display: block !important;
+    width: 100% !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+@media (max-width: 480px) {
+  .hero-title {
+    font-size: 1.55rem !important;
+  }
+
+  .brand-tagline {
+    font-size: 0.65rem !important;
+  }
+
+  .smm-portal-title {
+    font-size: 1.15rem !important;
+  }
+
+  .smm-price-summary-banner {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+}
+
+

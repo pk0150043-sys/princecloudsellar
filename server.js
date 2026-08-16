@@ -1,8 +1,10 @@
 require('dotenv').config();
 const express = require('express');
+const mongoose = require('mongoose');
 const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
+const axios = require('axios');
 const jwt = require('jsonwebtoken');
 const nodemailer = require('nodemailer');
 const { connectDB, getDBStatus } = require('./config/db');
@@ -14,12 +16,22 @@ const Setting = require('./models/Setting');
 const Ticket = require('./models/Ticket');
 const Feedback = require('./models/Feedback');
 const Notification = require('./models/Notification');
-const { initTelegramBot, startBot, getTelegramBotStatus, broadcastToTelegramGroup, sendTelegramDirectMessage, sendTelegramDirectDocument } = require('./services/telegramBot');
-const { initWhatsAppBot, getWhatsAppBotStatus, requestPairingCodeForNumber, disconnectBaileys, sendWhatsAppDirectMessage, sendWhatsAppDirectDocument } = require('./services/whatsappBot');
-const { generateOrderInvoicePdfBuffer } = require('./services/pdfInvoice');
+const SmmService = require('./models/SmmService');
+const SmmOrder = require('./models/SmmOrder');
+const { initTelegramBot, startBot, getTelegramBotStatus, broadcastToTelegramGroup, broadcastToAllTelegramUsers, sendTelegramDirectMessage, sendTelegramDirectDocument } = require('./services/telegramBot');
+const { initWhatsAppBot, getWhatsAppBotStatus, requestPairingCodeForNumber, disconnectBaileys, broadcastToAllWhatsAppUsers, sendWhatsAppDirectMessage, sendWhatsAppDirectDocument } = require('./services/whatsappBot');
+const { generateOrderInvoicePdfBuffer, generateSmmInvoicePdfBuffer } = require('./services/pdfInvoice');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
+
+process.on('unhandledRejection', (reason) => {
+  console.warn('⚠️ [Process Unhandled Rejection]:', reason && reason.message ? reason.message : reason);
+});
+
+process.on('uncaughtException', (err) => {
+  console.warn('⚠️ [Process Uncaught Exception]:', err && err.message ? err.message : err);
+});
 
 app.use(cors());
 app.use(express.json());
@@ -39,6 +51,45 @@ if (!fs.existsSync(dataDir)) {
   fs.mkdirSync(dataDir, { recursive: true });
 }
 
+const DEFAULT_SMM_SERVICES = [
+  // --- YOUTUBE ---
+  { _id: "yt_subs_nondrop", serviceKey: "yt_subs_nondrop", serviceId: 1001, platform: "youtube", category: "Subscribers", name: "YouTube Subscribers (100% Non-Drop Lifetime)", tier: "Tier 1: 100% Non-Drop (Lifetime Refill)", rate: 350, min: 1000, max: 100000, refill: true, refillDays: 0, description: "High-Retention, 0% Drop, Instant Start, Real Accounts", active: true },
+  { _id: "yt_subs_drop5",   serviceKey: "yt_subs_drop5",   serviceId: 1002, platform: "youtube", category: "Subscribers", name: "YouTube Subscribers (5% Max Drop / 30D Refill)", tier: "Tier 2: 5% Max Drop (30D Refill)", rate: 220, min: 1000, max: 50000, refill: true, refillDays: 30, description: "Fast Speed, Max 5% Variance, 30-Day Auto Refill", active: true },
+  { _id: "yt_subs_drop10",  serviceKey: "yt_subs_drop10",  serviceId: 1003, platform: "youtube", category: "Subscribers", name: "YouTube Subscribers (10% Standard Drop)", tier: "Tier 3: 10% Standard Drop", rate: 140, min: 1000, max: 50000, refill: false, refillDays: 0, description: "Budget Speed, 10% Drop Post-Delivery, No Refill", active: true },
+
+  { _id: "yt_likes_nondrop", serviceKey: "yt_likes_nondrop", serviceId: 1011, platform: "youtube", category: "Likes", name: "YouTube Likes (100% Non-Drop)", tier: "Tier 1: 100% Non-Drop (Lifetime Refill)", rate: 90, min: 1000, max: 100000, refill: true, refillDays: 0, description: "High-Quality Non-Drop Video Likes with Fast Delivery", active: true },
+  { _id: "yt_likes_drop5",   serviceKey: "yt_likes_drop5",   serviceId: 1012, platform: "youtube", category: "Likes", name: "YouTube Likes (5% Drop)", tier: "Tier 2: 5% Max Drop (30D Refill)", rate: 60, min: 1000, max: 50000, refill: true, refillDays: 30, description: "Stable Likes with 5% Variance Buffer", active: true },
+  { _id: "yt_likes_drop10",  serviceKey: "yt_likes_drop10",  serviceId: 1013, platform: "youtube", category: "Likes", name: "YouTube Likes (10% Drop)", tier: "Tier 3: 10% Standard Drop", rate: 40, min: 1000, max: 50000, refill: false, refillDays: 0, description: "Budget Video Likes for quick boost", active: true },
+
+  { _id: "yt_comments_nondrop", serviceKey: "yt_comments_nondrop", serviceId: 1021, platform: "youtube", category: "Comments", name: "YouTube Custom Comments (100% Non-Drop)", tier: "Tier 1: 100% Non-Drop (Lifetime Refill)", rate: 450, min: 10, max: 1000, refill: true, refillDays: 0, description: "Relevant custom typed comments from verified profiles", active: true },
+  { _id: "yt_comments_drop10",  serviceKey: "yt_comments_drop10",  serviceId: 1022, platform: "youtube", category: "Comments", name: "YouTube Random Comments (10% Drop)", tier: "Tier 3: 10% Standard Drop", rate: 200, min: 10, max: 5000, refill: false, refillDays: 0, description: "Positive random English/Hindi comments", active: true },
+
+  // --- INSTAGRAM ---
+  { _id: "ig_followers_nondrop", serviceKey: "ig_followers_nondrop", serviceId: 2001, platform: "instagram", category: "Followers", name: "Instagram Followers (100% Non-Drop Lifetime)", tier: "Tier 1: 100% Non-Drop (Lifetime Refill)", rate: 180, min: 1000, max: 200000, refill: true, refillDays: 365, description: "Real Organic Accounts, 365-Day Refill Guarantee", active: true },
+  { _id: "ig_followers_drop5",   serviceKey: "ig_followers_drop5",   serviceId: 2002, platform: "instagram", category: "Followers", name: "Instagram Followers (5% Low Drop / 30D Refill)", tier: "Tier 2: 5% Max Drop (30D Refill)", rate: 120, min: 1000, max: 100000, refill: true, refillDays: 30, description: "HQ Accounts, 5% Drop Margin with Auto Refill", active: true },
+  { _id: "ig_followers_drop10",  serviceKey: "ig_followers_drop10",  serviceId: 2003, platform: "instagram", category: "Followers", name: "Instagram Followers (10% Standard Drop)", tier: "Tier 3: 10% Standard Drop", rate: 70, min: 1000, max: 100000, refill: false, refillDays: 0, description: "Standard Bots, 10% Drop Rate, Instant Delivery", active: true },
+
+  { _id: "ig_likes_nondrop", serviceKey: "ig_likes_nondrop", serviceId: 2011, platform: "instagram", category: "Likes", name: "Instagram Likes (100% Non-Drop HQ)", tier: "Tier 1: 100% Non-Drop (Lifetime Refill)", rate: 45, min: 1000, max: 100000, refill: true, refillDays: 0, description: "Instant delivery high quality post/reel likes", active: true },
+  { _id: "ig_likes_drop5",   serviceKey: "ig_likes_drop5",   serviceId: 2012, platform: "instagram", category: "Likes", name: "Instagram Likes (5% Drop)", tier: "Tier 2: 5% Max Drop (30D Refill)", rate: 30, min: 1000, max: 50000, refill: true, refillDays: 30, description: "Fast delivery with 5% drop margin", active: true },
+  { _id: "ig_likes_drop10",  serviceKey: "ig_likes_drop10",  serviceId: 2013, platform: "instagram", category: "Likes", name: "Instagram Likes (10% Drop)", tier: "Tier 3: 10% Standard Drop", rate: 18, min: 1000, max: 50000, refill: false, refillDays: 0, description: "Budget post & reels likes", active: true },
+
+  { _id: "ig_comments_nondrop", serviceKey: "ig_comments_nondrop", serviceId: 2021, platform: "instagram", category: "Comments", name: "Instagram Custom Comments (100% Non-Drop)", tier: "Tier 1: 100% Non-Drop (Lifetime Refill)", rate: 380, min: 10, max: 2000, refill: true, refillDays: 0, description: "Custom lines submitted per order, non-drop real accounts", active: true },
+  { _id: "ig_comments_drop10",  serviceKey: "ig_comments_drop10",  serviceId: 2022, platform: "instagram", category: "Comments", name: "Instagram Emoji/Random Comments (10% Drop)", tier: "Tier 3: 10% Standard Drop", rate: 140, min: 10, max: 5000, refill: false, refillDays: 0, description: "Emoji & positive hype comments for engagement", active: true },
+
+  // --- FACEBOOK ---
+  { _id: "fb_followers_nondrop", serviceKey: "fb_followers_nondrop", serviceId: 3001, platform: "facebook", category: "Followers", name: "Facebook Profile/Page Followers (100% Non-Drop)", tier: "Tier 1: 100% Non-Drop (Lifetime Refill)", rate: 210, min: 1000, max: 100000, refill: true, refillDays: 0, description: "Verified HQ Profiles, Non-Drop Lifetime Guarantee", active: true },
+  { _id: "fb_followers_drop5",   serviceKey: "fb_followers_drop5",   serviceId: 3002, platform: "facebook", category: "Followers", name: "Facebook Followers (5% Drop / Refill)", tier: "Tier 2: 5% Max Drop (30D Refill)", rate: 140, min: 1000, max: 50000, refill: true, refillDays: 30, description: "Organic Page Growth, 5% Drop Buffer", active: true },
+  { _id: "fb_followers_drop10",  serviceKey: "fb_followers_drop10",  serviceId: 3003, platform: "facebook", category: "Followers", name: "Facebook Followers (10% Drop Standard)", tier: "Tier 3: 10% Standard Drop", rate: 90, min: 1000, max: 50000, refill: false, refillDays: 0, description: "Fast Push, 10% Variance Budget Followers", active: true },
+
+  { _id: "fb_likes_nondrop", serviceKey: "fb_likes_nondrop", serviceId: 3011, platform: "facebook", category: "Likes", name: "Facebook Post Likes/Reactions (Non-Drop)", tier: "Tier 1: 100% Non-Drop (Lifetime Refill)", rate: 60, min: 1000, max: 50000, refill: true, refillDays: 0, description: "Post likes and love/care reactions non-drop", active: true },
+  { _id: "fb_likes_drop10",  serviceKey: "fb_likes_drop10",  serviceId: 3012, platform: "facebook", category: "Likes", name: "Facebook Post Likes (10% Drop)", tier: "Tier 3: 10% Standard Drop", rate: 35, min: 1000, max: 50000, refill: false, refillDays: 0, description: "Budget post likes", active: true },
+
+  // --- TELEGRAM ---
+  { _id: "tg_members_nondrop", serviceKey: "tg_members_nondrop", serviceId: 4001, platform: "telegram", category: "Members", name: "Telegram Channel Members (100% Non-Drop Lifetime)", tier: "Tier 1: 100% Non-Drop (Lifetime Refill)", rate: 160, min: 1000, max: 50000, refill: true, refillDays: 0, description: "Real Active Members (Lifetime Refill Guaranteed)", active: true },
+  { _id: "tg_members_drop5",   serviceKey: "tg_members_drop5",   serviceId: 4002, platform: "telegram", category: "Members", name: "Telegram Members (5% Drop / 60D Refill)", tier: "Tier 2: 5% Max Drop (30D Refill)", rate: 110, min: 1000, max: 50000, refill: true, refillDays: 60, description: "Stable Non-Drop (60 Days Refill Guarantee)", active: true },
+  { _id: "tg_members_drop10",  serviceKey: "tg_members_drop10",  serviceId: 4003, platform: "telegram", category: "Members", name: "Telegram Members (10% Standard Drop)", tier: "Tier 3: 10% Standard Drop", rate: 65, min: 1000, max: 50000, refill: false, refillDays: 0, description: "Fast Bulk Add, Standard 10% Drop rate", active: true }
+];
+
 let persistentStore = {
   users: [],
   products: [],
@@ -47,6 +98,8 @@ let persistentStore = {
   tickets: [],
   feedbacks: [],
   notifications: [],
+  smmServices: [...DEFAULT_SMM_SERVICES],
+  smmOrders: [],
   settings: {
     ownerPhone: '+91 9507325677',
     ownerUpiId: '9507325677-1@naviaxis',
@@ -56,7 +109,9 @@ let persistentStore = {
     telegramBotUrl: 'https://t.me/princecloudsellarshop_bot',
     whatsappGroupUrl: 'https://wa.me/qr/DDVIRR5NFY2YO1',
     telegramGroupUrl: 'https://t.me/princecloudsellarshop_bot',
-    defaultBep20Address: process.env.DEFAULT_BEP20 || '0xD3D65940718F769E66E1e5c425AcFf76C2D9bFf2'
+    defaultBep20Address: process.env.DEFAULT_BEP20 || '0xD3D65940718F769E66E1e5c425AcFf76C2D9bFf2',
+    smmProviderUrl: process.env.SMM_PROVIDER_URL || 'https://your-smm-provider.com/api/v2',
+    smmApiKey: process.env.SMM_API_KEY || ''
   }
 };
 
@@ -82,14 +137,18 @@ const loadLocalDB = () => {
           tickets: parsed.tickets || [],
           feedbacks: parsed.feedbacks || [],
           notifications: parsed.notifications || [],
+          smmServices: (parsed.smmServices && parsed.smmServices.length > 0) ? parsed.smmServices : [...DEFAULT_SMM_SERVICES],
+          smmOrders: parsed.smmOrders || [],
           settings: {
             ...persistentStore.settings,
             ...(parsed.settings || {}),
             whatsappBotUrl: (parsed.settings && parsed.settings.whatsappBotUrl) || 'https://wa.me/qr/DDVIRR5NFY2YO1',
-            telegramBotUrl: (parsed.settings && parsed.settings.telegramBotUrl) || 'https://t.me/princecloudsellarshop_bot'
+            telegramBotUrl: (parsed.settings && parsed.settings.telegramBotUrl) || 'https://t.me/princecloudsellarshop_bot',
+            smmProviderUrl: (parsed.settings && parsed.settings.smmProviderUrl) || persistentStore.settings.smmProviderUrl,
+            smmApiKey: (parsed.settings && parsed.settings.smmApiKey) || persistentStore.settings.smmApiKey
           }
         };
-        console.log(`💾 Persistent DB loaded from disk: ${persistentStore.users.length} Users, ${persistentStore.products.length} Products, ${persistentStore.orders.length} Orders, ${persistentStore.stocks.length} Stock items, ${(persistentStore.tickets || []).length} Tickets, ${(persistentStore.feedbacks || []).length} Feedbacks, ${(persistentStore.notifications || []).length} Notifications.`);
+        console.log(`💾 Persistent DB loaded from disk: ${persistentStore.users.length} Users, ${persistentStore.products.length} Products, ${persistentStore.orders.length} Orders, ${persistentStore.stocks.length} Stocks, ${persistentStore.smmServices.length} SMM Services, ${persistentStore.smmOrders.length} SMM Orders.`);
       }
     } else {
       saveLocalDB();
@@ -108,7 +167,7 @@ async function syncWithMongoDB() {
   if (!getDBStatus()) return;
   try {
     console.log('🔄 Synchronizing data between MongoDB Atlas & Local Store...');
-    const [dbUsers, dbProducts, dbOrders, dbStocks, dbTickets, dbFeedbacks, dbNotifications, dbSettings] = await Promise.all([
+    const [dbUsers, dbProducts, dbOrders, dbStocks, dbTickets, dbFeedbacks, dbNotifications, dbSettings, dbSmmServices, dbSmmOrders] = await Promise.all([
       User.find().lean(),
       Product.find().lean(),
       Order.find().lean(),
@@ -116,27 +175,82 @@ async function syncWithMongoDB() {
       Ticket.find().lean(),
       Feedback.find().lean(),
       Notification.find().lean(),
-      Setting.findOne().lean()
+      Setting.findOne().lean(),
+      SmmService.find().lean(),
+      SmmOrder.find().lean()
     ]);
 
-    persistentStore.users = (dbUsers || []).map(u => ({ ...u, _id: u._id.toString() }));
-    persistentStore.products = (dbProducts || []).map(p => ({ ...p, _id: p._id.toString() }));
-    persistentStore.orders = (dbOrders || []).map(o => ({ ...o, _id: o._id.toString() }));
-    persistentStore.stocks = (dbStocks || []).map(s => ({ ...s, _id: s._id.toString() }));
-    persistentStore.tickets = (dbTickets || []).map(t => ({ ...t, _id: t._id.toString() }));
-    persistentStore.feedbacks = (dbFeedbacks || []).map(f => ({ ...f, _id: f._id.toString() }));
-    persistentStore.notifications = (dbNotifications || []).map(n => ({ ...n, _id: n._id.toString() }));
-
-    if (dbSettings) {
-      for (const [k, v] of Object.entries(dbSettings)) {
-        if (v !== undefined && v !== null && String(v).trim() !== '') {
-          persistentStore.settings[k] = v;
+    // 1. SYNC USERS: Merge MongoDB users with local memory so no registered user is ever lost on restart/redeploy
+    if (dbUsers && dbUsers.length > 0) {
+      const mergedUsersMap = new Map();
+      dbUsers.forEach(u => mergedUsersMap.set(u.email ? u.email.toLowerCase() : u._id.toString(), { ...u, _id: u._id.toString() }));
+      (persistentStore.users || []).forEach(u => {
+        const key = u.email ? u.email.toLowerCase() : u._id.toString();
+        if (!mergedUsersMap.has(key)) {
+          mergedUsersMap.set(key, u);
+          User.create(u).catch(() => {});
         }
+      });
+      persistentStore.users = Array.from(mergedUsersMap.values());
+    } else if (persistentStore.users && persistentStore.users.length > 0) {
+      User.insertMany(persistentStore.users).catch(() => {});
+    }
+
+    // 2. SYNC PRODUCTS: Load from MongoDB if available, otherwise seed to MongoDB
+    if (dbProducts && dbProducts.length > 0) {
+      persistentStore.products = dbProducts.map(p => ({ ...p, _id: p._id.toString() }));
+    } else if (persistentStore.products && persistentStore.products.length > 0) {
+      Product.insertMany(persistentStore.products).catch(() => {});
+    } else {
+      console.log('📦 Database has 0 products. Seeding standard Cloud accounts and stock...');
+      await seedDemoProductsAndStocks();
+    }
+
+    // 3. SYNC STOCKS
+    if (dbStocks && dbStocks.length > 0) {
+      persistentStore.stocks = dbStocks.map(s => ({ ...s, _id: s._id.toString() }));
+    } else if (persistentStore.stocks && persistentStore.stocks.length > 0) {
+      Stock.insertMany(persistentStore.stocks).catch(() => {});
+    }
+
+    // 4. SYNC ORDERS & SMM ORDERS
+    if (dbOrders && dbOrders.length > 0) {
+      persistentStore.orders = dbOrders.map(o => ({ ...o, _id: o._id.toString() }));
+    }
+    if (dbSmmOrders && dbSmmOrders.length > 0) {
+      persistentStore.smmOrders = dbSmmOrders.map(o => ({ ...o, _id: o._id.toString() }));
+    }
+
+    // 5. SYNC SMM SERVICES
+    if (dbSmmServices && dbSmmServices.length > 0) {
+      persistentStore.smmServices = dbSmmServices.map(s => ({ ...s, _id: s._id.toString() }));
+    } else {
+      try {
+        await SmmService.insertMany(DEFAULT_SMM_SERVICES);
+        console.log('🌱 Seeded default SMM service matrix to MongoDB Atlas.');
+      } catch (seedErr) {
+        console.warn('SMM seed notice:', seedErr.message);
       }
     }
 
+    // 6. SYNC SETTINGS & CUSTOM RATES
+    if (dbSettings) {
+      for (const [k, v] of Object.entries(dbSettings)) {
+        if (v !== undefined && v !== null && String(v).trim() !== '' && k !== '_id' && k !== '__v') {
+          persistentStore.settings[k] = v;
+        }
+      }
+    } else {
+      Setting.create(persistentStore.settings).catch(() => {});
+    }
+
+    // 7. SYNC TICKETS, FEEDBACKS, NOTIFICATIONS
+    if (dbTickets) persistentStore.tickets = dbTickets.map(t => ({ ...t, _id: t._id.toString() }));
+    if (dbFeedbacks) persistentStore.feedbacks = dbFeedbacks.map(f => ({ ...f, _id: f._id.toString() }));
+    if (dbNotifications) persistentStore.notifications = dbNotifications.map(n => ({ ...n, _id: n._id.toString() }));
+
     saveLocalDB();
-    console.log(`✅ MongoDB Atlas sync complete: ${persistentStore.users.length} Users, ${persistentStore.products.length} Products, ${persistentStore.orders.length} Orders, ${persistentStore.stocks.length} Stocks, ${persistentStore.tickets.length} Tickets, ${persistentStore.feedbacks.length} Feedbacks, ${persistentStore.notifications.length} Notifications.`);
+    console.log(`✅ MongoDB Atlas sync complete: ${persistentStore.users.length} Users, ${persistentStore.products.length} Products, ${persistentStore.orders.length} Orders, ${persistentStore.smmServices.length} SMM Services, ${persistentStore.smmOrders.length} SMM Orders.`);
   } catch (err) {
     console.error('Error during MongoDB Atlas sync:', err.message);
   }
@@ -332,7 +446,7 @@ async function sendFormattedOtpMail(toEmail, subject, title, heading, otpCode, s
 const seedDemoProductsAndStocks = async () => {
   try {
     if (persistentStore.products.length > 0) {
-      console.log('📦 Existing products & stock keys intact. Skipping seed.');
+      console.log(`📦 Existing products intact (${persistentStore.products.length} products). Skipping seed.`);
       return;
     }
 
@@ -343,11 +457,23 @@ const seedDemoProductsAndStocks = async () => {
         country: '🇺🇸 United States',
         price: 499,
         keys: [
-          'AZURE-DIRECT-PASS-9901 | Pass: Azure#2026! | Sub: Active',
-          'AZURE-DIRECT-PASS-9902 | Pass: Azure#2026! | Sub: Active',
-          'AZURE-DIRECT-PASS-9903 | Pass: Azure#2026! | Sub: Active',
-          'AZURE-DIRECT-PASS-9904 | Pass: Azure#2026! | Sub: Active',
-          'AZURE-DIRECT-PASS-9905 | Pass: Azure#2026! | Sub: Active'
+          'AZURE-DIRECT-PASS-9901 | Pass: Azure#2026! | Sub: Active Direct PayG',
+          'AZURE-DIRECT-PASS-9902 | Pass: Azure#2026! | Sub: Active Direct PayG',
+          'AZURE-DIRECT-PASS-9903 | Pass: Azure#2026! | Sub: Active Direct PayG',
+          'AZURE-DIRECT-PASS-9904 | Pass: Azure#2026! | Sub: Active Direct PayG',
+          'AZURE-DIRECT-PASS-9905 | Pass: Azure#2026! | Sub: Active Direct PayG'
+        ]
+      },
+      {
+        name: 'Azure',
+        subProduct: 'Azure $200 Credit Account',
+        country: '🌐 Global',
+        price: 349,
+        keys: [
+          'azure_cred_8801@outlook.com | Pass: Cloud#8801! | Credit: $200 Active',
+          'azure_cred_8802@outlook.com | Pass: Cloud#8802! | Credit: $200 Active',
+          'azure_cred_8803@outlook.com | Pass: Cloud#8803! | Credit: $200 Active',
+          'azure_cred_8804@outlook.com | Pass: Cloud#8804! | Credit: $200 Active'
         ]
       },
       {
@@ -367,39 +493,50 @@ const seedDemoProductsAndStocks = async () => {
         ]
       },
       {
+        name: 'Gmail',
+        subProduct: 'Fresh PVA Gmail Accounts (Bulk)',
+        country: '🇮🇳 India',
+        price: 49,
+        keys: [
+          'fresh_pva_101@gmail.com | Pass: Fresh#2026 | Recovery: rec101@mail.com',
+          'fresh_pva_102@gmail.com | Pass: Fresh#2026 | Recovery: rec102@mail.com',
+          'fresh_pva_103@gmail.com | Pass: Fresh#2026 | Recovery: rec103@mail.com',
+          'fresh_pva_104@gmail.com | Pass: Fresh#2026 | Recovery: rec104@mail.com',
+          'fresh_pva_105@gmail.com | Pass: Fresh#2026 | Recovery: rec105@mail.com'
+        ]
+      },
+      {
         name: 'WhatsApp Numbers',
-        subProduct: 'Indian WhatsApp Numbers',
+        subProduct: 'Indian WhatsApp Virtual Numbers',
         country: '🇮🇳 India',
         price: 99,
         keys: [
-          '+91 9823411001 | SessionKey: WA-KEY-8811',
-          '+91 9823411002 | SessionKey: WA-KEY-8812',
-          '+91 9823411003 | SessionKey: WA-KEY-8813',
-          '+91 9823411004 | SessionKey: WA-KEY-8814',
-          '+91 9823411005 | SessionKey: WA-KEY-8815',
-          '+91 9823411006 | SessionKey: WA-KEY-8816',
-          '+91 9823411007 | SessionKey: WA-KEY-8817',
-          '+91 9823411008 | SessionKey: WA-KEY-8818',
-          '+91 9823411009 | SessionKey: WA-KEY-8819',
-          '+91 9823411010 | SessionKey: WA-KEY-8820'
+          '+91 9823411001 | SessionKey: WA-KEY-8811 | OTP: Instant',
+          '+91 9823411002 | SessionKey: WA-KEY-8812 | OTP: Instant',
+          '+91 9823411003 | SessionKey: WA-KEY-8813 | OTP: Instant',
+          '+91 9823411004 | SessionKey: WA-KEY-8814 | OTP: Instant',
+          '+91 9823411005 | SessionKey: WA-KEY-8815 | OTP: Instant',
+          '+91 9823411006 | SessionKey: WA-KEY-8816 | OTP: Instant',
+          '+91 9823411007 | SessionKey: WA-KEY-8817 | OTP: Instant',
+          '+91 9823411008 | SessionKey: WA-KEY-8818 | OTP: Instant'
         ]
       },
       {
         name: 'GCP',
-        subProduct: 'Paid Acc ($300 Credit)',
+        subProduct: 'Paid Acc ($300 Credit Active)',
         country: '🌐 Global',
         price: 899,
         keys: [
-          'gcp_paid_5501@cloud.org | Pass: GcpCloud#2026 | Credit: $300 Active',
-          'gcp_paid_5502@cloud.org | Pass: GcpCloud#2026 | Credit: $300 Active',
-          'gcp_paid_5503@cloud.org | Pass: GcpCloud#2026 | Credit: $300 Active',
-          'gcp_paid_5504@cloud.org | Pass: GcpCloud#2026 | Credit: $300 Active',
-          'gcp_paid_5505@cloud.org | Pass: GcpCloud#2026 | Credit: $300 Active'
+          'gcp_paid_5501@cloud.org | Pass: GcpCloud#2026 | Credit: $300 Active Console',
+          'gcp_paid_5502@cloud.org | Pass: GcpCloud#2026 | Credit: $300 Active Console',
+          'gcp_paid_5503@cloud.org | Pass: GcpCloud#2026 | Credit: $300 Active Console',
+          'gcp_paid_5504@cloud.org | Pass: GcpCloud#2026 | Credit: $300 Active Console',
+          'gcp_paid_5505@cloud.org | Pass: GcpCloud#2026 | Credit: $300 Active Console'
         ]
       },
       {
         name: 'Windows 365',
-        subProduct: 'Windows 365 Cloud PC 4vCPU',
+        subProduct: 'Windows 365 Cloud PC 4vCPU 16GB',
         country: '🇬🇧 United Kingdom',
         price: 699,
         keys: [
@@ -411,18 +548,52 @@ const seedDemoProductsAndStocks = async () => {
       },
       {
         name: 'AWS',
-        subProduct: 'AWS 8 vCPU Account',
+        subProduct: 'AWS 8 vCPU Account All Regions',
         country: '🇺🇸 United States',
         price: 799,
         keys: [
           'aws_user_1101@cloudnet.io | Pass: AwsMaster#2026 | Quota: 8 vCPU All Regions',
           'aws_user_1102@cloudnet.io | Pass: AwsMaster#2026 | Quota: 8 vCPU All Regions',
           'aws_user_1103@cloudnet.io | Pass: AwsMaster#2026 | Quota: 8 vCPU All Regions',
-          'aws_user_1104@cloudnet.io | Pass: AwsMaster#2026 | Quota: 8 vCPU All Regions',
-          'aws_user_1105@cloudnet.io | Pass: AwsMaster#2026 | Quota: 8 vCPU All Regions'
+          'aws_user_1104@cloudnet.io | Pass: AwsMaster#2026 | Quota: 8 vCPU All Regions'
+        ]
+      },
+      {
+        name: 'Telegram',
+        subProduct: 'Aged Telegram PVA Account (2FA)',
+        country: '🇺🇸 United States',
+        price: 199,
+        keys: [
+          '+1 (202) 555-0141 | TDATA / Session Active | 2FA: Pass#TG2026',
+          '+1 (202) 555-0142 | TDATA / Session Active | 2FA: Pass#TG2026',
+          '+1 (202) 555-0143 | TDATA / Session Active | 2FA: Pass#TG2026'
+        ]
+      },
+      {
+        name: 'Facebook',
+        subProduct: 'Aged Facebook Profile 2020-2023 (2FA)',
+        country: '🇮🇳 India',
+        price: 249,
+        keys: [
+          'fb_aged_9001@mail.com | Pass: FbPass#9001 | 2FA: JBSWY3DPEHPK3PXP',
+          'fb_aged_9002@mail.com | Pass: FbPass#9002 | 2FA: JBSWY3DPEHPK3PXQ',
+          'fb_aged_9003@mail.com | Pass: FbPass#9003 | 2FA: JBSWY3DPEHPK3PXR'
+        ]
+      },
+      {
+        name: 'DigitalOcean',
+        subProduct: 'DigitalOcean $200 3 Droplet Limit Acc',
+        country: '🌐 Global',
+        price: 499,
+        keys: [
+          'do_cloud_401@oceanmail.com | Pass: DOCred#2026! | Credit: $200 / 3 Droplets Active',
+          'do_cloud_402@oceanmail.com | Pass: DOCred#2026! | Credit: $200 / 3 Droplets Active'
         ]
       }
     ];
+
+    const toInsertProducts = [];
+    const toInsertStocks = [];
 
     demoItems.forEach((item, idx) => {
       const prodId = 'p_demo_' + idx;
@@ -433,15 +604,16 @@ const seedDemoProductsAndStocks = async () => {
         country: item.country,
         price: item.price,
         stock: item.keys.length,
-        description: `${item.name} (${item.subProduct}) - Instant automated key delivery.`,
-        bep20Address: process.env.DEFAULT_BEP20 || '0xD3D65940718F769E66E1e5c425AcFf76C2D9bFf2',
+        description: `${item.name} (${item.subProduct}) - Instant automated key delivery with 100% warranty.`,
+        bep20Address: persistentStore.settings.defaultBep20Address || process.env.DEFAULT_BEP20 || '0xD3D65940718F769E66E1e5c425AcFf76C2D9bFf2',
         offer: 'INSTANT DELIVERY',
         createdAt: new Date()
       };
       persistentStore.products.push(prod);
+      toInsertProducts.push(prod);
 
       item.keys.forEach((keyContent, kIdx) => {
-        persistentStore.stocks.push({
+        const stockItem = {
           _id: `stk_demo_${idx}_${kIdx}`,
           productId: prodId,
           productName: item.name,
@@ -449,18 +621,35 @@ const seedDemoProductsAndStocks = async () => {
           content: keyContent,
           status: 'AVAILABLE',
           createdAt: new Date()
-        });
+        };
+        persistentStore.stocks.push(stockItem);
+        toInsertStocks.push(stockItem);
       });
     });
 
     saveLocalDB();
-    console.log('⚡ Initial demo products & stocks saved to data/db.json persistent store.');
+
+    if (getDBStatus()) {
+      try {
+        const prodCount = await Product.countDocuments();
+        if (prodCount === 0 && toInsertProducts.length > 0) {
+          await Product.insertMany(toInsertProducts);
+        }
+        const stockCount = await Stock.countDocuments();
+        if (stockCount === 0 && toInsertStocks.length > 0) {
+          await Stock.insertMany(toInsertStocks);
+        }
+        console.log('🌱 Initialized default Cloud products to MongoDB Atlas.');
+      } catch (dbErr) {
+        console.warn('Atlas demo seed notice:', dbErr.message);
+      }
+    }
+
+    console.log(`⚡ ${persistentStore.products.length} Cloud products & ${persistentStore.stocks.length} stocks active in store.`);
   } catch (err) {
     console.error('Seed demo products error:', err.message);
   }
 };
-
-setTimeout(seedDemoProductsAndStocks, 1000);
 
 // ----------------------------------------------------
 // EMAIL OTP & AUTHENTICATION APIs
@@ -746,27 +935,36 @@ app.post('/api/auth/login', async (req, res) => {
     }
 
     // OTP IS REQUIRED (> 6 hours or first time)
-    const otp = generateOTP();
     const normalizedEmail = user.email.toLowerCase().trim();
-    otpStore['login_' + normalizedEmail] = {
-      otp,
-      expiresAt: Date.now() + 15 * 60 * 1000,
-      user,
-      verified: false
-    };
-    if (user.phone) {
-      otpStore['login_' + user.phone.replace(/[^0-9]/g, '')] = otpStore['login_' + normalizedEmail];
-    }
-    console.log(`🔐 [LOGIN OTP GENERATED] For: ${normalizedEmail} (Phone: ${user.phone}) -> Code: ${otp}`);
+    const existingOtpSession = otpStore['login_' + normalizedEmail];
+    let otp;
 
-    sendFormattedOtpMail(
-      normalizedEmail,
-      '🔐 Login Verification OTP Code - PrinceCloudSellar',
-      'Account Sign-In Verification',
-      'Login Security OTP Code',
-      otp,
-      'This OTP is valid for 15 minutes. Enter this code to complete sign-in. Once verified, your session will stay authenticated for 6 hours.'
-    ).catch(e => console.error('Login OTP Email send error:', e.message));
+    if (existingOtpSession && existingOtpSession.createdAt && (Date.now() - existingOtpSession.createdAt < 30000)) {
+      otp = existingOtpSession.otp;
+      console.log(`🔐 [LOGIN OTP REUSED - COOLDOWN ACTIVE] For: ${normalizedEmail} -> Code: ${otp}`);
+    } else {
+      otp = generateOTP();
+      otpStore['login_' + normalizedEmail] = {
+        otp,
+        expiresAt: Date.now() + 15 * 60 * 1000,
+        createdAt: Date.now(),
+        user,
+        verified: false
+      };
+      if (user.phone) {
+        otpStore['login_' + user.phone.replace(/[^0-9]/g, '')] = otpStore['login_' + normalizedEmail];
+      }
+      console.log(`🔐 [LOGIN OTP GENERATED] For: ${normalizedEmail} (Phone: ${user.phone}) -> Code: ${otp}`);
+
+      sendFormattedOtpMail(
+        normalizedEmail,
+        '🔐 Login Verification OTP Code - PrinceCloudSellar',
+        'Account Sign-In Verification',
+        'Login Security OTP Code',
+        otp,
+        'This OTP is valid for 15 minutes. Enter this code to complete sign-in. Once verified, your session will stay authenticated for 6 hours.'
+      ).catch(e => console.error('Login OTP Email send error:', e.message));
+    }
 
     const maskedEmail = normalizedEmail.replace(/^(.)(.*)(@.*)$/, (_, a, b, c) => a + '*'.repeat(Math.max(b.length, 3)) + c);
 
@@ -811,7 +1009,21 @@ app.post('/api/auth/verify-login-otp', async (req, res) => {
       return res.status(400).json({ success: false, message: 'Invalid Login OTP Code! Please check the latest code sent to your Gmail.' });
     }
 
-    const user = record.user;
+    let user = record.user;
+    if (!user) {
+      user = persistentStore.users.find(u => (u.email && u.email.toLowerCase() === cleanEmail) || (u.phone && u.phone.replace(/[^0-9]/g, '') === cleanPhone));
+    }
+    if (!user && getDBStatus() && User) {
+      try {
+        user = await User.findOne({
+          $or: [{ email: cleanEmail }, { phone: cleanPhone }]
+        });
+      } catch (e) {}
+    }
+
+    if (!user) {
+      return res.status(400).json({ success: false, message: 'User account not found! Please register.' });
+    }
 
     if (user.status === 'blocked') {
       return res.status(403).json({ success: false, message: '❌ Account Blocked By Owner.' });
@@ -819,7 +1031,7 @@ app.post('/api/auth/verify-login-otp', async (req, res) => {
 
     const now = new Date();
     user.lastOtpVerifiedAt = now;
-    const memUser = persistentStore.users.find(u => u._id === user._id || (u.email && u.email.toLowerCase() === user.email.toLowerCase()));
+    const memUser = persistentStore.users.find(u => u._id === user._id || (u.email && u.email.toLowerCase() === (user.email || '').toLowerCase()));
     if (memUser) memUser.lastOtpVerifiedAt = now;
 
     if (getDBStatus() && User) {
@@ -1026,20 +1238,44 @@ app.post('/api/owner/products', async (req, res) => {
     persistentStore.products.push(newProd);
 
     if (getDBStatus()) {
-      await Product.create({
-        name,
-        subProduct: subProduct || '',
-        country: prodCountry,
-        price: Number(price),
-        stock: Number(stock) || 0,
-        description: description || '',
-        bep20Address: defaultBep20,
-        offer: offer || ''
-      });
+      await Product.create(newProd);
     }
 
+    // Auto-broadcast new product announcement to Website + Telegram + WhatsApp
+    const notifTitle = `🔥 NEW STOCK ADDED: ${name}${subProduct ? ' (' + subProduct + ')' : ''}`;
+    const notifMsg = `New verified stock for ${name} (${prodCountry}) is now available at ₹${Number(price)} / unit! Order instantly on website, WhatsApp or Telegram bot.`;
+
+    const autoNotif = {
+      _id: 'notif_' + Date.now(),
+      recipientType: 'ALL',
+      userId: '',
+      userEmail: '',
+      title: notifTitle,
+      message: notifMsg,
+      type: 'BROADCAST',
+      orderId: '',
+      deliveredItem: '',
+      isRead: false,
+      createdAt: new Date()
+    };
+
+    if (!persistentStore.notifications) persistentStore.notifications = [];
+    persistentStore.notifications.unshift(autoNotif);
+
+    if (getDBStatus()) {
+      await Notification.create(autoNotif).catch(() => {});
+    }
+
+    try {
+      broadcastToAllTelegramUsers(notifTitle, notifMsg, () => persistentStore);
+    } catch (tgErr) {}
+
+    try {
+      broadcastToAllWhatsAppUsers(notifTitle, notifMsg, () => persistentStore);
+    } catch (waErr) {}
+
     saveLocalDB();
-    return res.json({ success: true, message: 'Product added successfully!', product: newProd });
+    return res.json({ success: true, message: 'Product added and broadcasted to Website, Telegram & WhatsApp successfully!', product: newProd });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
@@ -1331,11 +1567,75 @@ app.post('/api/user/orders/checkout-upi', async (req, res) => {
   }
 });
 
-// Fetch User Order History
+// UNIFIED CUSTOMER IDENTITY RESOLVER (CROSS-CHANNEL SYNC FOR WEB, TG & WP)
+function getUnifiedUserOrders(allOrders, userIdentifier, store = persistentStore) {
+  if (!userIdentifier) return [];
+  const cleanId = String(userIdentifier).trim().toLowerCase();
+
+  // Find linked user in store
+  const linkedUser = (store.users || []).find(u => 
+    (u._id && String(u._id).toLowerCase() === cleanId) ||
+    (u.phone && u.phone.replace(/[^0-9]/g, '') === cleanId.replace(/[^0-9]/g, '')) ||
+    (u.email && u.email.toLowerCase() === cleanId) ||
+    (u.telegramId && String(u.telegramId) === cleanId) ||
+    (u.whatsappNumber && u.whatsappNumber.replace(/[^0-9]/g, '') === cleanId.replace(/[^0-9]/g, ''))
+  );
+
+  const phoneKeys = new Set();
+  const emailKeys = new Set();
+  const idKeys = new Set([cleanId]);
+
+  if (linkedUser) {
+    if (linkedUser._id) idKeys.add(String(linkedUser._id).toLowerCase());
+    if (linkedUser.telegramId) {
+      idKeys.add(String(linkedUser.telegramId));
+      idKeys.add('tg_' + String(linkedUser.telegramId));
+    }
+    if (linkedUser.phone) {
+      const p = linkedUser.phone.replace(/[^0-9]/g, '');
+      phoneKeys.add(p);
+      idKeys.add('wa_' + p);
+      idKeys.add('tg_' + p);
+    }
+    if (linkedUser.whatsappNumber) {
+      const p = linkedUser.whatsappNumber.replace(/[^0-9]/g, '');
+      phoneKeys.add(p);
+      idKeys.add('wa_' + p);
+    }
+    if (linkedUser.email) {
+      emailKeys.add(linkedUser.email.toLowerCase());
+    }
+  }
+
+  if (cleanId.includes('@')) emailKeys.add(cleanId);
+  const directDigits = cleanId.replace(/[^0-9]/g, '');
+  if (directDigits.length >= 7) {
+    phoneKeys.add(directDigits);
+    idKeys.add('wa_' + directDigits);
+    idKeys.add('tg_' + directDigits);
+  }
+
+  return (allOrders || []).filter(o => {
+    const oUserId = String(o.userId || '').toLowerCase();
+    const oUserPhone = String(o.userPhone || '').replace(/[^0-9]/g, '');
+    const oUserEmail = String(o.userEmail || '').toLowerCase();
+
+    if (idKeys.has(oUserId)) return true;
+    if (oUserPhone && phoneKeys.has(oUserPhone)) return true;
+    if (oUserEmail && emailKeys.has(oUserEmail)) return true;
+
+    for (const p of phoneKeys) {
+      if (oUserId.includes(p) || (oUserPhone && (oUserPhone.endsWith(p) || p.endsWith(oUserPhone)))) return true;
+    }
+    return false;
+  }).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+}
+
+// Fetch User Order History (Unified across Web, TG & WP)
 app.get('/api/user/orders/:userId', async (req, res) => {
   try {
     const { userId } = req.params;
-    const orders = persistentStore.orders.filter(o => o.userId === userId).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    const orders = getUnifiedUserOrders(persistentStore.orders, userId, persistentStore);
     return res.json({ success: true, orders });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
@@ -1629,6 +1929,26 @@ app.get(['/api/orders/:id/invoice-pdf', '/invoice/:id/pdf'], async (req, res) =>
   } catch (err) {
     console.error('Invoice PDF download error:', err.message);
     res.status(500).send('Error generating PDF invoice');
+  }
+});
+
+// SMM ORDER INVOICE PDF DOWNLOAD API
+app.get(['/api/smm/orders/:id/invoice-pdf', '/invoice/smm/:id/pdf'], async (req, res) => {
+  try {
+    const { id } = req.params;
+    let order = (persistentStore.smmOrders || []).find(o => o.orderId === id || String(o._id) === String(id));
+    if (!order && getDBStatus() && SmmOrder) {
+      order = await SmmOrder.findOne({ $or: [{ orderId: id }, { _id: id }] }).lean();
+    }
+    if (!order) return res.status(404).send('SMM Order not found');
+
+    const pdfBuffer = await generateSmmInvoicePdfBuffer(order);
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `inline; filename="PrinceCloudSellar_SMM_Invoice_${order.orderId || order._id}.pdf"`);
+    res.send(pdfBuffer);
+  } catch (err) {
+    console.error('SMM Invoice PDF download error:', err.message);
+    res.status(500).send('Error generating SMM PDF invoice');
   }
 });
 
@@ -1987,6 +2307,272 @@ app.get('/invoice/:orderId', (req, res) => {
   res.send(html);
 });
 
+// SMM SOCIAL GROWTH TAX INVOICE SLIP (HTML VIEW)
+app.get('/invoice/smm/:orderId', (req, res) => {
+  const { orderId } = req.params;
+  const order = (persistentStore.smmOrders || []).find(o => o.orderId === orderId || o._id === orderId);
+  if (!order) {
+    return res.status(404).send(`
+      <!DOCTYPE html>
+      <html>
+      <head><title>SMM Invoice Not Found - Prince Cloud Sellar</title>
+      <style>body{font-family:sans-serif;background:#080312;color:#fff;text-align:center;padding:50px;}</style>
+      </head>
+      <body>
+        <h2>SMM Invoice Not Found</h2>
+        <p>Order ID: ${orderId} does not exist.</p>
+        <a href="/" style="color:#38bdf8;">Return to Storefront</a>
+      </body>
+      </html>
+    `);
+  }
+
+  const isPaid = order.paymentStatus.includes('PAID') || order.paymentStatus === 'VERIFIED';
+  const isCompleted = order.status === 'Completed';
+
+  const html = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SMM Invoice #${order.orderId || order._id} - Prince Cloud Sellar</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #38bdf8;
+      --gold: #f59e0b;
+      --green: #22c55e;
+      --bg: #070210;
+      --card-bg: #0d091f;
+      --border: rgba(56, 189, 248, 0.25);
+      --text-main: #ffffff;
+      --text-muted: #94a3b8;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      background: var(--bg);
+      color: var(--text-main);
+      padding: 30px 15px;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+    }
+    .invoice-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      max-width: 780px;
+      width: 100%;
+      padding: 36px;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.6);
+      position: relative;
+    }
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+      padding-bottom: 24px;
+      margin-bottom: 24px;
+    }
+    .brand-title {
+      font-size: 1.5rem;
+      font-weight: 800;
+      color: var(--primary);
+      letter-spacing: 0.5px;
+    }
+    .brand-sub {
+      font-size: 0.82rem;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+    .badge {
+      display: inline-block;
+      padding: 6px 14px;
+      border-radius: 30px;
+      font-size: 0.8rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .badge-paid { background: rgba(34, 197, 94, 0.15); color: var(--green); border: 1px solid var(--green); }
+    .badge-pending { background: rgba(250, 204, 21, 0.15); color: var(--gold); border: 1px solid var(--gold); }
+    .info-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      margin-bottom: 28px;
+      background: rgba(255,255,255,0.02);
+      padding: 18px;
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,0.05);
+    }
+    .info-col h4 {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: var(--primary);
+      margin-bottom: 8px;
+    }
+    .info-col p {
+      font-size: 0.9rem;
+      color: #e2e8f0;
+      line-height: 1.5;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 24px;
+    }
+    th {
+      background: rgba(255,255,255,0.04);
+      color: var(--primary);
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      padding: 12px 14px;
+      text-align: left;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+    }
+    td {
+      padding: 14px;
+      font-size: 0.9rem;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+    .total-row td {
+      font-size: 1.15rem;
+      font-weight: 800;
+      color: var(--primary);
+      border-top: 2px solid var(--primary);
+      border-bottom: none;
+      padding-top: 18px;
+    }
+    .target-box {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.88rem;
+      color: #38bdf8;
+      background: #000;
+      padding: 16px;
+      border-radius: 8px;
+      border: 1px dashed #38bdf8;
+      word-break: break-all;
+      margin-bottom: 24px;
+    }
+    .actions {
+      display: flex;
+      gap: 12px;
+      margin-top: 24px;
+      flex-wrap: wrap;
+    }
+    .btn {
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-size: 0.88rem;
+      font-weight: 700;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      border: none;
+    }
+    .btn-primary { background: var(--primary); color: #000; }
+    .btn-secondary { background: rgba(255,255,255,0.08); color: #fff; border: 1px solid rgba(255,255,255,0.15); }
+    .btn-wa { background: #25d366; color: #fff; }
+    @media print {
+      body { background: #fff; color: #000; padding: 0; }
+      .invoice-card { border: none; box-shadow: none; max-width: 100%; }
+      .actions { display: none; }
+      .target-box { color: #000; border: 1px solid #ccc; background: #f8fafc; }
+    }
+  </style>
+</head>
+<body>
+  <div class="invoice-card">
+    <div class="header">
+      <div>
+        <div class="brand-title">👑 PRINCE CLOUD SELLAR</div>
+        <div class="brand-sub">Social Growth Automation • Instant Dispatch & Refill Guarantee</div>
+      </div>
+      <div>
+        <span class="badge ${isPaid ? 'badge-paid' : 'badge-pending'}">
+          ${isPaid ? '✅ PAID & PROCESSING' : '⏳ PENDING APPROVAL'}
+        </span>
+      </div>
+    </div>
+
+    <div class="info-grid">
+      <div class="info-col">
+        <h4>Customer Details:</h4>
+        <p><strong>Name:</strong> ${order.userName || 'Valued Customer'}</p>
+        <p><strong>Phone / WhatsApp:</strong> ${order.userPhone || 'N/A'}</p>
+        <p><strong>Email:</strong> ${order.userEmail || 'N/A'}</p>
+        <p><strong>Channel:</strong> SMM Social Automation</p>
+      </div>
+      <div class="info-col">
+        <h4>Invoice Details:</h4>
+        <p><strong>Order ID:</strong> ${order.orderId || order._id}</p>
+        <p><strong>Date & Time:</strong> ${new Date(order.createdAt).toLocaleString()}</p>
+        <p><strong>Payment Method:</strong> ${order.paymentMethod} ${order.utrId ? '(UTR: ' + order.utrId + ')' : ''}</p>
+        <p><strong>Provider Ref:</strong> #${order.providerOrderId || 'Queued for Dispatch'}</p>
+      </div>
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Package / Service</th>
+          <th>Platform</th>
+          <th>Qty</th>
+          <th>Rate / 1K</th>
+          <th style="text-align: right;">Total</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>${order.serviceName}</strong></td>
+          <td style="color: var(--primary); text-transform: uppercase;">${order.platform || 'Social'}</td>
+          <td>${order.quantity?.toLocaleString()}</td>
+          <td>₹${order.rate || order.totalCost}</td>
+          <td style="text-align: right; font-weight: 700;">₹${order.totalCost}</td>
+        </tr>
+        <tr class="total-row">
+          <td colspan="4">Total Amount Paid:</td>
+          <td style="text-align: right;">₹${order.totalCost} <span style="font-size:0.85rem; font-weight:normal; color:var(--text-muted);">(~${(order.totalCost / 88).toFixed(2)} USDT)</span></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div>
+      <h4 style="font-size:0.8rem; text-transform:uppercase; color:var(--primary); margin-bottom:6px;">
+        🎯 Target Link / Profile / Post URL:
+      </h4>
+      <div class="target-box">${order.targetUrl}</div>
+    </div>
+
+    <div style="font-size:0.78rem; color:var(--text-muted); line-height:1.4; border-top:1px solid rgba(255,255,255,0.08); padding-top:14px;">
+      <strong>Growth Guarantee Policy:</strong> All packages include automated non-drop protection. For 24/7 support or refill requests, message on WhatsApp +91 9507325677 with this Order ID.
+    </div>
+
+    <div class="actions">
+      <button class="btn btn-primary" onclick="window.print()">🖨️ Print / Save as PDF</button>
+      <a class="btn btn-secondary" href="/invoice/smm/${order.orderId || order._id}/pdf" target="_blank">📥 Direct PDF Download</a>
+      <a class="btn btn-wa" href="https://wa.me/919507325677?text=Hello%20Owner%2C%20regarding%20SMM%20Invoice%20${order.orderId || order._id}" target="_blank">💬 WhatsApp Support</a>
+      <a class="btn btn-secondary" href="/">🛍️ Return to Store</a>
+    </div>
+  </div>
+</body>
+</html>
+  `;
+
+  res.send(html);
+});
+
 
 // SMART STOCK INVENTORY MANAGEMENT WITH DISK PERSISTENCE
 app.get('/api/owner/stocks', async (req, res) => {
@@ -2040,9 +2626,10 @@ app.post('/api/owner/stocks', async (req, res) => {
       return res.status(400).json({ success: false, message: 'Select an existing product or provide product name & variant.' });
     }
 
+    const newStockDocs = [];
     items.forEach(content => {
-      persistentStore.stocks.push({
-        _id: 'stk_' + Date.now() + Math.floor(Math.random() * 1000),
+      const stkItem = {
+        _id: 'stk_' + Date.now() + Math.floor(Math.random() * 10000),
         productId: targetProduct._id,
         productName: targetProduct.name,
         subProduct: targetProduct.subProduct || '',
@@ -2054,14 +2641,23 @@ app.post('/api/owner/stocks', async (req, res) => {
         orderId: null,
         soldAt: null,
         createdAt: new Date()
-      });
+      };
+      persistentStore.stocks.push(stkItem);
+      newStockDocs.push(stkItem);
     });
 
     const totalAvail = persistentStore.stocks.filter(s => s.productId === targetProduct._id && s.status === 'AVAILABLE').length;
     targetProduct.stock = totalAvail;
 
     if (getDBStatus()) {
-      await Product.findOneAndUpdate({ _id: targetProduct._id }, { stock: totalAvail });
+      try {
+        if (newStockDocs.length > 0) {
+          await Stock.insertMany(newStockDocs);
+        }
+        await Product.findOneAndUpdate({ _id: targetProduct._id }, { stock: totalAvail });
+      } catch (e) {
+        console.error('Stock DB insertion error:', e.message);
+      }
     }
 
     // Auto-Broadcast stock alert to all users
@@ -2607,13 +3203,22 @@ app.post('/api/owner/notifications/broadcast', async (req, res) => {
       await Notification.create(newNotif);
     }
 
-    // Auto-forward broadcast to Telegram Channel
+    // Auto-forward broadcast to ALL Telegram Users + Channel
     try {
-      broadcastToTelegramGroup(title, message);
-    } catch (tgErr) {}
+      broadcastToAllTelegramUsers(title, message, () => persistentStore);
+    } catch (tgErr) {
+      console.warn('Telegram broadcast error:', tgErr.message);
+    }
+
+    // Auto-forward broadcast to ALL WhatsApp Customers
+    try {
+      broadcastToAllWhatsAppUsers(title, message, () => persistentStore);
+    } catch (waErr) {
+      console.warn('WhatsApp broadcast error:', waErr.message);
+    }
 
     saveLocalDB();
-    return res.json({ success: true, message: 'Broadcast notification sent to ALL users successfully!', notification: newNotif });
+    return res.json({ success: true, message: 'Broadcast notification sent to Website, Telegram & WhatsApp successfully!', notification: newNotif });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
@@ -2802,6 +3407,1207 @@ app.post('/api/owner/bots/whatsapp/disconnect', async (req, res) => {
   try {
     const result = await disconnectBaileys();
     return res.json(result);
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// -------------------------------------------------------------
+// PEAKERR SMM LIVE GROWTH AUTOMATION ENGINE & API ENDPOINTS
+// -------------------------------------------------------------
+
+const PEAKERR_DEFAULT_API_URL = process.env.PEAKERR_API_URL || 'https://peakerr.com/api/v2';
+const PEAKERR_DEFAULT_API_KEY = process.env.PEAKERR_API_KEY || 'b27883882a516b07c2f3b19c220161db';
+
+let peakerrServicesCache = [];
+let peakerrCategoriesCache = [];
+let lastPeakerrSyncTime = null;
+let isPeakerrSyncing = false;
+
+// Helper: Determine clean platform from category/name
+function detectPlatformFromCategory(category = '', name = '') {
+  const text = `${category} ${name}`.toLowerCase();
+  if (text.includes('instagram') || text.includes('ig ') || text.includes(' ig')) return 'Instagram';
+  if (text.includes('telegram') || text.includes('tg ') || text.includes(' tg')) return 'Telegram';
+  if (text.includes('youtube') || text.includes('yt ') || text.includes(' yt')) return 'YouTube';
+  if (text.includes('facebook') || text.includes('fb ') || text.includes(' fb')) return 'Facebook';
+  if (text.includes('tiktok') || text.includes('tik tok')) return 'TikTok';
+  if (text.includes('twitter') || text.includes(' x ') || text.includes('tweet')) return 'Twitter / X';
+  if (text.includes('spotify')) return 'Spotify';
+  if (text.includes('discord')) return 'Discord';
+  if (text.includes('threads')) return 'Threads';
+  if (text.includes('linkedin')) return 'LinkedIn';
+  if (text.includes('traffic') || text.includes('website') || text.includes('visitor')) return 'Website Traffic';
+  if (text.includes('twitch')) return 'Twitch';
+  if (text.includes('reddit')) return 'Reddit';
+  if (text.includes('pinterest')) return 'Pinterest';
+  return 'Other Social Growth';
+}
+
+// Helper: Sync all active services from Peakerr API
+async function syncPeakerrServices(force = false) {
+  const now = Date.now();
+  if (!force && peakerrServicesCache.length > 0 && lastPeakerrSyncTime && (now - lastPeakerrSyncTime < 30 * 60 * 1000)) {
+    return { success: true, total: peakerrServicesCache.length, categories: peakerrCategoriesCache, cached: true };
+  }
+
+  if (isPeakerrSyncing) {
+    return { success: true, total: peakerrServicesCache.length, categories: peakerrCategoriesCache, inProgress: true };
+  }
+
+  isPeakerrSyncing = true;
+  const apiUrl = persistentStore.settings.peakerrApiUrl || PEAKERR_DEFAULT_API_URL;
+  const apiKey = persistentStore.settings.peakerrApiKey || PEAKERR_DEFAULT_API_KEY;
+  const profitMargin = parseFloat(persistentStore.settings.peakerrProfitMargin) || parseFloat(process.env.PEAKERR_PROFIT_MARGIN) || 1.85;
+  const usdToInr = parseFloat(persistentStore.settings.peakerrUsdToInr) || parseFloat(process.env.PEAKERR_USD_TO_INR) || 88.00;
+  const customRates = persistentStore.settings.customServiceRates || {};
+
+  try {
+    console.log('🔄 Fetching live services from Peakerr API...');
+    const response = await axios.post(apiUrl, {
+      key: apiKey,
+      action: 'services'
+    }, { timeout: 25000 });
+
+    if (Array.isArray(response.data) && response.data.length > 0) {
+      const categoriesMap = {};
+
+      peakerrServicesCache = response.data.map(srv => {
+        const srvId = parseInt(srv.service, 10);
+        const rawRate = parseFloat(srv.rate) || 0;
+        const rateUsd = parseFloat((rawRate * profitMargin).toFixed(4));
+        
+        // Calculated rate with high profit markup & minimum floor price (₹15 minimum per 1K)
+        const calculatedInr = Math.round(rawRate * usdToInr * profitMargin * 100) / 100;
+        let rateInr = Math.max(15, calculatedInr);
+
+        // Custom rate override if set by owner
+        let customOverride = false;
+        if (customRates[srvId]) {
+          if (customRates[srvId].rateInr !== undefined) {
+            rateInr = parseFloat(customRates[srvId].rateInr);
+            customOverride = true;
+          }
+        }
+
+        const platform = detectPlatformFromCategory(srv.category, srv.name);
+        const cleanCategory = (srv.category || 'General Services').trim();
+        if (!categoriesMap[cleanCategory]) {
+          categoriesMap[cleanCategory] = {
+            category: cleanCategory,
+            platform: platform,
+            count: 0
+          };
+        }
+        categoriesMap[cleanCategory].count += 1;
+
+        const srvNameLower = (srv.name || '').toLowerCase();
+        const srvCatLower = (cleanCategory || '').toLowerCase();
+
+        // Enforce minimum 1,000 globally across all SMM growth services
+        let defaultMin = Math.max(1000, parseInt(srv.min, 10) || 1000);
+
+        const finalMin = customRates[srvId]?.min ? parseInt(customRates[srvId].min, 10) : defaultMin;
+        const finalMax = customRates[srvId]?.max ? parseInt(customRates[srvId].max, 10) : (parseInt(srv.max, 10) || 100000);
+
+        return {
+          service: srvId,
+          serviceId: srvId,
+          serviceKey: `pk_${srv.service}`,
+          name: (customRates[srvId]?.name || srv.name || `Service #${srv.service}`).trim(),
+          category: cleanCategory,
+          platform: platform,
+          type: srv.type || 'Default',
+          rawRateUsd: rawRate,
+          rateUsd: rateUsd,
+          rateInr: rateInr,
+          rate: rateInr,
+          customOverride: customOverride,
+          min: finalMin,
+          max: finalMax,
+          refill: customRates[srvId]?.refill !== undefined ? Boolean(customRates[srvId].refill) : Boolean(srv.refill),
+          cancel: Boolean(srv.cancel),
+          dripfeed: Boolean(srv.dripfeed),
+          active: customRates[srvId]?.active !== undefined ? Boolean(customRates[srvId].active) : true
+        };
+      });
+
+      peakerrCategoriesCache = Object.values(categoriesMap);
+      lastPeakerrSyncTime = Date.now();
+      console.log(`✅ Peakerr Services Synced: ${peakerrServicesCache.length} active services across ${peakerrCategoriesCache.length} categories.`);
+      isPeakerrSyncing = false;
+      return { success: true, total: peakerrServicesCache.length, categories: peakerrCategoriesCache, cached: false };
+    } else {
+      isPeakerrSyncing = false;
+      return { success: false, message: 'Invalid response received from Peakerr API.' };
+    }
+  } catch (err) {
+    isPeakerrSyncing = false;
+    console.error('❌ Error syncing Peakerr services:', err.message);
+    return { success: false, message: err.message };
+  }
+}
+
+// Auto-sync Peakerr services on server launch
+setTimeout(() => {
+  syncPeakerrServices().catch(e => console.warn('Peakerr initial sync notice:', e.message));
+}, 2000);
+
+// 1. Get All Live Peakerr SMM Services & Categories (Public API)
+app.get('/api/smm/services', async (req, res) => {
+  try {
+    if (peakerrServicesCache.length === 0) {
+      if (isPeakerrSyncing) {
+        let attempts = 0;
+        while (isPeakerrSyncing && attempts < 25) {
+          await new Promise(r => setTimeout(r, 300));
+          attempts++;
+        }
+      } else {
+        await syncPeakerrServices();
+      }
+    }
+
+    const { platform, category, search, limit } = req.query;
+    let filtered = peakerrServicesCache;
+
+    if (platform && platform !== 'ALL') {
+      filtered = filtered.filter(s => s.platform.toLowerCase() === platform.toLowerCase());
+    }
+
+    if (category && category !== 'ALL') {
+      filtered = filtered.filter(s => s.category.toLowerCase() === category.toLowerCase());
+    }
+
+    if (search && search.trim().length > 0) {
+      const q = search.toLowerCase();
+      filtered = filtered.filter(s =>
+        s.name.toLowerCase().includes(q) ||
+        s.category.toLowerCase().includes(q) ||
+        String(s.service).includes(q)
+      );
+    }
+
+    const maxLimit = parseInt(limit, 10);
+    const resultServices = (!isNaN(maxLimit) && maxLimit > 0) ? filtered.slice(0, maxLimit) : filtered;
+
+    const profitMargin = parseFloat(persistentStore.settings.peakerrProfitMargin) || parseFloat(process.env.PEAKERR_PROFIT_MARGIN) || 1.45;
+    const usdToInr = parseFloat(persistentStore.settings.peakerrUsdToInr) || parseFloat(process.env.PEAKERR_USD_TO_INR) || 88.00;
+
+    return res.json({
+      success: true,
+      total: filtered.length,
+      categories: peakerrCategoriesCache,
+      services: resultServices,
+      profitMargin: profitMargin,
+      usdToInr: usdToInr,
+      lastSync: lastPeakerrSyncTime
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// AUTOMATED SMM TAX INVOICE & BILL DISPATCH ENGINE
+async function sendSmmInvoiceEmail(order, targetEmail = null) {
+  try {
+    let email = targetEmail || order.userEmail;
+    if (!email || !email.includes('@')) {
+      const linkedUser = (persistentStore.users || []).find(u => 
+        (u._id && u._id === order.userId) || 
+        (u.phone && order.userPhone && u.phone.replace(/[^0-9]/g, '') === String(order.userPhone).replace(/[^0-9]/g, ''))
+      );
+      if (linkedUser && linkedUser.email) email = linkedUser.email;
+    }
+
+    if (!email || !email.includes('@')) return;
+
+    let invoicePdf = null;
+    try {
+      invoicePdf = await generateSmmInvoicePdfBuffer(order);
+    } catch (e) {
+      console.warn('SMM Invoice PDF generation notice:', e.message);
+    }
+
+    const mailOptions = {
+      from: `"Prince Cloud Sellar" <${process.env.GMAIL_USER || 'princecloudsellar@gmail.com'}>`,
+      to: email,
+      subject: `🧾 Official Tax Invoice & Order Receipt - ${order.orderId || order._id} [PrinceCloudSellar]`,
+      html: `
+        <div style="font-family: 'Plus Jakarta Sans', Arial, sans-serif; background: #070210; color: #ffffff; padding: 25px; border-radius: 12px; max-width: 600px; margin: 0 auto; border: 1px solid rgba(56,189,248,0.3);">
+          <div style="text-align: center; margin-bottom: 20px;">
+            <h2 style="color: #38bdf8; margin: 0; font-size: 24px;">👑 PRINCE CLOUD SELLAR</h2>
+            <p style="color: #94a3b8; font-size: 13px; margin: 4px 0 0 0;">Official Social Growth Automation Tax Invoice & Receipt</p>
+          </div>
+
+          <div style="background: rgba(255,255,255,0.04); padding: 18px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.08); margin-bottom: 16px;">
+            <p style="margin: 6px 0;"><strong>Order ID:</strong> <span style="font-family: monospace; color: #38bdf8; font-weight: 700;">${order.orderId || order._id}</span></p>
+            <p style="margin: 6px 0;"><strong>Service:</strong> ${order.serviceName}</p>
+            <p style="margin: 6px 0;"><strong>Target URL:</strong> <a href="${order.targetUrl}" style="color: #38bdf8; word-break: break-all;">${order.targetUrl}</a></p>
+            <p style="margin: 6px 0;"><strong>Quantity:</strong> ${order.quantity ? order.quantity.toLocaleString() : 1000} Units</p>
+            <p style="margin: 6px 0;"><strong>Total Paid:</strong> ₹${order.totalCost || order.totalPaid} (${order.paymentMethod || 'UPI'})</p>
+            <p style="margin: 6px 0;"><strong>Status:</strong> <span style="color: #22c55e; font-weight: 700;">🟢 ${order.status || 'Processing'}</span></p>
+            ${order.utrId ? `<p style="margin: 6px 0;"><strong>UTR / TxRef:</strong> <code style="color: #22c55e;">${order.utrId}</code></p>` : ''}
+            <p style="margin: 6px 0; color: #facc15;"><strong>Guarantee:</strong> Lifetime Auto-Refill Warranty Active</p>
+          </div>
+
+          <div style="text-align: center; margin: 22px 0;">
+            <a href="https://princecloudsellar.onrender.com/invoice/smm/${order.orderId || order._id}" style="display: inline-block; background: #38bdf8; color: #000; font-weight: 800; padding: 11px 22px; border-radius: 6px; text-decoration: none; font-size: 14px; margin-right: 8px;">
+              📄 View Web Invoice Slip
+            </a>
+            <a href="https://princecloudsellar.onrender.com/invoice/smm/${order.orderId || order._id}/pdf" style="display: inline-block; background: transparent; border: 1px solid #38bdf8; color: #38bdf8; font-weight: 700; padding: 10px 18px; border-radius: 6px; text-decoration: none; font-size: 14px;">
+              📥 Download PDF
+            </a>
+          </div>
+
+          <p style="font-size: 12px; color: #94a3b8; text-align: center; margin-top: 20px; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 12px;">
+            Thank you for ordering with Prince Cloud Sellar! For 24/7 support or refill requests, message on WhatsApp: +91 9507325677
+          </p>
+        </div>
+      `,
+      attachments: invoicePdf ? [
+        {
+          filename: `PrinceCloudSellar_SMM_Invoice_${order.orderId || order._id}.pdf`,
+          content: invoicePdf,
+          contentType: 'application/pdf'
+        }
+      ] : []
+    };
+
+    await emailTransporter.sendMail(mailOptions);
+    console.log(`🧾 [SMM INVOICE EMAIL DISPATCHED] Order ${order.orderId || order._id} sent to ${email}`);
+  } catch (err) {
+    console.error('sendSmmInvoiceEmail error:', err.message);
+  }
+}
+
+// 2. Place SMM Order (Dispatches live order to Peakerr API)
+app.post('/api/smm/order', async (req, res) => {
+  try {
+    const {
+      serviceId,
+      serviceKey,
+      targetUrl,
+      link,
+      quantity,
+      comments,
+      customComments,
+      userId,
+      userName,
+      userPhone,
+      userEmail,
+      paymentMethod,
+      txHash,
+      utrId
+    } = req.body;
+
+    const cleanServiceId = parseInt(serviceId, 10) || (serviceKey ? parseInt(serviceKey.replace('pk_', ''), 10) : 0);
+    const cleanTargetUrl = (targetUrl || link || '').trim();
+    const qty = parseInt(quantity, 10);
+
+    if (!cleanServiceId) {
+      return res.status(400).json({ success: false, message: "Please select a valid SMM service." });
+    }
+
+    if (!cleanTargetUrl || cleanTargetUrl.length < 4) {
+      return res.status(400).json({ success: false, message: "Please provide a valid target URL / Link." });
+    }
+
+    if (isNaN(qty) || qty <= 0) {
+      return res.status(400).json({ success: false, message: "Please enter a valid order quantity." });
+    }
+
+    // Find service details from cache or fallback
+    let service = peakerrServicesCache.find(s => s.service === cleanServiceId || s.serviceId === cleanServiceId);
+    if (!service) {
+      // If cache missed, attempt a quick sync
+      await syncPeakerrServices();
+      service = peakerrServicesCache.find(s => s.service === cleanServiceId || s.serviceId === cleanServiceId);
+    }
+
+    const serviceName = service ? service.name : `Peakerr Service #${cleanServiceId}`;
+    const serviceCategory = service ? service.category : 'Social Growth';
+    const servicePlatform = service ? service.platform : detectPlatformFromCategory(serviceCategory, serviceName);
+    const rateInr = service ? service.rateInr : 100;
+    const minQty = service ? service.min : 10;
+    const maxQty = service ? service.max : 1000000;
+    const isRefillable = service ? service.refill : false;
+
+    if (qty < minQty || qty > maxQty) {
+      return res.status(400).json({
+        success: false,
+        message: `Quantity must be between ${minQty.toLocaleString()} and ${maxQty.toLocaleString()} for this service.`
+      });
+    }
+
+    const totalCost = Math.max(1, Math.round(((qty / 1000) * rateInr) * 100) / 100);
+    const cleanPaymentMethod = paymentMethod || 'UPI';
+
+    // Verify Crypto payment if BEP20 USDT
+    if (cleanPaymentMethod === 'BEP20' && txHash) {
+      try {
+        const verifyRes = await verifyPaymentOnChainStrict(txHash, totalCost);
+        if (!verifyRes.success) {
+          return res.status(400).json({ success: false, message: verifyRes.message });
+        }
+      } catch (verErr) {
+        console.warn('Crypto check notice:', verErr.message);
+      }
+    }
+
+    // Call Peakerr API
+    const apiUrl = persistentStore.settings.peakerrApiUrl || PEAKERR_DEFAULT_API_URL;
+    const apiKey = persistentStore.settings.peakerrApiKey || PEAKERR_DEFAULT_API_KEY;
+
+    let peakerrOrderId = '';
+    let peakerrError = '';
+
+    const payload = {
+      key: apiKey,
+      action: 'add',
+      service: cleanServiceId,
+      link: cleanTargetUrl,
+      quantity: qty
+    };
+
+    const finalComments = (comments || customComments || '').trim();
+    if (finalComments) {
+      payload.comments = finalComments;
+    }
+
+    try {
+      const peakerrRes = await axios.post(apiUrl, payload, { timeout: 20000 });
+      if (peakerrRes.data && peakerrRes.data.order) {
+        peakerrOrderId = String(peakerrRes.data.order);
+      } else if (peakerrRes.data && peakerrRes.data.error) {
+        peakerrError = String(peakerrRes.data.error);
+        console.warn(`Peakerr API notice for service #${cleanServiceId}:`, peakerrError);
+      }
+    } catch (apiErr) {
+      peakerrError = apiErr.message;
+      console.error('Peakerr API dispatch failed:', apiErr.message);
+    }
+
+    const orderId = 'PK-' + Date.now().toString().slice(-6);
+    const newOrder = {
+      _id: 'smm_' + Date.now() + '_' + Math.floor(Math.random() * 1000),
+      orderId: orderId,
+      providerOrderId: peakerrOrderId,
+      userId: userId || 'guest',
+      userName: userName || 'Customer',
+      userPhone: userPhone || '',
+      userEmail: userEmail || '',
+      platform: servicePlatform.toLowerCase(),
+      serviceKey: `pk_${cleanServiceId}`,
+      serviceName: serviceName,
+      serviceId: cleanServiceId,
+      tier: serviceCategory,
+      targetUrl: cleanTargetUrl,
+      quantity: qty,
+      rate: rateInr,
+      totalCost: totalCost,
+      customComments: finalComments,
+      paymentMethod: cleanPaymentMethod,
+      paymentStatus: cleanPaymentMethod === 'BEP20' ? 'PAID' : (utrId ? 'PENDING_UPI_VERIFICATION' : 'PAID'),
+      txHash: txHash || '',
+      utrId: utrId || '',
+      status: peakerrOrderId ? 'Processing' : 'Processing (Queued)',
+      remains: qty,
+      startCount: 0,
+      refillable: isRefillable,
+      refillStatus: isRefillable ? 'Eligible' : 'Not Supported',
+      refillId: '',
+      notes: peakerrError ? `Peakerr Notice: ${peakerrError}` : 'Live Dispatched to Peakerr API',
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+
+    persistentStore.smmOrders = persistentStore.smmOrders || [];
+    persistentStore.smmOrders.unshift(newOrder);
+    saveLocalDB();
+
+    if (getDBStatus()) {
+      try {
+        await SmmOrder.create(newOrder);
+      } catch (dbErr) {
+        console.warn('MongoDB SMM Order Save Notice:', dbErr.message);
+      }
+    }
+
+    // Broadcast Telegram notification to Owner
+    try {
+      broadcastToTelegramGroup(
+        `⚡ *NEW PEAKERR SMM ORDER PLACED!*\n\n` +
+        `📦 *Order ID:* \`${orderId}\`\n` +
+        `🔌 *Peakerr Order ID:* \`#${peakerrOrderId || 'Queued'}\`\n` +
+        `👤 *Customer:* ${escapeHtml(userName || 'Customer')} (${userPhone || 'No Phone'})\n` +
+        `⚡ *Service:* ${escapeHtml(serviceName)} (ID: ${cleanServiceId})\n` +
+        `🎯 *Target Link:* \`${cleanTargetUrl}\`\n` +
+        `🔢 *Quantity:* ${qty.toLocaleString()}\n` +
+        `💰 *Total Paid:* ₹${totalCost.toLocaleString()} (${cleanPaymentMethod})\n` +
+        (utrId ? `🏷️ *UTR ID:* \`${utrId}\`\n` : '') +
+        (txHash ? `🔗 *TxHash:* \`${txHash}\`\n` : '') +
+        `🕒 *Date:* ${new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}`
+      );
+    } catch (e) {}
+
+    // Auto-send Email Invoice & PDF Bill
+    sendSmmInvoiceEmail(newOrder).catch(e => console.warn('Invoice email dispatch error:', e.message));
+
+    return res.json({
+      success: true,
+      orderId: orderId,
+      providerOrderId: peakerrOrderId,
+      details: newOrder,
+      message: peakerrOrderId
+        ? `🎉 Order Placed Successfully on Peakerr! Provider Order ID: #${peakerrOrderId}`
+        : `🎉 Order Placed Successfully! Your Order ID: ${orderId}`
+    });
+  } catch (err) {
+    console.error('SMM Order Processing Error:', err);
+    res.status(500).json({ success: false, message: 'Order submission failed: ' + err.message });
+  }
+});
+
+// 3. Live Peakerr Order Status Check
+app.get('/api/smm/status/:orderId', async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    const order = (persistentStore.smmOrders || []).find(o => o.orderId === orderId || o._id === orderId || o.providerOrderId === orderId);
+
+    if (!order) {
+      return res.status(404).json({ success: false, message: "Order not found." });
+    }
+
+    const apiUrl = persistentStore.settings.peakerrApiUrl || PEAKERR_DEFAULT_API_URL;
+    const apiKey = persistentStore.settings.peakerrApiKey || PEAKERR_DEFAULT_API_KEY;
+
+    let peakerrData = null;
+    if (order.providerOrderId) {
+      try {
+        const statusRes = await axios.post(apiUrl, {
+          key: apiKey,
+          action: 'status',
+          order: order.providerOrderId
+        }, { timeout: 15000 });
+
+        if (statusRes.data && !statusRes.data.error) {
+          peakerrData = statusRes.data;
+          if (peakerrData.status) {
+            order.status = peakerrData.status;
+          }
+          if (peakerrData.remains !== undefined) {
+            order.remains = parseInt(peakerrData.remains, 10) || 0;
+          }
+          if (peakerrData.start_count !== undefined) {
+            order.startCount = parseInt(peakerrData.start_count, 10) || 0;
+          }
+          order.updatedAt = new Date();
+          saveLocalDB();
+
+          if (getDBStatus()) {
+            try {
+              await SmmOrder.updateOne({ _id: order._id }, { $set: { status: order.status, remains: order.remains, startCount: order.startCount, updatedAt: new Date() } });
+            } catch (e) {}
+          }
+        }
+      } catch (apiErr) {
+        console.warn('Peakerr Status fetch notice:', apiErr.message);
+      }
+    }
+
+    const qty = order.quantity || 1;
+    let remains = order.remains !== undefined ? order.remains : (order.status === 'Completed' ? 0 : qty);
+    if (order.status === 'Completed') remains = 0;
+    const delivered = Math.max(0, Math.min(qty, qty - remains));
+    const progressPercent = order.status === 'Completed' ? 100 : Math.min(100, Math.round((delivered / qty) * 100));
+
+    return res.json({
+      success: true,
+      orderId: order.orderId,
+      providerOrderId: order.providerOrderId,
+      status: order.status,
+      remains: remains,
+      delivered: delivered,
+      quantity: qty,
+      progressPercent: progressPercent,
+      startCount: order.startCount || 0,
+      peakerr: peakerrData,
+      details: order
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// 4. Trigger Refill on Peakerr API
+app.post('/api/smm/refill', async (req, res) => {
+  try {
+    const { orderId } = req.body;
+    const order = (persistentStore.smmOrders || []).find(o => o.orderId === orderId || o._id === orderId || o.providerOrderId === orderId);
+
+    if (!order) {
+      return res.status(404).json({ success: false, message: "Order not found." });
+    }
+
+    const apiUrl = persistentStore.settings.peakerrApiUrl || PEAKERR_DEFAULT_API_URL;
+    const apiKey = persistentStore.settings.peakerrApiKey || PEAKERR_DEFAULT_API_KEY;
+
+    let refillId = 'REF-' + Date.now().toString().slice(-6);
+    let peakerrError = '';
+
+    if (order.providerOrderId) {
+      try {
+        const refillRes = await axios.post(apiUrl, {
+          key: apiKey,
+          action: 'refill',
+          order: order.providerOrderId
+        }, { timeout: 15000 });
+
+        if (refillRes.data && refillRes.data.refill) {
+          refillId = String(refillRes.data.refill);
+        } else if (refillRes.data && refillRes.data.error) {
+          peakerrError = String(refillRes.data.error);
+        }
+      } catch (e) {
+        peakerrError = e.message;
+      }
+    }
+
+    order.refillStatus = 'In Progress';
+    order.refillId = refillId;
+    order.lastRefillAt = new Date();
+    order.updatedAt = new Date();
+
+    saveLocalDB();
+
+    if (getDBStatus()) {
+      try {
+        await SmmOrder.updateOne({ _id: order._id }, { $set: { refillStatus: 'In Progress', refillId: refillId, lastRefillAt: new Date(), updatedAt: new Date() } });
+      } catch (e) {}
+    }
+
+    return res.json({
+      success: true,
+      refillId: refillId,
+      message: peakerrError
+        ? `Refill queued locally: ${peakerrError}`
+        : `🔄 Refill request submitted successfully! Refill Reference: ${refillId}`
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// 5. Get Live Peakerr Balance
+app.get('/api/smm/balance', async (req, res) => {
+  try {
+    const apiUrl = persistentStore.settings.peakerrApiUrl || PEAKERR_DEFAULT_API_URL;
+    const apiKey = persistentStore.settings.peakerrApiKey || PEAKERR_DEFAULT_API_KEY;
+
+    const balanceRes = await axios.post(apiUrl, {
+      key: apiKey,
+      action: 'balance'
+    }, { timeout: 15000 });
+
+    if (balanceRes.data && balanceRes.data.balance !== undefined) {
+      return res.json({
+        success: true,
+        balance: balanceRes.data.balance,
+        currency: balanceRes.data.currency || 'USD'
+      });
+    }
+    return res.json({ success: false, message: balanceRes.data.error || 'Failed to fetch balance' });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// 6. User SMM Orders List (Unified cross-channel matching)
+app.get('/api/smm/orders/user/:userId', (req, res) => {
+  try {
+    const { userId } = req.params;
+    const orders = getUnifiedUserOrders(persistentStore.smmOrders, userId, persistentStore);
+    return res.json({ success: true, orders });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// 7. Live Customer SMM Status Sync from Peakerr
+app.post('/api/smm/orders/:id/sync-status', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const order = (persistentStore.smmOrders || []).find(o => o.orderId === id || o._id === id);
+    if (!order) {
+      return res.status(404).json({ success: false, message: "Order not found." });
+    }
+
+    // If order has no real Peakerr numeric ID yet (e.g. pending approval or waiting for owner to fund Peakerr)
+    if (!order.providerOrderId || isNaN(Number(order.providerOrderId))) {
+      const msg = order.paymentStatus === 'PENDING_UPI_VERIFICATION' 
+        ? 'Pending Owner Approval (UPI UTR Submitted)'
+        : (order.notes || 'Order is queued. Delivery is being processed.');
+      return res.json({ 
+        success: true, 
+        status: order.status, 
+        message: msg, 
+        order 
+      });
+    }
+
+    const apiUrl = persistentStore.settings.peakerrApiUrl || PEAKERR_DEFAULT_API_URL;
+    const apiKey = persistentStore.settings.peakerrApiKey || PEAKERR_DEFAULT_API_KEY;
+
+    try {
+      const statusRes = await axios.post(apiUrl, {
+        key: apiKey,
+        action: 'status',
+        order: Number(order.providerOrderId)
+      }, { timeout: 15000 });
+
+      if (statusRes.data && !statusRes.data.error) {
+        if (statusRes.data.status) order.status = statusRes.data.status;
+        if (statusRes.data.remains !== undefined) order.remains = parseInt(statusRes.data.remains, 10) || 0;
+        if (statusRes.data.start_count !== undefined) order.startCount = parseInt(statusRes.data.start_count, 10) || 0;
+        order.updatedAt = new Date();
+
+        saveLocalDB();
+        if (getDBStatus()) {
+          try {
+            await SmmOrder.updateOne({ _id: order._id }, { $set: { status: order.status, remains: order.remains, startCount: order.startCount, updatedAt: new Date() } });
+          } catch (e) {}
+        }
+
+        return res.json({ success: true, message: `Live status: ${order.status}`, status: order.status, order, data: statusRes.data });
+      } else if (statusRes.data && statusRes.data.error) {
+        // If Peakerr returns error notice (like incorrect order ID or expired status), return current order status gracefully
+        return res.json({ 
+          success: true, 
+          status: order.status, 
+          message: `Status: ${order.status} (${order.notes || 'Processing'})`, 
+          order 
+        });
+      }
+    } catch (apiErr) {
+      console.warn('Peakerr status check notice:', apiErr.message);
+    }
+
+    return res.json({ success: true, status: order.status, order });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// 8. Owner: Approve SMM UPI Payment & Auto-Dispatch to Peakerr
+app.post('/api/owner/smm/orders/:id/approve-upi', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const order = (persistentStore.smmOrders || []).find(o => o.orderId === id || o._id === id);
+    if (!order) {
+      return res.status(404).json({ success: false, message: "SMM Order not found." });
+    }
+
+    order.paymentStatus = 'PAID';
+    order.status = 'Processing';
+    order.updatedAt = new Date();
+
+    // Dispatch to Peakerr API if not already dispatched
+    if (!order.providerOrderId || order.providerOrderId.startsWith('TG-') || order.providerOrderId.startsWith('WA-')) {
+      const apiUrl = persistentStore.settings.peakerrApiUrl || PEAKERR_DEFAULT_API_URL;
+      const apiKey = persistentStore.settings.peakerrApiKey || PEAKERR_DEFAULT_API_KEY;
+
+      const payload = {
+        key: apiKey,
+        action: 'add',
+        service: order.serviceId || 1001,
+        link: order.targetUrl,
+        quantity: order.quantity
+      };
+      if (order.customComments) payload.comments = order.customComments;
+
+      try {
+        const peakerrRes = await axios.post(apiUrl, payload, { timeout: 20000 });
+        if (peakerrRes.data && peakerrRes.data.order) {
+          order.providerOrderId = String(peakerrRes.data.order);
+          order.notes = `Dispatched to Peakerr #${order.providerOrderId}`;
+        }
+      } catch (peakErr) {
+        console.error('Failed to dispatch approved SMM order to Peakerr:', peakErr.message);
+      }
+    }
+
+    saveLocalDB();
+    if (getDBStatus()) {
+      try {
+        await SmmOrder.updateOne({ _id: order._id }, { $set: { paymentStatus: 'PAID', status: 'Processing', providerOrderId: order.providerOrderId, updatedAt: new Date() } });
+      } catch (e) {}
+    }
+
+    // Auto-notify customer via Telegram and WhatsApp
+    const notifMsg = `✅ Your SMM Growth Order ${order.orderId} (UTR: ${order.utrId}) has been APPROVED and dispatched to automated servers! Live delivery in progress.`;
+    if (order.userId && order.userId.startsWith('tg_')) {
+      const tgChatId = order.userId.replace('tg_', '');
+      sendTelegramDirectMessage(tgChatId, `🎉 *SMM ORDER PAYMENT APPROVED!* 🎉\n\n` +
+        `📦 *Order ID:* \`${order.orderId}\`\n` +
+        `⚡ *Service:* *${order.serviceName}*\n` +
+        `🔢 *Quantity:* *${order.quantity.toLocaleString()} Units*\n` +
+        `📊 *Status:* 🟢 *Processing (Live Delivery Active)*\n\n` +
+        `⚡ Your growth package is now running! Track via /orders.`);
+    }
+
+    if (order.userPhone) {
+      sendWhatsAppDirectMessage(order.userPhone, `🎉 *SMM ORDER PAYMENT APPROVED!* 🎉\n\n` +
+        `📦 *Order ID:* ${order.orderId}\n` +
+        `⚡ *Service:* ${order.serviceName}\n` +
+        `🔢 *Quantity:* ${order.quantity.toLocaleString()} Units\n` +
+        `📊 *Status:* 🟢 Processing (Live Delivery Active)\n\n` +
+        `⚡ Your growth package is now running! Reply *3* to track live status.`);
+    }
+
+    // Auto-send Email Invoice & PDF Bill upon payment approval
+    sendSmmInvoiceEmail(order).catch(e => console.warn('Invoice email dispatch error:', e.message));
+
+    return res.json({ success: true, message: `Order ${order.orderId} approved and dispatched to Peakerr!`, order });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// -------------------------------------------------------------
+// OWNER SMM & PEAKERR MANAGEMENT API ENDPOINTS
+// -------------------------------------------------------------
+
+// Owner: Get Peakerr Overview & Live KPIs
+app.get('/api/owner/smm/overview', async (req, res) => {
+  try {
+    const apiUrl = persistentStore.settings.peakerrApiUrl || PEAKERR_DEFAULT_API_URL;
+    const apiKey = persistentStore.settings.peakerrApiKey || PEAKERR_DEFAULT_API_KEY;
+    const profitMargin = parseFloat(persistentStore.settings.peakerrProfitMargin) || parseFloat(process.env.PEAKERR_PROFIT_MARGIN) || 1.45;
+    const usdToInr = parseFloat(persistentStore.settings.peakerrUsdToInr) || parseFloat(process.env.PEAKERR_USD_TO_INR) || 88.00;
+
+    let balance = '0.00';
+    let currency = 'USD';
+    let apiStatus = 'Connected';
+
+    try {
+      const balRes = await axios.post(apiUrl, { key: apiKey, action: 'balance' }, { timeout: 10000 });
+      if (balRes.data && balRes.data.balance !== undefined) {
+        balance = balRes.data.balance;
+        currency = balRes.data.currency || 'USD';
+      }
+    } catch (e) {
+      apiStatus = 'Error: ' + e.message;
+    }
+
+    const orders = persistentStore.smmOrders || [];
+    const totalRevenue = orders.reduce((sum, o) => sum + (parseFloat(o.totalCost) || 0), 0);
+
+    return res.json({
+      success: true,
+      balance,
+      currency,
+      apiStatus,
+      totalOrders: orders.length,
+      totalRevenue,
+      servicesCount: peakerrServicesCache.length,
+      categoriesCount: peakerrCategoriesCache.length,
+      profitMargin,
+      usdToInr,
+      lastSync: lastPeakerrSyncTime
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// Owner: Trigger Live Sync from Peakerr API
+app.post('/api/owner/smm/sync', async (req, res) => {
+  try {
+    const result = await syncPeakerrServices(true);
+    return res.json(result);
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// Owner: Get All SMM Services (for management table)
+app.get('/api/owner/smm/services', async (req, res) => {
+  try {
+    if (peakerrServicesCache.length === 0) {
+      await syncPeakerrServices();
+    }
+    return res.json({
+      success: true,
+      total: peakerrServicesCache.length,
+      categories: peakerrCategoriesCache,
+      services: peakerrServicesCache
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// Owner: Get SMM Orders
+app.get('/api/owner/smm/orders', (req, res) => {
+  try {
+    const { status, search } = req.query;
+    let orders = persistentStore.smmOrders || [];
+
+    if (status && status !== 'ALL') {
+      orders = orders.filter(o => (o.status || '').toLowerCase() === status.toLowerCase());
+    }
+
+    if (search && search.trim().length > 0) {
+      const q = search.toLowerCase();
+      orders = orders.filter(o =>
+        o.orderId.toLowerCase().includes(q) ||
+        (o.providerOrderId && o.providerOrderId.toLowerCase().includes(q)) ||
+        (o.userName && o.userName.toLowerCase().includes(q)) ||
+        (o.userPhone && o.userPhone.includes(q)) ||
+        (o.targetUrl && o.targetUrl.toLowerCase().includes(q)) ||
+        (o.serviceName && o.serviceName.toLowerCase().includes(q))
+      );
+    }
+
+    return res.json({
+      success: true,
+      total: orders.length,
+      orders
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// Owner: Update SMM Order Status
+app.post('/api/owner/smm/orders/:id/status', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status, paymentStatus, remains } = req.body;
+
+    const order = (persistentStore.smmOrders || []).find(o => o.orderId === id || o._id === id);
+    if (!order) {
+      return res.status(404).json({ success: false, message: "Order not found." });
+    }
+
+    if (status) order.status = status;
+    if (paymentStatus) order.paymentStatus = paymentStatus;
+    if (remains !== undefined) order.remains = parseInt(remains, 10) || 0;
+    order.updatedAt = new Date();
+
+    saveLocalDB();
+
+    if (getDBStatus()) {
+      try {
+        await SmmOrder.updateOne({ _id: order._id }, { $set: { status: order.status, paymentStatus: order.paymentStatus, remains: order.remains, updatedAt: new Date() } });
+      } catch (e) {}
+    }
+
+    return res.json({ success: true, message: `Order ${order.orderId} updated to ${order.status}.`, order });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// Owner: Sync Live Status from Peakerr for an Order
+app.post('/api/owner/smm/orders/:id/sync-status', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const order = (persistentStore.smmOrders || []).find(o => o.orderId === id || o._id === id);
+    if (!order) {
+      return res.status(404).json({ success: false, message: "Order not found." });
+    }
+
+    if (!order.providerOrderId || isNaN(Number(order.providerOrderId))) {
+      return res.status(400).json({ success: false, message: "This order is waiting for Peakerr dispatch. Please use 'Retry Dispatch' after adding balance on Peakerr." });
+    }
+
+    const apiUrl = persistentStore.settings.peakerrApiUrl || PEAKERR_DEFAULT_API_URL;
+    const apiKey = persistentStore.settings.peakerrApiKey || PEAKERR_DEFAULT_API_KEY;
+
+    const statusRes = await axios.post(apiUrl, {
+      key: apiKey,
+      action: 'status',
+      order: Number(order.providerOrderId)
+    }, { timeout: 15000 });
+
+    if (statusRes.data && !statusRes.data.error) {
+      if (statusRes.data.status) order.status = statusRes.data.status;
+      if (statusRes.data.remains !== undefined) order.remains = parseInt(statusRes.data.remains, 10) || 0;
+      if (statusRes.data.start_count !== undefined) order.startCount = parseInt(statusRes.data.start_count, 10) || 0;
+      order.updatedAt = new Date();
+
+      saveLocalDB();
+      if (getDBStatus()) {
+        try {
+          await SmmOrder.updateOne({ _id: order._id }, { $set: { status: order.status, remains: order.remains, startCount: order.startCount, updatedAt: new Date() } });
+        } catch (e) {}
+      }
+
+      return res.json({ success: true, message: `Live status synced from Peakerr: ${order.status}`, status: order.status, data: statusRes.data });
+    } else {
+      return res.status(400).json({ success: false, message: statusRes.data?.error || 'Failed to sync status from Peakerr' });
+    }
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// Owner: Retry Dispatching SMM Order to Peakerr API
+app.post('/api/owner/smm/orders/:id/retry-dispatch', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const order = (persistentStore.smmOrders || []).find(o => o.orderId === id || o._id === id);
+    if (!order) {
+      return res.status(404).json({ success: false, message: "SMM Order not found." });
+    }
+
+    const apiUrl = persistentStore.settings.peakerrApiUrl || PEAKERR_DEFAULT_API_URL;
+    const apiKey = persistentStore.settings.peakerrApiKey || PEAKERR_DEFAULT_API_KEY;
+
+    const payload = {
+      key: apiKey,
+      action: 'add',
+      service: order.serviceId || 31850,
+      link: order.targetUrl,
+      quantity: order.quantity
+    };
+    if (order.customComments) payload.comments = order.customComments;
+
+    const peakerrRes = await axios.post(apiUrl, payload, { timeout: 25000 });
+    if (peakerrRes.data && peakerrRes.data.order) {
+      order.providerOrderId = String(peakerrRes.data.order);
+      order.paymentStatus = 'PAID';
+      order.status = 'Processing';
+      order.notes = `Dispatched to Peakerr #${order.providerOrderId}`;
+      order.updatedAt = new Date();
+
+      saveLocalDB();
+      if (getDBStatus()) {
+        try {
+          await SmmOrder.updateOne({ _id: order._id }, { $set: { providerOrderId: order.providerOrderId, paymentStatus: 'PAID', status: 'Processing', notes: order.notes, updatedAt: new Date() } });
+        } catch (e) {}
+      }
+
+      // Auto-send Email Invoice & PDF Bill
+      sendSmmInvoiceEmail(order).catch(e => console.warn('Invoice email dispatch error:', e.message));
+
+      return res.json({ success: true, message: `🎉 Order successfully dispatched to Peakerr! Order ID: #${order.providerOrderId}`, order });
+    } else if (peakerrRes.data && peakerrRes.data.error) {
+      order.notes = `Peakerr API Notice: ${peakerrRes.data.error}`;
+      saveLocalDB();
+      return res.status(400).json({ success: false, message: `Peakerr API Notice: ${peakerrRes.data.error}` });
+    }
+
+    return res.status(500).json({ success: false, message: 'Unexpected response from Peakerr API' });
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Peakerr API Connection Error: ' + err.message });
+  }
+});
+
+// Owner: Force Trigger Refill on Peakerr Order
+app.post('/api/owner/smm/orders/:id/refill', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const order = (persistentStore.smmOrders || []).find(o => o.orderId === id || o._id === id);
+    if (!order) {
+      return res.status(404).json({ success: false, message: "Order not found." });
+    }
+
+    let refillId = 'OWNER-REF-' + Date.now().toString().slice(-5);
+    const apiUrl = persistentStore.settings.peakerrApiUrl || PEAKERR_DEFAULT_API_URL;
+    const apiKey = persistentStore.settings.peakerrApiKey || PEAKERR_DEFAULT_API_KEY;
+
+    if (order.providerOrderId) {
+      try {
+        const refillRes = await axios.post(apiUrl, {
+          key: apiKey,
+          action: 'refill',
+          order: order.providerOrderId
+        }, { timeout: 15000 });
+        if (refillRes.data && refillRes.data.refill) {
+          refillId = String(refillRes.data.refill);
+        }
+      } catch (e) {}
+    }
+
+    order.refillStatus = 'In Progress';
+    order.refillId = refillId;
+    order.lastRefillAt = new Date();
+    order.updatedAt = new Date();
+
+    saveLocalDB();
+
+    if (getDBStatus()) {
+      try {
+        await SmmOrder.updateOne({ _id: order._id }, { $set: { refillStatus: 'In Progress', refillId: refillId, lastRefillAt: new Date(), updatedAt: new Date() } });
+      } catch (e) {}
+    }
+
+    return res.json({ success: true, message: `Refill triggered for order ${order.orderId}. Refill ID: ${refillId}` });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// Owner: Get Peakerr SMM Settings
+app.get('/api/owner/smm/settings', (req, res) => {
+  try {
+    const url = persistentStore.settings.peakerrApiUrl || PEAKERR_DEFAULT_API_URL;
+    const key = persistentStore.settings.peakerrApiKey || PEAKERR_DEFAULT_API_KEY;
+    const profitMargin = parseFloat(persistentStore.settings.peakerrProfitMargin) || parseFloat(process.env.PEAKERR_PROFIT_MARGIN) || 1.45;
+    const usdToInr = parseFloat(persistentStore.settings.peakerrUsdToInr) || parseFloat(process.env.PEAKERR_USD_TO_INR) || 88.00;
+    const masked = key ? (key.length > 8 ? key.slice(0, 4) + '••••••••' + key.slice(-4) : '••••••••') : '';
+
+    return res.json({
+      success: true,
+      smmProviderUrl: url,
+      peakerrApiUrl: url,
+      hasApiKey: Boolean(key),
+      maskedApiKey: masked,
+      profitMargin,
+      usdToInr
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// Owner: Update Peakerr SMM Settings
+app.post('/api/owner/smm/settings', async (req, res) => {
+  try {
+    const { peakerrApiUrl, peakerrApiKey, profitMargin, usdToInr, smmProviderUrl, smmApiKey } = req.body;
+
+    if (peakerrApiUrl !== undefined) persistentStore.settings.peakerrApiUrl = peakerrApiUrl.trim();
+    if (smmProviderUrl !== undefined) persistentStore.settings.peakerrApiUrl = smmProviderUrl.trim();
+
+    if (peakerrApiKey !== undefined && peakerrApiKey.trim() !== '') persistentStore.settings.peakerrApiKey = peakerrApiKey.trim();
+    if (smmApiKey !== undefined && smmApiKey.trim() !== '') persistentStore.settings.peakerrApiKey = smmApiKey.trim();
+
+    if (profitMargin !== undefined && !isNaN(parseFloat(profitMargin))) {
+      persistentStore.settings.peakerrProfitMargin = parseFloat(profitMargin);
+    }
+    if (usdToInr !== undefined && !isNaN(parseFloat(usdToInr))) {
+      persistentStore.settings.peakerrUsdToInr = parseFloat(usdToInr);
+    }
+
+    saveLocalDB();
+
+    if (getDBStatus() && mongoose.connection.db) {
+      try {
+        await mongoose.connection.db.collection('settings').updateOne(
+          {},
+          {
+            $set: {
+              peakerrApiUrl: persistentStore.settings.peakerrApiUrl,
+              peakerrApiKey: persistentStore.settings.peakerrApiKey,
+              peakerrProfitMargin: persistentStore.settings.peakerrProfitMargin,
+              peakerrUsdToInr: persistentStore.settings.peakerrUsdToInr
+            }
+          },
+          { upsert: true }
+        );
+      } catch (e) {}
+    }
+
+    // Trigger background sync with updated profit/rates
+    syncPeakerrServices(true).catch(() => {});
+
+    return res.json({
+      success: true,
+      message: "Peakerr SMM settings saved & services re-calculated successfully!"
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// Owner: Set Individual Custom SMM Service Override (Rate, Min/Max, Active)
+app.post('/api/owner/smm/service/override', async (req, res) => {
+  try {
+    const { serviceId, rateInr, min, max, name, active, refill } = req.body;
+    if (!serviceId) {
+      return res.status(400).json({ success: false, message: 'Service ID is required.' });
+    }
+
+    if (!persistentStore.settings.customServiceRates) {
+      persistentStore.settings.customServiceRates = {};
+    }
+
+    const srvId = parseInt(serviceId, 10);
+    persistentStore.settings.customServiceRates[srvId] = {
+      serviceId: srvId,
+      rateInr: rateInr !== undefined ? parseFloat(rateInr) : undefined,
+      min: min !== undefined ? parseInt(min, 10) : undefined,
+      max: max !== undefined ? parseInt(max, 10) : undefined,
+      name: name ? String(name).trim() : undefined,
+      active: active !== undefined ? Boolean(active) : true,
+      refill: refill !== undefined ? Boolean(refill) : undefined,
+      updatedAt: new Date()
+    };
+
+    saveLocalDB();
+
+    if (getDBStatus() && mongoose.connection.db) {
+      try {
+        await mongoose.connection.db.collection('settings').updateOne(
+          {},
+          { $set: { customServiceRates: persistentStore.settings.customServiceRates } },
+          { upsert: true }
+        );
+      } catch (e) {}
+    }
+
+    // Refresh memory cache
+    await syncPeakerrServices(true);
+
+    return res.json({
+      success: true,
+      message: `Service #${serviceId} rate & settings updated successfully!`,
+      customRates: persistentStore.settings.customServiceRates
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// Owner: Delete Custom SMM Service Override (Reset to formula price)
+app.delete('/api/owner/smm/service/override/:serviceId', async (req, res) => {
+  try {
+    const srvId = parseInt(req.params.serviceId, 10);
+    if (persistentStore.settings.customServiceRates && persistentStore.settings.customServiceRates[srvId]) {
+      delete persistentStore.settings.customServiceRates[srvId];
+      saveLocalDB();
+
+      if (getDBStatus() && mongoose.connection.db) {
+        try {
+          await mongoose.connection.db.collection('settings').updateOne(
+            {},
+            { $set: { customServiceRates: persistentStore.settings.customServiceRates } }
+          );
+        } catch (e) {}
+      }
+
+      await syncPeakerrServices(true);
+    }
+    return res.json({ success: true, message: `Service #${srvId} reset to standard profit rate.` });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// Owner: 1-Click Restore Default Cloud Products & Stocks
+app.post('/api/owner/products/seed-defaults', async (req, res) => {
+  try {
+    persistentStore.products = [];
+    persistentStore.stocks = [];
+    await seedDemoProductsAndStocks();
+    return res.json({
+      success: true,
+      message: `Successfully restored ${persistentStore.products.length} Cloud products & ${persistentStore.stocks.length} stock keys!`,
+      products: persistentStore.products
+    });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
