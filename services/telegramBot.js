@@ -29,6 +29,28 @@ function getTelegramBotStatus() {
   };
 }
 
+function getOrCheckLinkedTelegramUser(chatId, services) {
+  if (!telegramSessions[chatId]) telegramSessions[chatId] = {};
+  const session = telegramSessions[chatId];
+  if (session.linkedUser && session.linkedUser.status !== 'blocked') {
+    return session.linkedUser;
+  }
+
+  const store = services.getPersistentStore();
+  const strId = String(chatId);
+  const matchedUser = (store.users || []).find(u => 
+    u.telegramId === strId || 
+    (u.phone && u.phone.replace(/[^0-9]/g, '') === strId.replace(/[^0-9]/g, ''))
+  );
+
+  if (matchedUser && matchedUser.status !== 'blocked') {
+    session.linkedUser = matchedUser;
+    return matchedUser;
+  }
+
+  return null;
+}
+
 function getLogoFile() {
   if (fs.existsSync(logoPath)) return logoPath;
   if (fs.existsSync(fallbackLogoPath)) return fallbackLogoPath;
@@ -482,6 +504,26 @@ function setupTelegramHandlers(bot, services) {
       if (data.startsWith('sel_var_')) {
         const varId = data.replace('sel_var_', '');
         const store = getPersistentStore();
+
+        // Check if user is authenticated
+        const authedUser = getOrCheckLinkedTelegramUser(chatId, services);
+        if (!authedUser) {
+          telegramSessions[chatId].pendingOrderAction = { type: 'CLOUD', varId };
+          bot.sendMessage(chatId, `🔐 *LOGIN OR REGISTRATION REQUIRED* 🔐\n\n` +
+            `To buy Cloud Accounts & RDPs, you must be logged in to your verified Prince Cloud Sellar account.\n\n` +
+            `👉 *Choose an option below to proceed:*`, {
+              parse_mode: 'Markdown',
+              reply_markup: {
+                inline_keyboard: [
+                  [{ text: '🔐 Login to Account', callback_data: 'action_login' }],
+                  [{ text: '📝 Create New Account', callback_data: 'action_register' }],
+                  [{ text: '🔙 Back to Menu', callback_data: 'menu_main' }]
+                ]
+              }
+            });
+          return;
+        }
+
         const prod = store.products.find(p => p._id === varId);
         if (!prod) {
           bot.sendMessage(chatId, `⚠️ Product variant not found or no longer available.`, { parse_mode: 'Markdown' });
@@ -529,6 +571,27 @@ function setupTelegramHandlers(bot, services) {
 
       if (data.startsWith('smm_order_')) {
         const srvKey = data.replace('smm_order_', '');
+        const store = getPersistentStore();
+
+        // Check if user is authenticated
+        const authedUser = getOrCheckLinkedTelegramUser(chatId, services);
+        if (!authedUser) {
+          telegramSessions[chatId].pendingOrderAction = { type: 'SMM', srvKey };
+          bot.sendMessage(chatId, `🔐 *LOGIN OR REGISTRATION REQUIRED* 🔐\n\n` +
+            `To buy Social Media Growth Packages, you must be logged in to your verified Prince Cloud Sellar account.\n\n` +
+            `👉 *Choose an option below to proceed:*`, {
+              parse_mode: 'Markdown',
+              reply_markup: {
+                inline_keyboard: [
+                  [{ text: '🔐 Login to Account', callback_data: 'action_login' }],
+                  [{ text: '📝 Create New Account', callback_data: 'action_register' }],
+                  [{ text: '🔙 Back to Menu', callback_data: 'menu_main' }]
+                ]
+              }
+            });
+          return;
+        }
+
         const INDIANSMM_MAP = {
           // Instagram (Real IndianSMMHub IDs)
           ig_reels_views: { serviceId: 1529, name: 'Instagram Superfast Reels Views (⚡ ₹0.50/1K)', rate: 0.50, min: 1000, refill: false },
@@ -561,7 +624,6 @@ function setupTelegramHandlers(bot, services) {
         };
 
         const mapped = INDIANSMM_MAP[srvKey];
-        const store = getPersistentStore();
         let srv = (store.smmServices || []).find(s => s.serviceKey === srvKey || s._id === srvKey || s.service === mapped?.serviceId);
 
         if (mapped) {
@@ -958,6 +1020,14 @@ function setupTelegramHandlers(bot, services) {
 
       if (session.selectedProduct && session.quantity) {
         sendPaymentChoice(bot, chatId, services);
+      } else if (session.selectedSmmService) {
+        session.step = 'SMM_AWAITING_LINK';
+        bot.sendMessage(chatId, `🎯 *Selected Service:* *${session.selectedSmmService.name}*\n` +
+          `💰 *Rate:* ₹${session.selectedSmmService.rate} / 1,000 Units\n\n` +
+          `👉 *Please send your Target Link (Profile / Channel / Post URL):*\n` +
+          `Example: \`https://instagram.com/username\` or \`https://t.me/channel\``, {
+            parse_mode: 'Markdown'
+          });
       } else {
         sendMainMenu(bot, chatId);
       }
@@ -1101,6 +1171,14 @@ function setupTelegramHandlers(bot, services) {
 
       if (session.selectedProduct && session.quantity) {
         sendPaymentChoice(bot, chatId, services);
+      } else if (session.selectedSmmService) {
+        session.step = 'SMM_AWAITING_LINK';
+        bot.sendMessage(chatId, `🎯 *Selected Service:* *${session.selectedSmmService.name}*\n` +
+          `💰 *Rate:* ₹${session.selectedSmmService.rate} / 1,000 Units\n\n` +
+          `👉 *Please send your Target Link (Profile / Channel / Post URL):*\n` +
+          `Example: \`https://instagram.com/username\` or \`https://t.me/channel\``, {
+            parse_mode: 'Markdown'
+          });
       } else {
         sendMainMenu(bot, chatId);
       }
@@ -1303,14 +1381,31 @@ async function executeTelegramDirectLogin(bot, chatId, emailOrPhone, pass, servi
     saveLocalDB();
 
     bot.sendMessage(chatId, `🎉 *Login Successful!* Welcome back, *${user.name}*.\nYour account is synced across Website and Telegram! (Active 6-Hour Session)`, {
-      parse_mode: 'Markdown',
-      reply_markup: {
-        inline_keyboard: [
-          [{ text: '🛍️ Browse Stock & Buy', callback_data: 'menu_stock' }],
-          [{ text: '📦 View My Orders', callback_data: 'menu_orders' }]
-        ]
-      }
+      parse_mode: 'Markdown'
     });
+
+    if (session.selectedProduct && session.quantity) {
+      sendPaymentChoice(bot, chatId, services);
+    } else if (session.selectedSmmService) {
+      session.step = 'SMM_AWAITING_LINK';
+      bot.sendMessage(chatId, `🎯 *Selected Service:* *${session.selectedSmmService.name}*\n` +
+        `💰 *Rate:* ₹${session.selectedSmmService.rate} / 1,000 Units\n\n` +
+        `👉 *Please send your Target Link (Profile / Channel / Post URL):*\n` +
+        `Example: \`https://instagram.com/username\` or \`https://t.me/channel\``, {
+          parse_mode: 'Markdown'
+        });
+    } else {
+      bot.sendMessage(chatId, `👉 What would you like to do today?`, {
+        parse_mode: 'Markdown',
+        reply_markup: {
+          inline_keyboard: [
+            [{ text: '🛍️ Browse Stock & Buy', callback_data: 'menu_stock' }],
+            [{ text: '🚀 Social Media Growth (SMM)', callback_data: 'menu_smm_growth' }],
+            [{ text: '📦 View My Orders', callback_data: 'menu_orders' }]
+          ]
+        }
+      });
+    }
     return;
   }
 

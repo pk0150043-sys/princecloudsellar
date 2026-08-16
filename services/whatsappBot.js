@@ -832,19 +832,40 @@ async function handleWhatsAppIncomingMessage(sock, jid, fromNumber, text, servic
     session.smmQty = qtyNum;
     const totalCost = Math.ceil((qtyNum / 1000) * srv.rate);
     session.smmTotalCost = totalCost;
-    session.step = 'SMM_AWAITING_UTR';
 
-    const upiId = store.settings?.ownerUpiId || '9507325677-1@naviaxis';
-    await sendReply(`📋 *SMM ORDER BILL & PAYMENT* 📋\n\n` +
-      `⚡ *Service:* *${srv.name}*\n` +
-      `🎯 *Target:* \`${session.smmLink}\`\n` +
-      `🔢 *Quantity:* *${qtyNum.toLocaleString()} Units*\n` +
-      `💰 *Total Amount:* *₹${totalCost.toLocaleString()}*\n\n` +
-      `🏦 *Pay via UPI:* \`${upiId}\`\n` +
-      `👤 *Payee Name:* Prince Kumar\n` +
-      `📱 *Apps:* Google Pay, PhonePe, Paytm, Navi, Cred\n\n` +
-      `👉 *After payment, please reply with your 12-digit UPI UTR Number:*\n` +
-      `_(Or reply 0 to cancel)_`);
+    // Check user authentication in database
+    const cleanNum = fromNumber.replace(/[^0-9]/g, '');
+    const user = session.linkedUser || (store.users || []).find(u => {
+      const uPhone = (u.phone || '').replace(/[^0-9]/g, '');
+      const uWa = (u.whatsappNumber || '').replace(/[^0-9]/g, '');
+      return (uPhone && (uPhone === cleanNum || uPhone.endsWith(cleanNum) || cleanNum.endsWith(uPhone))) ||
+             (uWa && (uWa === cleanNum || uWa.endsWith(cleanNum) || cleanNum.endsWith(uWa)));
+    });
+
+    if (user && user.status !== 'blocked') {
+      session.linkedUser = user;
+      session.step = 'SMM_AWAITING_UTR';
+      const upiId = store.settings?.ownerUpiId || '9507325677-1@naviaxis';
+      await sendReply(`👤 *Verified Account:* **${user.name}** (\`${user.email}\`)\n\n` +
+        `📋 *SMM ORDER BILL & PAYMENT* 📋\n\n` +
+        `⚡ *Service:* *${srv.name}*\n` +
+        `🎯 *Target:* \`${session.smmLink}\`\n` +
+        `🔢 *Quantity:* *${qtyNum.toLocaleString()} Units*\n` +
+        `💰 *Total Amount:* *₹${totalCost.toLocaleString()}*\n\n` +
+        `🏦 *Pay via UPI:* \`${upiId}\`\n` +
+        `👤 *Payee Name:* Prince Kumar\n` +
+        `📱 *Apps:* Google Pay, PhonePe, Paytm, Navi, Cred\n\n` +
+        `👉 *After payment, please reply with your 12-digit UPI UTR Number:*\n` +
+        `_(Or reply 0 to cancel)_`);
+    } else {
+      session.step = 'AWAITING_AUTH_CHOICE';
+      await sendReply(`🔐 *AUTHENTICATION REQUIRED TO ORDER* 🔐\n\n` +
+        `To place Social Growth orders and track deliveries, you must be logged in to your verified Prince Cloud Sellar account.\n\n` +
+        `*1* - 🔐 Login (Existing Account)\n` +
+        `*2* - 📝 Register (New Unified Account)\n` +
+        `*0* - 🔙 Cancel & Return to Menu\n\n` +
+        `_Reply with 1 or 2 to continue:_`);
+    }
     return;
   }
 
@@ -1188,6 +1209,19 @@ async function handleWhatsAppIncomingMessage(sock, jid, fromNumber, text, servic
 
     if (session.selectedProduct && session.quantity) {
       await sendPaymentMethodOptions(sendReply, session);
+    } else if (session.selectedSmmService && session.smmQty) {
+      session.step = 'SMM_AWAITING_UTR';
+      const upiId = store.settings?.ownerUpiId || '9507325677-1@naviaxis';
+      await sendReply(`📋 *SMM ORDER BILL & PAYMENT* 📋\n\n` +
+        `⚡ *Service:* *${session.selectedSmmService.name}*\n` +
+        `🎯 *Target:* \`${session.smmLink}\`\n` +
+        `🔢 *Quantity:* *${session.smmQty.toLocaleString()} Units*\n` +
+        `💰 *Total Amount:* *₹${session.smmTotalCost.toLocaleString()}*\n\n` +
+        `🏦 *Pay via UPI:* \`${upiId}\`\n` +
+        `👤 *Payee Name:* Prince Kumar\n` +
+        `📱 *Apps:* Google Pay, PhonePe, Paytm, Navi, Cred\n\n` +
+        `👉 *After payment, please reply with your 12-digit UPI UTR Number:*\n` +
+        `_(Or reply 0 to cancel)_`);
     } else {
       await sendWelcome();
     }
@@ -1254,6 +1288,19 @@ async function handleWhatsAppIncomingMessage(sock, jid, fromNumber, text, servic
 
       if (session.selectedProduct && session.quantity) {
         await sendPaymentMethodOptions(sendReply, session);
+      } else if (session.selectedSmmService && session.smmQty) {
+        session.step = 'SMM_AWAITING_UTR';
+        const upiId = store.settings?.ownerUpiId || '9507325677-1@naviaxis';
+        await sendReply(`📋 *SMM ORDER BILL & PAYMENT* 📋\n\n` +
+          `⚡ *Service:* *${session.selectedSmmService.name}*\n` +
+          `🎯 *Target:* \`${session.smmLink}\`\n` +
+          `🔢 *Quantity:* *${session.smmQty.toLocaleString()} Units*\n` +
+          `💰 *Total Amount:* *₹${session.smmTotalCost.toLocaleString()}*\n\n` +
+          `🏦 *Pay via UPI:* \`${upiId}\`\n` +
+          `👤 *Payee Name:* Prince Kumar\n` +
+          `📱 *Apps:* Google Pay, PhonePe, Paytm, Navi, Cred\n\n` +
+          `👉 *After payment, please reply with your 12-digit UPI UTR Number:*\n` +
+          `_(Or reply 0 to cancel)_`);
       } else {
         await sendWelcome();
       }
@@ -1331,6 +1378,19 @@ async function handleWhatsAppIncomingMessage(sock, jid, fromNumber, text, servic
 
     if (session.selectedProduct && session.quantity) {
       await sendPaymentMethodOptions(sendReply, session);
+    } else if (session.selectedSmmService && session.smmQty) {
+      session.step = 'SMM_AWAITING_UTR';
+      const upiId = store.settings?.ownerUpiId || '9507325677-1@naviaxis';
+      await sendReply(`📋 *SMM ORDER BILL & PAYMENT* 📋\n\n` +
+        `⚡ *Service:* *${session.selectedSmmService.name}*\n` +
+        `🎯 *Target:* \`${session.smmLink}\`\n` +
+        `🔢 *Quantity:* *${session.smmQty.toLocaleString()} Units*\n` +
+        `💰 *Total Amount:* *₹${session.smmTotalCost.toLocaleString()}*\n\n` +
+        `🏦 *Pay via UPI:* \`${upiId}\`\n` +
+        `👤 *Payee Name:* Prince Kumar\n` +
+        `📱 *Apps:* Google Pay, PhonePe, Paytm, Navi, Cred\n\n` +
+        `👉 *After payment, please reply with your 12-digit UPI UTR Number:*\n` +
+        `_(Or reply 0 to cancel)_`);
     } else {
       await sendWelcome();
     }
