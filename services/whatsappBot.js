@@ -638,11 +638,19 @@ async function handleWhatsAppIncomingMessage(sock, jid, fromNumber, text, servic
       await sendAccountProfile(sendReply, fromNumber, store);
       return;
     }
-    if (text === '5') {
+    if (text === '5' || lower === 'upi' || lower === 'pay' || lower === 'payment') {
       await sendUpiInfo(sendReply, store);
       return;
     }
-    if (text === '6') {
+    if (lower === 'usdt' || lower === 'crypto' || lower === 'bep20' || lower === 'wallet' || lower === 'deposit') {
+      const wallet = store.settings?.walletAddress || '0xD3D65940718F769E66E1e5c425AcFf76C2D9bFf2';
+      await sendReply(`💎 *PRINCE CLOUD SELLAR CRYPTO (BEP20 USDT)* 💎\n\n` +
+        `🌐 *Network:* BNB Smart Chain (BEP20)\n` +
+        `📍 *Wallet Address:*\n\`${wallet}\`\n\n` +
+        `👉 Reply *1* for Cloud Accounts or *2* for Social Growth SMM!`);
+      return;
+    }
+    if (text === '6' || lower === 'support' || lower === 'help' || lower === 'ticket') {
       const supportUrl = store.settings.supportUrl || 'https://wa.me/919507325677';
       await sendReply(`🎫 *PRINCE CLOUD SELLAR CUSTOMER SUPPORT*\n\n💬 Owner WhatsApp: ${supportUrl}\n📞 Phone: +91 9507325677`);
       return;
@@ -844,19 +852,21 @@ async function handleWhatsAppIncomingMessage(sock, jid, fromNumber, text, servic
 
     if (user && user.status !== 'blocked') {
       session.linkedUser = user;
-      session.step = 'SMM_AWAITING_UTR';
-      const upiId = store.settings?.ownerUpiId || '9507325677-1@naviaxis';
+      session.step = 'SMM_AWAITING_PAY_METHOD';
+      const usdt = (totalCost / 88).toFixed(2);
+
       await sendReply(`👤 *Verified Account:* **${user.name}** (\`${user.email}\`)\n\n` +
-        `📋 *SMM ORDER BILL & PAYMENT* 📋\n\n` +
+        `📋 *SMM ORDER BILL SUMMARY* 📋\n` +
+        `━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
         `⚡ *Service:* *${srv.name}*\n` +
         `🎯 *Target:* \`${session.smmLink}\`\n` +
         `🔢 *Quantity:* *${qtyNum.toLocaleString()} Units*\n` +
-        `💰 *Total Amount:* *₹${totalCost.toLocaleString()}*\n\n` +
-        `🏦 *Pay via UPI:* \`${upiId}\`\n` +
-        `👤 *Payee Name:* Prince Kumar\n` +
-        `📱 *Apps:* Google Pay, PhonePe, Paytm, Navi, Cred\n\n` +
-        `👉 *After payment, please reply with your 12-digit UPI UTR Number:*\n` +
-        `_(Or reply 0 to cancel)_`);
+        `💰 *Total Cost:* *₹${totalCost.toLocaleString()}* (~${usdt} USDT)\n` +
+        `━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n` +
+        `💳 *SELECT PAYMENT METHOD (Reply with Number):*\n` +
+        `*1* - 💎 Crypto BEP20 USDT (Auto On-Chain Verification)\n` +
+        `*2* - 🏦 UPI Instant (GPay / PhonePe / Paytm / Navi / Cred)\n\n` +
+        `_Reply with 1 or 2 (or 0 to cancel):_`);
     } else {
       session.step = 'AWAITING_AUTH_CHOICE';
       await sendReply(`🔐 *AUTHENTICATION REQUIRED TO ORDER* 🔐\n\n` +
@@ -869,7 +879,182 @@ async function handleWhatsAppIncomingMessage(sock, jid, fromNumber, text, servic
     return;
   }
 
-  // Step: SMM UTR Input & Finalize Order
+  // Step: SMM Payment Method Choice (1: BEP20, 2: UPI)
+  if (session.step === 'SMM_AWAITING_PAY_METHOD') {
+    if (text === '0' || lower === 'cancel' || lower === 'back') {
+      session.step = null;
+      await sendWelcome();
+      return;
+    }
+
+    const srv = session.selectedSmmService;
+    const totalCost = session.smmTotalCost;
+
+    if (text === '1' || lower === 'crypto' || lower === 'usdt' || lower === 'bep20') {
+      session.step = 'SMM_AWAITING_TX_HASH';
+      session.smmPayMethod = 'BEP20';
+      const usdt = (totalCost / 88).toFixed(2);
+      const wallet = store.settings?.walletAddress || '0xD3D65940718F769E66E1e5c425AcFf76C2D9bFf2';
+
+      await sendReply(`💎 *CRYPTO BEP20 USDT PAYMENT FOR SMM* 💎\n\n` +
+        `💰 *Exact Amount to Transfer:* *${usdt} USDT*\n` +
+        `🌐 *Network:* BNB Smart Chain (*BEP20*)\n` +
+        `📍 *Wallet Address (Tap to copy):*\n\`${wallet}\`\n\n` +
+        `👉 *After transferring from Binance/TrustWallet/MetaMask, please reply with your 0x Transaction Hash:*`);
+      return;
+    }
+
+    if (text === '2' || lower === 'upi' || lower === 'inr' || lower === 'gpay') {
+      session.step = 'SMM_AWAITING_UTR';
+      session.smmPayMethod = 'UPI';
+      const upiId = store.settings?.ownerUpiId || '9507325677-1@naviaxis';
+
+      await sendReply(`🏦 *UPI PAYMENT FOR SMM ORDER* 🏦\n\n` +
+        `💰 *Exact Amount to Pay:* *₹${totalCost.toLocaleString()}*\n` +
+        `🆔 *Merchant UPI ID:*\n\`${upiId}\`\n` +
+        `👤 *Payee Name:* Prince Kumar\n` +
+        `📱 *Apps:* Google Pay, PhonePe, Paytm, Navi, Cred, BHIM\n\n` +
+        `👉 *After payment, please reply with your 12-digit UPI UTR / Ref Number:*\n` +
+        `_(Or reply 0 to cancel)_`);
+      return;
+    }
+
+    await sendReply(`⚠️ Please reply *1* for Crypto BEP20 USDT or *2* for UPI Payment (or 0 to cancel):`);
+    return;
+  }
+
+  // Step: SMM BEP20 TxHash Input & Finalize Order
+  if (session.step === 'SMM_AWAITING_TX_HASH') {
+    if (text === '0' || lower === 'cancel') {
+      session.step = null;
+      await sendWelcome();
+      return;
+    }
+
+    const cleanTx = text.trim();
+    if (!cleanTx.startsWith('0x') || cleanTx.length < 15) {
+      await sendReply(`⚠️ *Invalid Transaction Hash.* A valid BSC BEP20 TxHash begins with \`0x...\`.\nPlease paste your transaction hash:\n_(Or reply 0 to cancel)_`);
+      return;
+    }
+
+    const srv = session.selectedSmmService;
+    const qty = session.smmQty;
+    const totalCost = session.smmTotalCost;
+    const targetUrl = session.smmLink;
+    const orderId = 'SMM-' + Date.now().toString(36).toUpperCase();
+
+    const newOrder = {
+      _id: 'smm_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7),
+      orderId,
+      providerOrderId: '',
+      userId: session.linkedUser?._id || 'wa_' + fromNumber,
+      userName: session.linkedUser?.name || 'WhatsApp Customer',
+      userEmail: session.linkedUser?.email || '',
+      userPhone: session.linkedUser?.phone || fromNumber,
+      serviceKey: srv.key || 'smm_custom',
+      serviceId: srv.serviceId || 1529,
+      serviceName: srv.name,
+      tier: 'Social Growth',
+      targetUrl,
+      quantity: qty,
+      rate: srv.rate,
+      totalCost,
+      paymentMethod: 'BEP20',
+      paymentStatus: 'PAID (CRYPTO BEP20)',
+      txHash: cleanTx,
+      utrId: '',
+      status: 'Processing',
+      remains: qty,
+      startCount: 0,
+      refillable: true,
+      refillStatus: 'Eligible',
+      notes: 'Paid via BEP20 USDT - Dispatched to IndianSMMHub',
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+
+    // Auto-dispatch to IndianSMMHub API
+    try {
+      const axios = require('axios');
+      const apiUrl = store.settings?.smmProviderUrl || process.env.INDIANSMM_API_URL || 'https://indiansmmhub.com/api/v2';
+      const apiKey = store.settings?.smmApiKey || process.env.INDIANSMM_API_KEY || 'be0066920ea511dc79addd45a1c7bb554fca5798';
+      
+      const apiRes = await axios.post(apiUrl, {
+        key: apiKey,
+        action: 'add',
+        service: newOrder.serviceId,
+        link: newOrder.targetUrl,
+        quantity: newOrder.quantity
+      }, { timeout: 12000 });
+
+      if (apiRes.data && apiRes.data.order) {
+        newOrder.providerOrderId = String(apiRes.data.order);
+        newOrder.status = 'Processing';
+        newOrder.notes = `Live Dispatched to IndianSMMHub #${newOrder.providerOrderId}`;
+      }
+    } catch (apiErr) {
+      console.warn('WhatsApp Crypto SMM auto-dispatch notice:', apiErr.message);
+    }
+
+    store.smmOrders = store.smmOrders || [];
+    store.smmOrders.unshift(newOrder);
+
+    if (getDBStatus() && SmmOrder) {
+      try {
+        await SmmOrder.create(newOrder);
+      } catch (e) {
+        console.error('SmmOrder.create error:', e.message);
+      }
+    }
+
+    // Owner Notification
+    const notif = {
+      _id: 'notif_' + Date.now(),
+      recipientType: 'ADMIN',
+      userId: '',
+      userEmail: '',
+      title: `💎 New BEP20 SMM Growth Order: ₹${totalCost}`,
+      message: `WhatsApp customer +${fromNumber} paid BEP20 USDT for ${qty}x ${srv.name} (TxHash: ${cleanTx}). Target: ${targetUrl}`,
+      type: 'SMM_ORDER',
+      orderId,
+      deliveredItem: '',
+      isRead: false,
+      createdAt: new Date()
+    };
+    if (!store.notifications) store.notifications = [];
+    store.notifications.unshift(notif);
+    if (getDBStatus() && Notification) {
+      try {
+        await Notification.create(notif);
+      } catch (e) {}
+    }
+    saveLocalDB();
+
+    session.step = null;
+    session.selectedSmmService = null;
+    session.smmLink = null;
+    session.smmQty = null;
+
+    const receipt = `🎉 *SMM ORDER PLACED & DISPATCHED!* 🎉\n` +
+      `━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+      `📦 *Order ID:* \`${orderId}\`\n` +
+      (newOrder.providerOrderId ? `⚡ *Provider Order ID:* \`#${newOrder.providerOrderId}\`\n` : '') +
+      `⚡ *Service:* *${srv.name}*\n` +
+      `🎯 *Target Link:* \`${targetUrl}\`\n` +
+      `🔢 *Quantity:* *${qty.toLocaleString()} Units*\n` +
+      `💰 *Total Amount:* *₹${totalCost.toLocaleString()}* (~${(totalCost / 88).toFixed(2)} USDT)\n` +
+      `💎 *TxHash:* \`${cleanTx}\`\n` +
+      `📊 *Status:* 🟢 *Processing (Live on IndianSMMHub)*\n` +
+      `🛡️ *Guarantee:* Lifetime Auto-Refill Active\n` +
+      `━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n` +
+      `⚡ Your order has been dispatched directly to IndianSMMHub servers!\n` +
+      `👉 Reply *3* anytime to track all your orders live!`;
+
+    await sendReply(receipt);
+    return;
+  }
+
+  // Step: SMM UTR Input & Finalize Order (UPI)
   if (session.step === 'SMM_AWAITING_UTR') {
     if (text === '0' || lower === 'cancel') {
       session.step = null;
@@ -908,6 +1093,7 @@ async function handleWhatsAppIncomingMessage(sock, jid, fromNumber, text, servic
       paymentMethod: 'UPI',
       paymentStatus: 'PENDING_UPI_VERIFICATION',
       utrId: cleanUtr,
+      txHash: '',
       status: 'Pending Admin Approval',
       remains: qty,
       startCount: 0,

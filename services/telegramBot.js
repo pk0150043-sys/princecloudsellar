@@ -775,6 +775,22 @@ function setupTelegramHandlers(bot, services) {
         sendUpiDetails(bot, chatId, services);
         return;
       }
+      if (lower === 'usdt' || lower === 'crypto' || lower === 'bep20' || lower === 'wallet' || lower === 'deposit') {
+        const wallet = store.settings?.walletAddress || '0xD3D65940718F769E66E1e5c425AcFf76C2D9bFf2';
+        bot.sendMessage(chatId, `💎 *PRINCE CLOUD SELLAR CRYPTO (BEP20 USDT)* 💎\n\n` +
+          `🌐 *Network:* BNB Smart Chain (BEP20)\n` +
+          `📍 *Wallet Address:*\n\`${wallet}\`\n\n` +
+          `👉 Use /stock for Cloud Accounts or /growth for Social Growth SMM!`, {
+            parse_mode: 'Markdown',
+            reply_markup: {
+              inline_keyboard: [
+                [{ text: '🛍️ Browse Stock', callback_data: 'menu_stock' }],
+                [{ text: '🚀 Social Growth (SMM)', callback_data: 'menu_smm_growth' }]
+              ]
+            }
+          });
+        return;
+      }
       if (text === '6' || lower === 'support' || lower === 'help' || lower === 'ticket') {
         sendSupportPrompt(bot, chatId, services);
         return;
