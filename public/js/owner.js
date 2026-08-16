@@ -608,6 +608,8 @@ function showLoginScreen() {
   document.getElementById('owner-dashboard-view').style.display = 'none';
 }
 
+let ownerRefreshInterval = null;
+
 function showOwnerDashboard() {
   document.getElementById('owner-login-view').style.display = 'none';
   document.getElementById('owner-dashboard-view').style.display = 'block';
@@ -622,12 +624,13 @@ function showOwnerDashboard() {
   fetchSettings();
   fetchBotStatus();
 
-  setInterval(() => {
+  if (ownerRefreshInterval) clearInterval(ownerRefreshInterval);
+  ownerRefreshInterval = setInterval(() => {
     if (ownerToken) {
       fetchMetrics();
       fetchRecentTransactions();
     }
-  }, 6000);
+  }, 10000);
 }
 
 function switchTab(tabName) {

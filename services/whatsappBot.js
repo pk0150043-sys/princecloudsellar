@@ -1401,9 +1401,11 @@ async function handleWhatsAppIncomingMessage(sock, jid, fromNumber, text, servic
     const orderId = 'ord_' + Date.now();
     const availableStocks = store.stocks.filter(s => s.productId === prod._id && s.status === 'AVAILABLE').slice(0, qty);
     let deliveredItemsText = '';
+    let deliveryStatus = 'PENDING_DELIVERY';
 
-    if (availableStocks.length > 0) {
+    if (availableStocks.length >= qty) {
       deliveredItemsText = availableStocks.map(s => s.content).join('\n');
+      deliveryStatus = 'DELIVERED';
       availableStocks.forEach(stk => {
         stk.status = 'SOLD';
         stk.soldToUserId = session.linkedUser ? session.linkedUser._id : `wa_${fromNumber}`;
@@ -1433,51 +1435,74 @@ async function handleWhatsAppIncomingMessage(sock, jid, fromNumber, text, servic
           console.error('Stock DB update error:', e.message);
         }
       }
+    } else if (availableStocks.length > 0) {
+      deliveredItemsText = availableStocks.map(s => s.content).join('\n');
+      deliveryStatus = 'PARTIALLY_DELIVERED';
+      availableStocks.forEach(stk => {
+        stk.status = 'SOLD';
+        stk.soldToUserId = session.linkedUser ? session.linkedUser._id : `wa_${fromNumber}`;
+        stk.soldToUserName = session.linkedUser ? session.linkedUser.name : `WhatsApp Customer (+${fromNumber})`;
+        stk.soldToUserPhone = session.linkedUser ? session.linkedUser.phone : fromNumber;
+        stk.orderId = orderId;
+        stk.soldAt = new Date();
+      });
+      const remainingAvail = store.stocks.filter(s => s.productId === prod._id && s.status === 'AVAILABLE').length;
+      prod.stock = remainingAvail;
     } else {
-      const prodTag = (prod.subProduct || prod.name).toUpperCase().replace(/\s+/g, '-');
-      deliveredItemsText = Array.from({ length: qty }, () => `KEY-${prodTag}-${Math.floor(1000 + Math.random() * 9000)}`).join('\n');
+      deliveredItemsText = 'PENDING OWNER MANUAL DISPATCH (STOCK REFRESHING)';
+      deliveryStatus = 'PENDING_DELIVERY';
     }
 
-    const newOrder = {
-      _id: orderId,
-      userId: session.linkedUser ? session.linkedUser._id : `wa_${fromNumber}`,
-      userName: session.linkedUser ? session.linkedUser.name : `WhatsApp Customer (+${fromNumber})`,
-      userPhone: session.linkedUser ? session.linkedUser.phone : fromNumber,
-      productId: prod._id,
-      productName: prod.name,
-      subProduct: prod.subProduct || '',
-      country: prod.country || '🌐 Global',
-      quantity: qty,
-      unitPrice: prod.price,
-      totalPaid,
-      paymentMethod: 'BEP20',
-      paymentStatus: 'PAID (WHATSAPP BOT)',
-      txHash: txHash,
-      deliveryStatus: 'DELIVERED',
-      deliveredItem: deliveredItemsText,
-      source: 'WHATSAPP',
-      createdAt: new Date()
-    };
+      const newOrder = {
+        _id: orderId,
+        userId: session.linkedUser ? session.linkedUser._id : `wa_${fromNumber}`,
+        userName: session.linkedUser ? session.linkedUser.name : `WhatsApp Customer (+${fromNumber})`,
+        userPhone: session.linkedUser ? session.linkedUser.phone : fromNumber,
+        productId: prod._id,
+        productName: prod.name,
+        subProduct: prod.subProduct || '',
+        country: prod.country || '🌐 Global',
+        quantity: qty,
+        unitPrice: prod.price,
+        totalPaid,
+        paymentMethod: 'BEP20',
+        paymentStatus: 'PAID (WHATSAPP BOT)',
+        txHash: txHash,
+        deliveryStatus,
+        deliveredItem: deliveredItemsText,
+        source: 'WHATSAPP',
+        createdAt: new Date()
+      };
 
-    store.orders.unshift(newOrder);
-    if (getDBStatus() && Order) {
-      try {
-        await Order.create(newOrder);
-      } catch (e) {
-        console.error('Order.create error:', e.message);
+      store.orders.unshift(newOrder);
+      if (getDBStatus() && Order) {
+        try {
+          await Order.create(newOrder);
+        } catch (e) {
+          console.error('Order.create error:', e.message);
+        }
       }
-    }
-    saveLocalDB();
+      saveLocalDB();
 
-    await sendReply(`🎉 *PAYMENT VERIFIED & DELIVERED!* 🎉\n\n` +
-      `📦 *Product:* ${prod.name} ${prod.subProduct ? `(${prod.subProduct})` : ''}\n` +
-      `🔢 *Quantity:* ${qty}\n` +
-      `🔖 *Order ID:* \`${orderId}\`\n` +
-      `💰 *Total Paid:* ₹${totalPaid} (~${(totalPaid / 88).toFixed(2)} USDT)\n` +
-      `🧾 *Invoice Slip:* https://princecloudsellar.onrender.com/invoice/${orderId}\n\n` +
-      `🔑 *YOUR DELIVERED ACCOUNT / KEY DETAILS:*\n` +
-      `\`\`\`\n${deliveredItemsText}\n\`\`\`\n\n` +
-      `_Official PDF Invoice attached below! Thank you for purchasing with Prince Cloud Sellar._`);
+      if (deliveryStatus === 'DELIVERED') {
+        await sendReply(`🎉 *PAYMENT VERIFIED & DELIVERED!* 🎉\n\n` +
+          `📦 *Product:* ${prod.name} ${prod.subProduct ? `(${prod.subProduct})` : ''}\n` +
+          `🔢 *Quantity:* ${qty}\n` +
+          `🔖 *Order ID:* \`${orderId}\`\n` +
+          `💰 *Total Paid:* ₹${totalPaid} (~${(totalPaid / 88).toFixed(2)} USDT)\n` +
+          `🧾 *Invoice Slip:* https://princecloudsellar.onrender.com/invoice/${orderId}\n\n` +
+          `🔑 *YOUR DELIVERED ACCOUNT / KEY DETAILS:*\n` +
+          `\`\`\`\n${deliveredItemsText}\n\`\`\`\n\n` +
+          `_Official PDF Invoice attached below! Thank you for purchasing with Prince Cloud Sellar._`);
+      } else {
+        await sendReply(`🎉 *PAYMENT VERIFIED ON-CHAIN!* 🎉\n\n` +
+          `📦 *Product:* ${prod.name} ${prod.subProduct ? `(${prod.subProduct})` : ''}\n` +
+          `🔢 *Quantity:* ${qty}\n` +
+          `🔖 *Order ID:* \`${orderId}\`\n` +
+          `💰 *Total Paid:* ₹${totalPaid} (~${(totalPaid / 88).toFixed(2)} USDT)\n` +
+          `⏳ *Delivery Status:* PENDING OWNER MANUAL DISPATCH (Stock Refreshing)\n\n` +
+          `_Owner has been notified and will dispatch your accounts shortly._`);
+      }
 
     // Generate in-memory PDF Invoice buffer and deliver in chat
     try {

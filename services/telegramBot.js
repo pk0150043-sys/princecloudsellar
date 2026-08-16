@@ -152,14 +152,28 @@ function setupTelegramHandlers(bot, services) {
   } = services;
 
   bot.on('polling_error', (err) => {
-    // ignore transient network polling issues
+    if (err.message && err.message.includes('409 Conflict')) {
+      console.warn('⚠️ Telegram Bot Polling Conflict (another instance running with this token).');
+    }
+  });
+
+  bot.on('error', (err) => {
+    console.error('Telegram bot client error:', err.message);
+  });
+
+  bot.on('webhook_error', (err) => {
+    console.error('Telegram bot webhook error:', err.message);
   });
 
   // /start command
   bot.onText(/\/start/, async (msg) => {
-    const chatId = msg.chat.id;
-    recordTelegramChatId(chatId, services);
-    sendWelcomeMessage(bot, chatId, services);
+    try {
+      const chatId = msg.chat.id;
+      recordTelegramChatId(chatId, services);
+      sendWelcomeMessage(bot, chatId, services);
+    } catch (e) {
+      console.error('Telegram /start error:', e.message);
+    }
   });
 
   // /menu command
@@ -282,277 +296,263 @@ function setupTelegramHandlers(bot, services) {
 
   // Callback Query Listener (Instant Response Optimization)
   bot.on('callback_query', async (query) => {
-    // Acknowledge callback immediately to eliminate loading lag (<20ms)
-    bot.answerCallbackQuery(query.id).catch(() => {});
+    try {
+      // Acknowledge callback immediately to eliminate loading lag (<20ms)
+      bot.answerCallbackQuery(query.id).catch(() => {});
 
-    const chatId = query.message.chat.id;
-    const data = query.data;
+      const chatId = query.message?.chat?.id;
+      if (!chatId) return;
+      const data = query.data;
 
-    if (!telegramSessions[chatId]) telegramSessions[chatId] = {};
-    recordTelegramChatId(chatId, services);
+      if (!telegramSessions[chatId]) telegramSessions[chatId] = {};
+      recordTelegramChatId(chatId, services);
 
-    if (data === 'menu_welcome' || data === 'verify_join' || data === 'menu_main') {
-      sendMainMenu(bot, chatId);
-      return;
-    }
-
-    if (data === 'menu_stock') {
-      await bot.answerCallbackQuery(query.id);
-      sendProductCatalog(bot, chatId, services);
-      return;
-    }
-
-    if (data === 'menu_smm_growth') {
-      await bot.answerCallbackQuery(query.id);
-      sendTelegramSmmGrowthMenu(bot, chatId, services);
-      return;
-    }
-
-    if (data === 'smm_ig' || data === 'smm_yt' || data === 'smm_tg' || data === 'smm_fb' || data === 'smm_other') {
-      await bot.answerCallbackQuery(query.id);
-      sendTelegramPlatformSmmServices(bot, chatId, data, services);
-      return;
-    }
-
-    if (data === 'menu_orders') {
-      await bot.answerCallbackQuery(query.id);
-      sendUserOrders(bot, chatId, services);
-      return;
-    }
-
-    if (data === 'menu_account') {
-      await bot.answerCallbackQuery(query.id);
-      sendAccountInfo(bot, chatId, services);
-      return;
-    }
-
-    if (data === 'menu_upi') {
-      await bot.answerCallbackQuery(query.id);
-      sendUpiDetails(bot, chatId, services);
-      return;
-    }
-
-    if (data === 'menu_support') {
-      await bot.answerCallbackQuery(query.id);
-      sendSupportPrompt(bot, chatId, services);
-      return;
-    }
-
-    if (data === 'action_login') {
-      await bot.answerCallbackQuery(query.id);
-      telegramSessions[chatId].step = 'LOGIN_EMAIL_OR_PHONE';
-      telegramSessions[chatId].loginData = {};
-      bot.sendMessage(chatId, `🔐 *ACCOUNT LOGIN*\nPlease enter your registered *Email Address* or *Phone Number*:`, { parse_mode: 'Markdown' });
-      return;
-    }
-
-    if (data === 'action_register') {
-      await bot.answerCallbackQuery(query.id);
-      telegramSessions[chatId].step = 'REG_NAME';
-      telegramSessions[chatId].regData = {};
-      bot.sendMessage(chatId, `📝 *NEW USER REGISTRATION*\nPlease enter your *Full Name*:`, { parse_mode: 'Markdown' });
-      return;
-    }
-
-    if (data === 'action_forgot') {
-      await bot.answerCallbackQuery(query.id);
-      telegramSessions[chatId].step = 'FORGOT_EMAIL';
-      telegramSessions[chatId].forgotData = {};
-      bot.sendMessage(chatId, `🔑 *FORGOT PASSWORD RECOVERY*\nEnter your registered *Email Address*:`, { parse_mode: 'Markdown' });
-      return;
-    }
-
-    if (data.startsWith('sel_prod_')) {
-      const prodName = decodeURIComponent(data.replace('sel_prod_', ''));
-      await bot.answerCallbackQuery(query.id);
-      sendSubcategoriesList(bot, chatId, prodName, services);
-      return;
-    }
-
-    if (data.startsWith('sel_var_')) {
-      const varId = data.replace('sel_var_', '');
-      const store = getPersistentStore();
-      const prod = store.products.find(p => p._id === varId);
-      if (!prod) {
-        await bot.answerCallbackQuery(query.id, { text: 'Product variant not found.' });
+      if (data === 'menu_welcome' || data === 'verify_join' || data === 'menu_main') {
+        sendMainMenu(bot, chatId);
         return;
       }
 
-      await bot.answerCallbackQuery(query.id);
-      telegramSessions[chatId].selectedProduct = prod;
-      telegramSessions[chatId].step = 'AWAITING_QTY';
-
-      bot.sendMessage(chatId, `🔢 *Selected:* *${prod.name}* ${prod.subProduct ? `(${prod.subProduct})` : ''}\n` +
-        `📍 *Region:* ${prod.country || 'Global'}\n` +
-        `💰 *Price:* ₹${prod.price} (~${(prod.price / 88).toFixed(2)} USDT)\n` +
-        `📦 *In Stock:* ${prod.stock} units\n\n` +
-        `👉 *How many quantity do you want to buy?* (Reply with number or click below):`, {
-          parse_mode: 'Markdown',
-          reply_markup: {
-            inline_keyboard: [
-              [
-                { text: '1 Unit', callback_data: 'qty_1' },
-                { text: '2 Units', callback_data: 'qty_2' },
-                { text: '5 Units', callback_data: 'qty_5' }
-              ],
-              [{ text: '🔙 Back to Products', callback_data: 'menu_stock' }]
-            ]
-          }
-        });
-      return;
-    }
-
-    if (data.startsWith('qty_')) {
-      const qtyNum = parseInt(data.replace('qty_', ''), 10) || 1;
-      await bot.answerCallbackQuery(query.id);
-      handleQuantityEntered(bot, chatId, qtyNum, services);
-      return;
-    }
-
-    if (data === 'pay_method_bep20') {
-      await bot.answerCallbackQuery(query.id);
-      sendBep20Invoice(bot, chatId, services);
-      return;
-    }
-
-    if (data === 'pay_method_upi') {
-      await bot.answerCallbackQuery(query.id);
-      sendUpiPaymentInvoice(bot, chatId, services);
-      return;
-    }
-
-    if (data.startsWith('smm_order_')) {
-      const srvKey = data.replace('smm_order_', '');
-      const PEAKERR_MAP = {
-        ig_followers_nondrop: { serviceId: 31850, name: 'Instagram 100% Non-Drop Followers (Lifetime Refill)', rate: 180, refill: true },
-        ig_followers_drop5: { serviceId: 31714, name: 'Instagram Low Drop Followers (30D Refill)', rate: 120, refill: true },
-        ig_likes_nondrop: { serviceId: 31905, name: 'Instagram HQ Post/Reel Likes', rate: 45, refill: false },
-        ig_comments_nondrop: { serviceId: 31850, name: 'Instagram Custom Comments', rate: 380, refill: false },
-        yt_subs_nondrop: { serviceId: 23304, name: 'YouTube 100% Non-Drop Subscribers (Lifetime Refill)', rate: 350, refill: true },
-        yt_subs_drop5: { serviceId: 18403, name: 'YouTube Fast Subs (30D Refill)', rate: 220, refill: true },
-        yt_likes_nondrop: { serviceId: 32112, name: 'YouTube High Retention Likes (30D Refill)', rate: 90, refill: true },
-        yt_comments_nondrop: { serviceId: 23304, name: 'YouTube Custom Comments', rate: 450, refill: false },
-        tg_members_nondrop: { serviceId: 31703, name: 'Telegram 100% Non-Drop Members (365D Refill)', rate: 160, refill: true },
-        tg_members_drop5: { serviceId: 31702, name: 'Telegram 30D Refill Channel Members', rate: 110, refill: true },
-        tg_members_drop10: { serviceId: 31702, name: 'Telegram Standard Channel Members', rate: 65, refill: false },
-        fb_followers_nondrop: { serviceId: 32148, name: 'Facebook 100% Non-Drop Followers', rate: 210, refill: true },
-        fb_followers_drop5: { serviceId: 32147, name: 'Facebook Instant Page Followers', rate: 140, refill: false },
-        fb_likes_nondrop: { serviceId: 32147, name: 'Facebook Post Likes & Reactions', rate: 60, refill: false },
-        tt_followers: { serviceId: 31703, name: 'TikTok HQ Non-Drop Followers', rate: 190, refill: true },
-        tt_likes: { serviceId: 31703, name: 'TikTok Video Likes', rate: 50, refill: false },
-        x_followers: { serviceId: 31703, name: 'Twitter / X Profile Followers', rate: 240, refill: true }
-      };
-
-      const mapped = PEAKERR_MAP[srvKey];
-      const store = getPersistentStore();
-      let srv = (store.smmServices || []).find(s => s.serviceKey === srvKey || s._id === srvKey);
-
-      if (mapped) {
-        srv = Object.assign({}, mapped, { serviceKey: srvKey, min: 1000 });
-      } else if (!srv) {
-        srv = {
-          serviceId: 31850,
-          serviceKey: srvKey,
-          name: srvKey.replace(/_/g, ' ').toUpperCase(),
-          rate: 180,
-          min: 1000,
-          refill: true
-        };
+      if (data === 'menu_stock') {
+        sendProductCatalog(bot, chatId, services);
+        return;
       }
 
-      await bot.answerCallbackQuery(query.id);
-      telegramSessions[chatId].selectedSmmService = srv;
-      telegramSessions[chatId].step = 'SMM_AWAITING_LINK';
+      if (data === 'menu_smm_growth') {
+        sendTelegramSmmGrowthMenu(bot, chatId, services);
+        return;
+      }
 
-      bot.sendMessage(chatId, `🎯 *Selected Service:* *${srv.name}*\n` +
-        `💰 *Rate:* ₹${srv.rate} / 1,000 Units\n` +
-        `🛡️ *Guarantee:* ${srv.refill ? 'Auto-Refill Guarantee' : 'Standard Delivery'}\n\n` +
-        `👉 *Please send your Target Link (Profile / Channel / Post URL):*\n` +
-        `Example: \`https://instagram.com/username\` or \`https://t.me/channel\``, {
-          parse_mode: 'Markdown',
-          reply_markup: {
-            inline_keyboard: [
-              [{ text: '🔙 Back to Platforms', callback_data: 'menu_smm_growth' }],
-              [{ text: '❌ Cancel', callback_data: 'menu_main' }]
-            ]
-          }
-        });
-      return;
-    }
+      if (data === 'smm_ig' || data === 'smm_yt' || data === 'smm_tg' || data === 'smm_fb' || data === 'smm_other') {
+        sendTelegramPlatformSmmServices(bot, chatId, data, services);
+        return;
+      }
 
-    if (data.startsWith('smm_qty_')) {
-      const qtyNum = parseInt(data.replace('smm_qty_', ''), 10) || 1000;
-      await bot.answerCallbackQuery(query.id);
-      handleTelegramSmmQuantity(bot, chatId, qtyNum, services);
-      return;
-    }
+      if (data === 'menu_orders') {
+        sendUserOrders(bot, chatId, services);
+        return;
+      }
 
-    if (data === 'smm_pay_upi') {
-      await bot.answerCallbackQuery(query.id);
-      telegramSessions[chatId].step = 'SMM_AWAITING_UTR';
-      const total = telegramSessions[chatId].smmTotalCost || 180;
-      bot.sendMessage(chatId, `🏦 *UPI PAYMENT FOR SMM ORDER*\n\n` +
-        `💰 *Amount to Pay:* *₹${total.toLocaleString()}*\n` +
-        `🆔 *Merchant UPI ID:* \`9507325677-1@naviaxis\`\n` +
-        `👤 *Payee Name:* Prince Kumar\n\n` +
-        `📱 *Pay using Google Pay, PhonePe, Paytm, Navi or Cred*\n\n` +
-        `👉 *After payment, please reply with your 12-digit UPI UTR / Ref Number:*`, {
-          parse_mode: 'Markdown',
-          reply_markup: {
-            inline_keyboard: [
-              [{ text: '❌ Cancel Order', callback_data: 'menu_main' }]
-            ]
-          }
-        });
-      return;
-    }
+      if (data === 'menu_account') {
+        sendAccountInfo(bot, chatId, services);
+        return;
+      }
 
-    if (data === 'smm_pay_bep20') {
-      await bot.answerCallbackQuery(query.id);
-      telegramSessions[chatId].step = 'SMM_AWAITING_TX_HASH';
-      const total = telegramSessions[chatId].smmTotalCost || 180;
-      const usdt = (total / 88).toFixed(2);
-      bot.sendMessage(chatId, `💎 *BEP20 USDT PAYMENT FOR SMM ORDER*\n\n` +
-        `💰 *Amount to Pay:* *${usdt} USDT (BEP20)* (~₹${total.toLocaleString()})\n` +
-        `📍 *Wallet Address (BSC / BEP20):*\n\`0xD3D65940718F769E66E1e5c425AcFf76C2D9bFf2\`\n\n` +
-        `👉 *After transfer, please reply with your 0x Transaction Hash:*`, {
-          parse_mode: 'Markdown',
-          reply_markup: {
-            inline_keyboard: [
-              [{ text: '❌ Cancel Order', callback_data: 'menu_main' }]
-            ]
-          }
-        });
-      return;
-    }
+      if (data === 'menu_upi') {
+        sendUpiDetails(bot, chatId, services);
+        return;
+      }
 
-    if (data === 'btn_submit_tx') {
-      await bot.answerCallbackQuery(query.id);
-      telegramSessions[chatId].step = 'AWAITING_TX_HASH';
-      bot.sendMessage(chatId, `✍️ *Please enter your BEP20 USDT Transaction Hash (0x...):*\n\nExample: \`0x9a3c8e47f82b...\``, { parse_mode: 'Markdown' });
-      return;
-    }
+      if (data === 'menu_support') {
+        sendSupportPrompt(bot, chatId, services);
+        return;
+      }
 
-    if (data === 'btn_submit_utr') {
-      await bot.answerCallbackQuery(query.id);
-      telegramSessions[chatId].step = 'AWAITING_UTR_ID';
-      bot.sendMessage(chatId, `✍️ *Please enter your 12-digit UPI UTR / Transaction ID:*\n\nExample: \`423456789012\``, { parse_mode: 'Markdown' });
-      return;
+      if (data === 'action_login') {
+        telegramSessions[chatId].step = 'LOGIN_EMAIL_OR_PHONE';
+        telegramSessions[chatId].loginData = {};
+        bot.sendMessage(chatId, `🔐 *ACCOUNT LOGIN*\nPlease enter your registered *Email Address* or *Phone Number*:`, { parse_mode: 'Markdown' });
+        return;
+      }
+
+      if (data === 'action_register') {
+        telegramSessions[chatId].step = 'REG_NAME';
+        telegramSessions[chatId].regData = {};
+        bot.sendMessage(chatId, `📝 *NEW USER REGISTRATION*\nPlease enter your *Full Name*:`, { parse_mode: 'Markdown' });
+        return;
+      }
+
+      if (data === 'action_forgot') {
+        telegramSessions[chatId].step = 'FORGOT_EMAIL';
+        telegramSessions[chatId].forgotData = {};
+        bot.sendMessage(chatId, `🔑 *FORGOT PASSWORD RECOVERY*\nEnter your registered *Email Address*:`, { parse_mode: 'Markdown' });
+        return;
+      }
+
+      if (data.startsWith('sel_prod_')) {
+        const prodName = decodeURIComponent(data.replace('sel_prod_', ''));
+        sendSubcategoriesList(bot, chatId, prodName, services);
+        return;
+      }
+
+      if (data.startsWith('sel_var_')) {
+        const varId = data.replace('sel_var_', '');
+        const store = getPersistentStore();
+        const prod = store.products.find(p => p._id === varId);
+        if (!prod) {
+          bot.sendMessage(chatId, `⚠️ Product variant not found or no longer available.`, { parse_mode: 'Markdown' });
+          return;
+        }
+
+        telegramSessions[chatId].selectedProduct = prod;
+        telegramSessions[chatId].step = 'AWAITING_QTY';
+
+        bot.sendMessage(chatId, `🔢 *Selected:* *${prod.name}* ${prod.subProduct ? `(${prod.subProduct})` : ''}\n` +
+          `📍 *Region:* ${prod.country || 'Global'}\n` +
+          `💰 *Price:* ₹${prod.price} (~${(prod.price / 88).toFixed(2)} USDT)\n` +
+          `📦 *In Stock:* ${prod.stock} units\n\n` +
+          `👉 *How many quantity do you want to buy?* (Reply with number or click below):`, {
+            parse_mode: 'Markdown',
+            reply_markup: {
+              inline_keyboard: [
+                [
+                  { text: '1 Unit', callback_data: 'qty_1' },
+                  { text: '2 Units', callback_data: 'qty_2' },
+                  { text: '5 Units', callback_data: 'qty_5' }
+                ],
+                [{ text: '🔙 Back to Products', callback_data: 'menu_stock' }]
+              ]
+            }
+          });
+        return;
+      }
+
+      if (data.startsWith('qty_')) {
+        const qtyNum = parseInt(data.replace('qty_', ''), 10) || 1;
+        handleQuantityEntered(bot, chatId, qtyNum, services);
+        return;
+      }
+
+      if (data === 'pay_method_bep20') {
+        sendBep20Invoice(bot, chatId, services);
+        return;
+      }
+
+      if (data === 'pay_method_upi') {
+        sendUpiPaymentInvoice(bot, chatId, services);
+        return;
+      }
+
+      if (data.startsWith('smm_order_')) {
+        const srvKey = data.replace('smm_order_', '');
+        const PEAKERR_MAP = {
+          ig_followers_nondrop: { serviceId: 31850, name: 'Instagram 100% Non-Drop Followers (Lifetime Refill)', rate: 180, refill: true },
+          ig_followers_drop5: { serviceId: 31714, name: 'Instagram Low Drop Followers (30D Refill)', rate: 120, refill: true },
+          ig_likes_nondrop: { serviceId: 31905, name: 'Instagram HQ Post/Reel Likes', rate: 45, refill: false },
+          ig_comments_nondrop: { serviceId: 31850, name: 'Instagram Custom Comments', rate: 380, refill: false },
+          yt_subs_nondrop: { serviceId: 23304, name: 'YouTube 100% Non-Drop Subscribers (Lifetime Refill)', rate: 350, refill: true },
+          yt_subs_drop5: { serviceId: 18403, name: 'YouTube Fast Subs (30D Refill)', rate: 220, refill: true },
+          yt_likes_nondrop: { serviceId: 32112, name: 'YouTube High Retention Likes (30D Refill)', rate: 90, refill: true },
+          yt_comments_nondrop: { serviceId: 23304, name: 'YouTube Custom Comments', rate: 450, refill: false },
+          tg_members_nondrop: { serviceId: 31703, name: 'Telegram 100% Non-Drop Members (365D Refill)', rate: 160, refill: true },
+          tg_members_drop5: { serviceId: 31702, name: 'Telegram 30D Refill Channel Members', rate: 110, refill: true },
+          tg_members_drop10: { serviceId: 31702, name: 'Telegram Standard Channel Members', rate: 65, refill: false },
+          fb_followers_nondrop: { serviceId: 32148, name: 'Facebook 100% Non-Drop Followers', rate: 210, refill: true },
+          fb_followers_drop5: { serviceId: 32147, name: 'Facebook Instant Page Followers', rate: 140, refill: false },
+          fb_likes_nondrop: { serviceId: 32147, name: 'Facebook Post Likes & Reactions', rate: 60, refill: false },
+          tt_followers: { serviceId: 31703, name: 'TikTok HQ Non-Drop Followers', rate: 190, refill: true },
+          tt_likes: { serviceId: 31703, name: 'TikTok Video Likes', rate: 50, refill: false },
+          x_followers: { serviceId: 31703, name: 'Twitter / X Profile Followers', rate: 240, refill: true }
+        };
+
+        const mapped = PEAKERR_MAP[srvKey];
+        const store = getPersistentStore();
+        let srv = (store.smmServices || []).find(s => s.serviceKey === srvKey || s._id === srvKey);
+
+        if (mapped) {
+          srv = Object.assign({}, mapped, { serviceKey: srvKey, min: 1000 });
+        } else if (!srv) {
+          srv = {
+            serviceId: 31850,
+            serviceKey: srvKey,
+            name: srvKey.replace(/_/g, ' ').toUpperCase(),
+            rate: 180,
+            min: 1000,
+            refill: true
+          };
+        }
+
+        telegramSessions[chatId].selectedSmmService = srv;
+        telegramSessions[chatId].step = 'SMM_AWAITING_LINK';
+
+        bot.sendMessage(chatId, `🎯 *Selected Service:* *${srv.name}*\n` +
+          `💰 *Rate:* ₹${srv.rate} / 1,000 Units\n` +
+          `🛡️ *Guarantee:* ${srv.refill ? 'Auto-Refill Guarantee' : 'Standard Delivery'}\n\n` +
+          `👉 *Please send your Target Link (Profile / Channel / Post URL):*\n` +
+          `Example: \`https://instagram.com/username\` or \`https://t.me/channel\``, {
+            parse_mode: 'Markdown',
+            reply_markup: {
+              inline_keyboard: [
+                [{ text: '🔙 Back to Platforms', callback_data: 'menu_smm_growth' }],
+                [{ text: '❌ Cancel', callback_data: 'menu_main' }]
+              ]
+            }
+          });
+        return;
+      }
+
+      if (data.startsWith('smm_qty_')) {
+        const qtyNum = parseInt(data.replace('smm_qty_', ''), 10) || 1000;
+        handleTelegramSmmQuantity(bot, chatId, qtyNum, services);
+        return;
+      }
+
+      if (data === 'smm_pay_upi') {
+        telegramSessions[chatId].step = 'SMM_AWAITING_UTR';
+        const total = telegramSessions[chatId].smmTotalCost || 180;
+        bot.sendMessage(chatId, `🏦 *UPI PAYMENT FOR SMM ORDER*\n\n` +
+          `💰 *Amount to Pay:* *₹${total.toLocaleString()}*\n` +
+          `🆔 *Merchant UPI ID:* \`9507325677-1@naviaxis\`\n` +
+          `👤 *Payee Name:* Prince Kumar\n\n` +
+          `📱 *Pay using Google Pay, PhonePe, Paytm, Navi or Cred*\n\n` +
+          `👉 *After payment, please reply with your 12-digit UPI UTR / Ref Number:*`, {
+            parse_mode: 'Markdown',
+            reply_markup: {
+              inline_keyboard: [
+                [{ text: '❌ Cancel Order', callback_data: 'menu_main' }]
+              ]
+            }
+          });
+        return;
+      }
+
+      if (data === 'smm_pay_bep20') {
+        telegramSessions[chatId].step = 'SMM_AWAITING_TX_HASH';
+        const total = telegramSessions[chatId].smmTotalCost || 180;
+        const usdt = (total / 88).toFixed(2);
+        bot.sendMessage(chatId, `💎 *BEP20 USDT PAYMENT FOR SMM ORDER*\n\n` +
+          `💰 *Amount to Pay:* *${usdt} USDT (BEP20)* (~₹${total.toLocaleString()})\n` +
+          `📍 *Wallet Address (BSC / BEP20):*\n\`0xD3D65940718F769E66E1e5c425AcFf76C2D9bFf2\`\n\n` +
+          `👉 *After transfer, please reply with your 0x Transaction Hash:*`, {
+            parse_mode: 'Markdown',
+            reply_markup: {
+              inline_keyboard: [
+                [{ text: '❌ Cancel Order', callback_data: 'menu_main' }]
+              ]
+            }
+          });
+        return;
+      }
+
+      if (data === 'btn_submit_tx') {
+        telegramSessions[chatId].step = 'AWAITING_TX_HASH';
+        bot.sendMessage(chatId, `✍️ *Please enter your BEP20 USDT Transaction Hash (0x...):*\n\nExample: \`0x9a3c8e47f82b...\``, { parse_mode: 'Markdown' });
+        return;
+      }
+
+      if (data === 'btn_submit_utr') {
+        telegramSessions[chatId].step = 'AWAITING_UTR_ID';
+        bot.sendMessage(chatId, `✍️ *Please enter your 12-digit UPI UTR / Transaction ID:*\n\nExample: \`423456789012\``, { parse_mode: 'Markdown' });
+        return;
+      }
+    } catch (cbErr) {
+      console.error('Telegram callback_query error:', cbErr.message);
     }
   });
 
   // Text message listener
   bot.on('message', async (msg) => {
-    const chatId = msg.chat.id;
-    const text = (msg.text || '').trim();
+    try {
+      const chatId = msg.chat?.id;
+      if (!chatId) return;
+      const text = (msg.text || '').trim();
 
-    if (!text || text.startsWith('/')) return;
+      if (!text || text.startsWith('/')) return;
 
-    const store = getPersistentStore();
-    let session = telegramSessions[chatId];
-    if (!session) {
-      session = telegramSessions[chatId] = {};
-    }
+      const store = getPersistentStore();
+      let session = telegramSessions[chatId];
+      if (!session) {
+        session = telegramSessions[chatId] = {};
+      }
 
     // Auto-detect linked user if not already linked
     if (!session.linkedUser) {
@@ -1088,6 +1088,9 @@ function setupTelegramHandlers(bot, services) {
       handleTelegramUpiSubmission(bot, chatId, utr, services);
       return;
     }
+  } catch (msgErr) {
+    console.error('Telegram message handling error:', msgErr.message);
+  }
   });
 }
 
@@ -1841,9 +1844,11 @@ async function handleTelegramPaymentVerification(bot, chatId, txHash, services) 
   const orderId = 'ord_' + Date.now();
   const availableStocks = store.stocks.filter(s => s.productId === prod._id && s.status === 'AVAILABLE').slice(0, qty);
   let deliveredItemsText = '';
+  let deliveryStatus = 'PENDING_DELIVERY';
 
-  if (availableStocks.length > 0) {
+  if (availableStocks.length >= qty) {
     deliveredItemsText = availableStocks.map(s => s.content).join('\n');
+    deliveryStatus = 'DELIVERED';
     availableStocks.forEach(stk => {
       stk.status = 'SOLD';
       stk.soldToUserId = session.linkedUser ? session.linkedUser._id : `tg_${chatId}`;
@@ -1871,9 +1876,22 @@ async function handleTelegramPaymentVerification(bot, chatId, txHash, services) 
         }
       } catch (e) {}
     }
+  } else if (availableStocks.length > 0) {
+    deliveredItemsText = availableStocks.map(s => s.content).join('\n');
+    deliveryStatus = 'PARTIALLY_DELIVERED';
+    availableStocks.forEach(stk => {
+      stk.status = 'SOLD';
+      stk.soldToUserId = session.linkedUser ? session.linkedUser._id : `tg_${chatId}`;
+      stk.soldToUserName = session.linkedUser ? session.linkedUser.name : `Telegram Customer (${chatId})`;
+      stk.soldToUserPhone = session.linkedUser ? session.linkedUser.phone : String(chatId);
+      stk.orderId = orderId;
+      stk.soldAt = new Date();
+    });
+    const remainingAvail = store.stocks.filter(s => s.productId === prod._id && s.status === 'AVAILABLE').length;
+    prod.stock = remainingAvail;
   } else {
-    const prodTag = (prod.subProduct || prod.name).toUpperCase().replace(/\s+/g, '-');
-    deliveredItemsText = Array.from({ length: qty }, () => `KEY-${prodTag}-${Math.floor(1000 + Math.random() * 9000)}`).join('\n');
+    deliveredItemsText = 'PENDING OWNER MANUAL DISPATCH (STOCK REFRESHING)';
+    deliveryStatus = 'PENDING_DELIVERY';
   }
 
   const newOrder = {
@@ -1891,7 +1909,7 @@ async function handleTelegramPaymentVerification(bot, chatId, txHash, services) 
     paymentMethod: 'BEP20',
     paymentStatus: 'PAID (TELEGRAM BOT)',
     txHash: txHash,
-    deliveryStatus: 'DELIVERED',
+    deliveryStatus,
     deliveredItem: deliveredItemsText,
     source: 'TELEGRAM',
     createdAt: new Date()
@@ -1905,23 +1923,41 @@ async function handleTelegramPaymentVerification(bot, chatId, txHash, services) 
   }
   saveLocalDB();
 
-  bot.sendMessage(chatId, `🎉 *PAYMENT VERIFIED & DELIVERED!* 🎉\n\n` +
-    `📦 *Product:* ${prod.name} ${prod.subProduct ? `(${prod.subProduct})` : ''}\n` +
-    `🔢 *Quantity:* ${qty}\n` +
-    `🔖 *Order ID:* \`${orderId}\`\n` +
-    `💰 *Total Paid:* ₹${totalPaid} (~${(totalPaid / 88).toFixed(2)} USDT)\n` +
-    `🧾 *Invoice Slip:* https://princecloudsellar.onrender.com/invoice/${orderId}\n\n` +
-    `🔑 *YOUR DELIVERED ACCOUNT / KEY DETAILS:*\n` +
-    `\`\`\`\n${deliveredItemsText}\n\`\`\`\n\n` +
-    `_Official PDF Invoice attached below! Thank you for purchasing with Prince Cloud Sellar._`, {
-      parse_mode: 'Markdown',
-      reply_markup: {
-        inline_keyboard: [
-          [{ text: '🧾 View / Print Invoice', url: `https://princecloudsellar.onrender.com/invoice/${orderId}` }],
-          [{ text: '🛍️ Buy Another Product', callback_data: 'menu_stock' }]
-        ]
-      }
-    });
+  if (deliveryStatus === 'DELIVERED') {
+    bot.sendMessage(chatId, `🎉 *PAYMENT VERIFIED & DELIVERED!* 🎉\n\n` +
+      `📦 *Product:* ${prod.name} ${prod.subProduct ? `(${prod.subProduct})` : ''}\n` +
+      `🔢 *Quantity:* ${qty}\n` +
+      `🔖 *Order ID:* \`${orderId}\`\n` +
+      `💰 *Total Paid:* ₹${totalPaid} (~${(totalPaid / 88).toFixed(2)} USDT)\n` +
+      `🧾 *Invoice Slip:* https://princecloudsellar.onrender.com/invoice/${orderId}\n\n` +
+      `🔑 *YOUR DELIVERED ACCOUNT / KEY DETAILS:*\n` +
+      `\`\`\`\n${deliveredItemsText}\n\`\`\`\n\n` +
+      `_Official PDF Invoice attached below! Thank you for purchasing with Prince Cloud Sellar._`, {
+        parse_mode: 'Markdown',
+        reply_markup: {
+          inline_keyboard: [
+            [{ text: '🧾 View / Print Invoice', url: `https://princecloudsellar.onrender.com/invoice/${orderId}` }],
+            [{ text: '🛍️ Buy Another Product', callback_data: 'menu_stock' }]
+          ]
+        }
+      });
+  } else {
+    bot.sendMessage(chatId, `🎉 *PAYMENT VERIFIED ON-CHAIN!* 🎉\n\n` +
+      `📦 *Product:* ${prod.name} ${prod.subProduct ? `(${prod.subProduct})` : ''}\n` +
+      `🔢 *Quantity:* ${qty}\n` +
+      `🔖 *Order ID:* \`${orderId}\`\n` +
+      `💰 *Total Paid:* ₹${totalPaid} (~${(totalPaid / 88).toFixed(2)} USDT)\n` +
+      `⏳ *Delivery Status:* PENDING OWNER MANUAL DISPATCH (Stock Refreshing)\n\n` +
+      `_Owner has been notified and will dispatch your accounts shortly._`, {
+        parse_mode: 'Markdown',
+        reply_markup: {
+          inline_keyboard: [
+            [{ text: '🧾 View / Print Invoice', url: `https://princecloudsellar.onrender.com/invoice/${orderId}` }],
+            [{ text: '🛍️ Return to Store', callback_data: 'menu_stock' }]
+          ]
+        }
+      });
+  }
 
   try {
     const pdfBuf = await generateOrderInvoicePdfBuffer(newOrder);

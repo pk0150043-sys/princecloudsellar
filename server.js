@@ -180,7 +180,7 @@ async function syncWithMongoDB() {
       SmmOrder.find().lean()
     ]);
 
-    // 1. SYNC USERS: Merge MongoDB users with local memory so no registered user is ever lost on restart/redeploy
+    // 1. SYNC USERS: Merge MongoDB users with local memory so no registered user is ever lost
     if (dbUsers && dbUsers.length > 0) {
       const mergedUsersMap = new Map();
       dbUsers.forEach(u => mergedUsersMap.set(u.email ? u.email.toLowerCase() : u._id.toString(), { ...u, _id: u._id.toString() }));
@@ -196,29 +196,62 @@ async function syncWithMongoDB() {
       User.insertMany(persistentStore.users).catch(() => {});
     }
 
-    // 2. SYNC PRODUCTS: Load from MongoDB if available, otherwise seed to MongoDB
-    if (dbProducts && dbProducts.length > 0) {
-      persistentStore.products = dbProducts.map(p => ({ ...p, _id: p._id.toString() }));
-    } else if (persistentStore.products && persistentStore.products.length > 0) {
-      Product.insertMany(persistentStore.products).catch(() => {});
-    } else {
+    // 2. SYNC PRODUCTS: Merge products safely
+    const mergedProductsMap = new Map();
+    (persistentStore.products || []).forEach(p => mergedProductsMap.set(String(p._id), p));
+    (dbProducts || []).forEach(p => {
+      const pid = p._id.toString();
+      mergedProductsMap.set(pid, { ...p, _id: pid });
+    });
+    persistentStore.products = Array.from(mergedProductsMap.values());
+    if (persistentStore.products.length === 0) {
       console.log('📦 Database has 0 products. Seeding standard Cloud accounts and stock...');
       await seedDemoProductsAndStocks();
+    } else if (Product) {
+      for (const p of persistentStore.products) {
+        Product.findOneAndUpdate({ _id: p._id }, p, { upsert: true }).catch(() => {});
+      }
     }
 
-    // 3. SYNC STOCKS
-    if (dbStocks && dbStocks.length > 0) {
-      persistentStore.stocks = dbStocks.map(s => ({ ...s, _id: s._id.toString() }));
-    } else if (persistentStore.stocks && persistentStore.stocks.length > 0) {
-      Stock.insertMany(persistentStore.stocks).catch(() => {});
+    // 3. SYNC STOCKS: Merge stocks safely
+    const mergedStocksMap = new Map();
+    (persistentStore.stocks || []).forEach(s => mergedStocksMap.set(String(s._id), s));
+    (dbStocks || []).forEach(s => {
+      const sid = s._id.toString();
+      mergedStocksMap.set(sid, { ...s, _id: sid });
+    });
+    persistentStore.stocks = Array.from(mergedStocksMap.values());
+    if (Stock) {
+      for (const s of persistentStore.stocks) {
+        Stock.findOneAndUpdate({ _id: s._id }, s, { upsert: true }).catch(() => {});
+      }
     }
 
-    // 4. SYNC ORDERS & SMM ORDERS
-    if (dbOrders && dbOrders.length > 0) {
-      persistentStore.orders = dbOrders.map(o => ({ ...o, _id: o._id.toString() }));
+    // 4. SYNC ORDERS & SMM ORDERS: Merge orders safely
+    const mergedOrdersMap = new Map();
+    (persistentStore.orders || []).forEach(o => mergedOrdersMap.set(String(o._id), o));
+    (dbOrders || []).forEach(o => {
+      const oid = o._id.toString();
+      mergedOrdersMap.set(oid, { ...o, _id: oid });
+    });
+    persistentStore.orders = Array.from(mergedOrdersMap.values()).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    if (Order) {
+      for (const o of persistentStore.orders) {
+        Order.findOneAndUpdate({ _id: o._id }, o, { upsert: true }).catch(() => {});
+      }
     }
-    if (dbSmmOrders && dbSmmOrders.length > 0) {
-      persistentStore.smmOrders = dbSmmOrders.map(o => ({ ...o, _id: o._id.toString() }));
+
+    const mergedSmmOrdersMap = new Map();
+    (persistentStore.smmOrders || []).forEach(o => mergedSmmOrdersMap.set(String(o._id || o.orderId), o));
+    (dbSmmOrders || []).forEach(o => {
+      const oid = (o._id || o.orderId).toString();
+      mergedSmmOrdersMap.set(oid, { ...o, _id: oid });
+    });
+    persistentStore.smmOrders = Array.from(mergedSmmOrdersMap.values()).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    if (SmmOrder) {
+      for (const o of persistentStore.smmOrders) {
+        SmmOrder.findOneAndUpdate({ _id: o._id }, o, { upsert: true }).catch(() => {});
+      }
     }
 
     // 5. SYNC SMM SERVICES
@@ -1380,16 +1413,51 @@ app.post('/api/user/orders/checkout', async (req, res) => {
     let deliveredItemsText = '';
     let deliveryStatus = 'PENDING_DELIVERY';
 
-    if (availableStocks.length > 0) {
+    if (availableStocks.length >= qty) {
       deliveredItemsText = availableStocks.map(s => s.content).join('\n');
       deliveryStatus = 'DELIVERED';
-    } else {
-      const prodTag = (targetProduct.subProduct || targetProduct.name).toUpperCase().replace(/\s+/g, '-');
-      deliveredItemsText = `KEY-${prodTag}-${Math.floor(1000 + Math.random() * 9000)}`;
-      deliveryStatus = 'DELIVERED';
-    }
+      availableStocks.forEach(stk => {
+        stk.status = 'SOLD';
+        stk.soldToUserId = userId;
+        stk.soldToUserName = userName;
+        stk.soldToUserPhone = userPhone;
+        stk.orderId = orderId;
+        stk.soldAt = new Date();
+      });
 
-    const orderId = 'ord_' + Date.now();
+      const remainingAvail = persistentStore.stocks.filter(s => s.productId === productId && s.status === 'AVAILABLE').length;
+      targetProduct.stock = remainingAvail;
+
+      if (getDBStatus() && Product && Stock) {
+        Product.findOneAndUpdate({ _id: productId }, { stock: remainingAvail }).catch(() => {});
+        for (const stk of availableStocks) {
+          Stock.findOneAndUpdate({ _id: stk._id }, {
+            status: 'SOLD',
+            soldToUserId: userId,
+            soldToUserName: userName,
+            soldToUserPhone: userPhone,
+            orderId,
+            soldAt: new Date()
+          }).catch(() => {});
+        }
+      }
+    } else if (availableStocks.length > 0) {
+      deliveredItemsText = availableStocks.map(s => s.content).join('\n');
+      deliveryStatus = 'PARTIALLY_DELIVERED';
+      availableStocks.forEach(stk => {
+        stk.status = 'SOLD';
+        stk.soldToUserId = userId;
+        stk.soldToUserName = userName;
+        stk.soldToUserPhone = userPhone;
+        stk.orderId = orderId;
+        stk.soldAt = new Date();
+      });
+      const remainingAvail = persistentStore.stocks.filter(s => s.productId === productId && s.status === 'AVAILABLE').length;
+      targetProduct.stock = remainingAvail;
+    } else {
+      deliveredItemsText = 'PENDING OWNER MANUAL DISPATCH (STOCK REFRESHING)';
+      deliveryStatus = 'PENDING_DELIVERY';
+    }
 
     const newOrder = {
       _id: orderId,
@@ -1403,30 +1471,17 @@ app.post('/api/user/orders/checkout', async (req, res) => {
       quantity: qty,
       unitPrice: targetProduct.price,
       totalPaid,
-      paymentStatus: 'PAID',
+      paymentStatus: 'PAID (BEP20)',
       txHash: txHash.trim().toLowerCase(),
       deliveryStatus,
       deliveredItem: deliveredItemsText,
       createdAt: new Date()
     };
 
-    persistentStore.orders.push(newOrder);
-
-    availableStocks.forEach(stk => {
-      stk.status = 'SOLD';
-      stk.soldToUserId = userId;
-      stk.soldToUserName = userName;
-      stk.soldToUserPhone = userPhone;
-      stk.orderId = orderId;
-      stk.soldAt = new Date();
-    });
-
-    const remainingAvail = persistentStore.stocks.filter(s => s.productId === productId && s.status === 'AVAILABLE').length;
-    targetProduct.stock = remainingAvail;
+    persistentStore.orders.unshift(newOrder);
 
     if (getDBStatus()) {
       await Order.create(newOrder);
-      await Product.findOneAndUpdate({ _id: productId }, { stock: remainingAvail });
     }
 
     saveLocalDB();
@@ -1571,6 +1626,9 @@ app.post('/api/user/orders/checkout-upi', async (req, res) => {
 function getUnifiedUserOrders(allOrders, userIdentifier, store = persistentStore) {
   if (!userIdentifier) return [];
   const cleanId = String(userIdentifier).trim().toLowerCase();
+  if (cleanId === 'undefined' || cleanId === 'null' || cleanId === 'guest' || cleanId.length < 2) {
+    return [];
+  }
 
   // Find linked user in store
   const linkedUser = (store.users || []).find(u => 
@@ -1593,14 +1651,18 @@ function getUnifiedUserOrders(allOrders, userIdentifier, store = persistentStore
     }
     if (linkedUser.phone) {
       const p = linkedUser.phone.replace(/[^0-9]/g, '');
-      phoneKeys.add(p);
-      idKeys.add('wa_' + p);
-      idKeys.add('tg_' + p);
+      if (p.length >= 7) {
+        phoneKeys.add(p);
+        idKeys.add('wa_' + p);
+        idKeys.add('tg_' + p);
+      }
     }
     if (linkedUser.whatsappNumber) {
       const p = linkedUser.whatsappNumber.replace(/[^0-9]/g, '');
-      phoneKeys.add(p);
-      idKeys.add('wa_' + p);
+      if (p.length >= 7) {
+        phoneKeys.add(p);
+        idKeys.add('wa_' + p);
+      }
     }
     if (linkedUser.email) {
       emailKeys.add(linkedUser.email.toLowerCase());
@@ -1616,17 +1678,13 @@ function getUnifiedUserOrders(allOrders, userIdentifier, store = persistentStore
   }
 
   return (allOrders || []).filter(o => {
-    const oUserId = String(o.userId || '').toLowerCase();
+    const oUserId = String(o.userId || '').trim().toLowerCase();
     const oUserPhone = String(o.userPhone || '').replace(/[^0-9]/g, '');
-    const oUserEmail = String(o.userEmail || '').toLowerCase();
+    const oUserEmail = String(o.userEmail || '').trim().toLowerCase();
 
-    if (idKeys.has(oUserId)) return true;
+    if (oUserId && oUserId !== 'undefined' && oUserId !== 'null' && idKeys.has(oUserId)) return true;
     if (oUserPhone && phoneKeys.has(oUserPhone)) return true;
     if (oUserEmail && emailKeys.has(oUserEmail)) return true;
-
-    for (const p of phoneKeys) {
-      if (oUserId.includes(p) || (oUserPhone && (oUserPhone.endsWith(p) || p.endsWith(oUserPhone)))) return true;
-    }
     return false;
   }).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 }
@@ -1729,9 +1787,12 @@ app.post('/api/owner/orders/:id/approve-upi', async (req, res) => {
           }
         }
       } else {
-        // Fallback auto-generated keys if stock empty and no custom keys entered
-        const prodTag = (order.subProduct || order.productName || 'CLOUD').toUpperCase().replace(/[^A-Z0-9]/g, '-');
-        deliveredItemsText = Array.from({ length: qty }, () => `KEY-${prodTag}-${Math.floor(100000 + Math.random() * 900000)}`).join('\n');
+        if (!customPayload || !customPayload.trim()) {
+          return res.status(400).json({
+            success: false,
+            message: '⚠️ Out of Stock! Please enter the Account Credentials / Key in "Custom Keys / Account Payload" textarea before approving.'
+          });
+        }
       }
     }
 
@@ -2001,6 +2062,60 @@ app.post('/api/owner/orders/:id/reject-upi', async (req, res) => {
 
     saveLocalDB();
     return res.json({ success: true, message: 'Order has been rejected.', order });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// OWNER ORDER DELETION API (Clean up test / dummy orders)
+app.delete('/api/owner/orders/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const initialCount = persistentStore.orders.length;
+    persistentStore.orders = persistentStore.orders.filter(o => String(o._id) !== String(id));
+
+    if (getDBStatus() && Order) {
+      await Order.deleteOne({ _id: id });
+    }
+
+    saveLocalDB();
+    return res.json({
+      success: true,
+      message: `Order #${id} permanently deleted by Owner.`
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// OWNER BULK TEST ORDER CLEANUP API
+app.post('/api/owner/orders/clear-test-orders', async (req, res) => {
+  try {
+    const testKeywords = ['testuser', '628999000111', 'test_user'];
+    const beforeCount = persistentStore.orders.length;
+    
+    persistentStore.orders = persistentStore.orders.filter(o => {
+      const uName = (o.userName || '').toLowerCase();
+      const uPhone = (o.userPhone || '');
+      return !testKeywords.some(k => uName.includes(k) || uPhone.includes(k));
+    });
+
+    const deletedCount = beforeCount - persistentStore.orders.length;
+
+    if (getDBStatus() && Order) {
+      await Order.deleteMany({
+        $or: [
+          { userName: { $regex: /testuser/i } },
+          { userPhone: { $regex: /628999000111/ } }
+        ]
+      });
+    }
+
+    saveLocalDB();
+    return res.json({
+      success: true,
+      message: `Successfully cleared ${deletedCount} test orders.`
+    });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }

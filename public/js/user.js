@@ -210,6 +210,28 @@ function loadCachedCatalogFirst() {
   }
 }
 
+function normalizeUserObj(user) {
+  if (!user) return null;
+  const uid = user._id || user.id || '';
+  return {
+    ...user,
+    _id: uid,
+    id: uid
+  };
+}
+
+function setCurrentUserSession(userData) {
+  if (!userData) {
+    currentUser = null;
+    localStorage.removeItem('prince_user_session');
+    localStorage.removeItem('prince_user_session_time');
+    return;
+  }
+  currentUser = normalizeUserObj(userData);
+  localStorage.setItem('prince_user_session', JSON.stringify(currentUser));
+  localStorage.setItem('prince_user_session_time', Date.now().toString());
+}
+
 function checkStoredSession() {
   const savedUser = localStorage.getItem('prince_user_session');
   const sessionTime = localStorage.getItem('prince_user_session_time');
@@ -218,12 +240,15 @@ function checkStoredSession() {
     const elapsedMs = Date.now() - Number(sessionTime);
     const SIX_HOURS_MS = 6 * 60 * 60 * 1000;
     if (elapsedMs < SIX_HOURS_MS) {
-      currentUser = JSON.parse(savedUser);
+      try {
+        const parsed = JSON.parse(savedUser);
+        currentUser = normalizeUserObj(parsed);
+      } catch (e) {
+        currentUser = null;
+      }
       updateUserNavUI();
     } else {
-      localStorage.removeItem('prince_user_session');
-      localStorage.removeItem('prince_user_session_time');
-      currentUser = null;
+      setCurrentUserSession(null);
       updateUserNavUI();
       showToast('⏰ Your 6-hour session has expired. Please sign in again.', 'info');
     }
@@ -240,9 +265,7 @@ setInterval(() => {
     const elapsedMs = Date.now() - Number(sessionTime);
     const SIX_HOURS_MS = 6 * 60 * 60 * 1000;
     if (elapsedMs >= SIX_HOURS_MS) {
-      localStorage.removeItem('prince_user_session');
-      localStorage.removeItem('prince_user_session_time');
-      currentUser = null;
+      setCurrentUserSession(null);
       updateUserNavUI();
       showToast('⏰ Your 6-hour session has expired. You have been automatically logged out.', 'info');
     }
@@ -525,9 +548,7 @@ async function handleInlineUserLogin() {
         }
         showToast(data.message, 'info');
       } else {
-        currentUser = data.user;
-        localStorage.setItem('prince_user_session', JSON.stringify(currentUser));
-        localStorage.setItem('prince_user_session_time', Date.now().toString());
+        setCurrentUserSession(data.user);
 
         showToast(data.message, 'success');
         updateUserNavUI();
@@ -565,9 +586,7 @@ async function verifyInlineLoginOTP() {
     const data = await res.json();
 
     if (data.success) {
-      currentUser = data.user;
-      localStorage.setItem('prince_user_session', JSON.stringify(currentUser));
-      localStorage.setItem('prince_user_session_time', Date.now().toString());
+      setCurrentUserSession(data.user);
 
       showToast(data.message, 'success');
       updateUserNavUI();
@@ -738,9 +757,7 @@ async function handleInlineUserRegister() {
     const data = await res.json();
 
     if (data.success) {
-      currentUser = data.user;
-      localStorage.setItem('prince_user_session', JSON.stringify(currentUser));
-      localStorage.setItem('prince_user_session_time', Date.now().toString());
+      setCurrentUserSession(data.user);
 
       showToast(`🎉 Registration Successful! Welcome ${currentUser.name}.`, 'success');
       updateUserNavUI();
@@ -1032,9 +1049,10 @@ async function submitUpiCheckout() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        userId: currentUser.id,
+        userId: currentUser._id || currentUser.id,
         userName: currentUser.name,
         userPhone: currentUser.phone,
+        userEmail: currentUser.email,
         productId: selectedProductForBuy._id,
         quantity: qty,
         utrId
@@ -1195,9 +1213,10 @@ async function handleCheckoutSubmit() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        userId: currentUser.id,
+        userId: currentUser._id || currentUser.id,
         userName,
         userPhone,
+        userEmail: currentUser.email,
         productId: selectedProductForBuy._id,
         quantity: qty,
         txHash
@@ -1283,9 +1302,7 @@ async function handleUserLogin() {
         }
         showToast(data.message || '🔐 6-digit OTP code sent to your registered Gmail!', 'info');
       } else {
-        currentUser = data.user;
-        localStorage.setItem('prince_user_session', JSON.stringify(currentUser));
-        localStorage.setItem('prince_user_session_time', Date.now().toString());
+        setCurrentUserSession(data.user);
 
         showToast(data.message || `🎉 Welcome back, ${currentUser.name}!`, 'success');
         closeModal('user-login-modal');
@@ -1339,9 +1356,7 @@ async function verifyLoginOTP() {
     const data = await res.json();
 
     if (data.success) {
-      currentUser = data.user;
-      localStorage.setItem('prince_user_session', JSON.stringify(currentUser));
-      localStorage.setItem('prince_user_session_time', Date.now().toString());
+      setCurrentUserSession(data.user);
 
       showToast(data.message || `🎉 Signed In Successfully as ${currentUser.name}!`, 'success');
       closeModal('user-login-modal');
@@ -1575,9 +1590,7 @@ async function handleUserRegister() {
     const data = await res.json();
 
     if (data.success) {
-      currentUser = data.user;
-      localStorage.setItem('prince_user_session', JSON.stringify(currentUser));
-      localStorage.setItem('prince_user_session_time', Date.now().toString());
+      setCurrentUserSession(data.user);
 
       showToast('🎉 Registration Complete! Account Verified.', 'success');
       closeModal('user-register-modal');
@@ -1600,9 +1613,7 @@ async function handleUserRegister() {
 }
 
 function handleUserLogout() {
-  currentUser = null;
-  localStorage.removeItem('prince_user_session');
-  localStorage.removeItem('prince_user_session_time');
+  setCurrentUserSession(null);
   showToast('Logged out successfully.', 'info');
   updateUserNavUI();
 }
@@ -1618,10 +1629,16 @@ async function openMyOrdersModal() {
     return;
   }
 
+  const uid = currentUser._id || currentUser.id || currentUser.phone || currentUser.email;
+  if (!uid) {
+    showToast('User identifier missing. Please Sign In again.', 'error');
+    return;
+  }
+
   try {
     const [cloudRes, smmRes] = await Promise.all([
-      fetch(`/api/user/orders/${currentUser.id}`),
-      fetch(`/api/smm/orders/user/${currentUser.id || currentUser.phone || currentUser.email}`)
+      fetch(`/api/user/orders/${encodeURIComponent(uid)}?t=${Date.now()}`),
+      fetch(`/api/smm/orders/user/${encodeURIComponent(uid)}?t=${Date.now()}`)
     ]);
 
     const cloudData = await cloudRes.json();
