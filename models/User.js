@@ -11,6 +11,7 @@ const userSchema = new mongoose.Schema({
   status: { type: String, enum: ['active', 'blocked'], default: 'active' },
   lastOtpVerifiedAt: { type: Date, default: null },
   createdAt: { type: Date, default: Date.now }
-}, { _id: false });
+});
 
-module.exports = mongoose.model('User', userSchema);
+module.exports = mongoose.models.User || mongoose.model('User', userSchema);
+

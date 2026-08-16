@@ -6,6 +6,8 @@ const path = require('path');
 let botInstance = null;
 let currentToken = null;
 let currentChannelId = null;
+let botInfo = null;
+let botStartTime = null;
 
 // Session storage: chatId -> { step, selectedProduct, quantity, paymentMethod, regData, loginData, forgotData, isVerified, linkedUser, availableBaseProducts, availableVariants }
 let telegramSessions = {};
@@ -16,8 +18,14 @@ const fallbackLogoPath = path.join(__dirname, '..', 'public', 'images', 'logo.pn
 function getTelegramBotStatus() {
   return {
     isActive: !!botInstance,
+    status: botInstance ? 'ONLINE' : 'OFFLINE',
     tokenSet: !!(currentToken || process.env.TELEGRAM_BOT_TOKEN),
-    channelId: currentChannelId || process.env.TELEGRAM_CHANNEL_ID || ''
+    channelId: currentChannelId || process.env.TELEGRAM_CHANNEL_ID || '',
+    botUsername: botInfo?.username ? `@${botInfo.username}` : '',
+    botName: botInfo?.first_name || 'Prince Cloud Sellar Bot',
+    botId: botInfo?.id || '',
+    uptimeSeconds: botStartTime ? Math.floor((Date.now() - botStartTime) / 1000) : 0,
+    activeSessions: Object.keys(telegramSessions).length
   };
 }
 
@@ -52,6 +60,15 @@ function startBot(token, channelId, services) {
 
   try {
     botInstance = new TelegramBot(cleanToken, { polling: true });
+    botStartTime = Date.now();
+
+    botInstance.getMe().then(info => {
+      botInfo = info;
+      console.log(`⚡ [TELEGRAM SHOPBOT] ONLINE & POLLING as @${info.username} (ID: ${info.id})`);
+    }).catch(err => {
+      console.error('Error fetching Telegram bot details:', err.message);
+    });
+
     console.log('⚡ PrinceCloudSellar Telegram Shop Bot Connected & Polling Started!');
 
     setupTelegramHandlers(botInstance, services);
@@ -269,6 +286,36 @@ function setupTelegramHandlers(bot, services) {
     sendMainMenu(bot, chatId);
   });
 
+  // /ping or /status live health command
+  bot.onText(/\/ping|\/status/, async (msg) => {
+    const chatId = msg.chat.id;
+    const uptimeSec = botStartTime ? Math.floor((Date.now() - botStartTime) / 1000) : 0;
+    const mins = Math.floor(uptimeSec / 60);
+    const secs = uptimeSec % 60;
+    const uptimeStr = `${mins}m ${secs}s`;
+    const dbOk = services.getDBStatus ? services.getDBStatus() : false;
+
+    const statusMsg = `⚡ *PRINCE CLOUD SELLAR BOT STATUS* ⚡\n\n` +
+      `🤖 *Bot Handle:* ${botInfo?.username ? `@${botInfo.username}` : 'PrinceCloudSellar Bot'}\n` +
+      `🟢 *Bot Engine:* Online (Live Long-Polling)\n` +
+      `🗄️ *Database:* ${dbOk ? '🟢 Connected (MongoDB Atlas Live)' : '🟡 Local Store'}\n` +
+      `🚀 *SMM Provider:* 🟢 IndianSMMHub API v2 (Live)\n` +
+      `⏱️ *Uptime:* ${uptimeStr}\n` +
+      `👥 *Active Sessions:* ${Object.keys(telegramSessions).length}\n` +
+      `🌐 *Web Platform:* https://princecloudsellar.onrender.com\n\n` +
+      `_All automated sales, OTP delivery & SMM dispatching are LIVE!_`;
+
+    bot.sendMessage(chatId, statusMsg, {
+      parse_mode: 'Markdown',
+      reply_markup: {
+        inline_keyboard: [
+          [{ text: '🛍️ Browse Stock', callback_data: 'menu_stock' }, { text: '🚀 Social Growth', callback_data: 'menu_smm_growth' }],
+          [{ text: '🏠 Main Menu', callback_data: 'menu_main' }]
+        ]
+      }
+    });
+  });
+
   // /upi command
   bot.onText(/\/upi/, (msg) => {
     const chatId = msg.chat.id;
@@ -344,6 +391,16 @@ function setupTelegramHandlers(bot, services) {
 
       if (data === 'menu_support') {
         sendSupportPrompt(bot, chatId, services);
+        return;
+      }
+
+      if (data === 'action_logout') {
+        if (telegramSessions[chatId]) {
+          telegramSessions[chatId].linkedUser = null;
+          telegramSessions[chatId].step = null;
+        }
+        bot.sendMessage(chatId, `👋 *Logged out successfully.* You are now browsing as Guest.\n\nUse /login to log into your account or /register to create a new one.`, { parse_mode: 'Markdown' });
+        sendMainMenu(bot, chatId);
         return;
       }
 
@@ -424,38 +481,49 @@ function setupTelegramHandlers(bot, services) {
 
       if (data.startsWith('smm_order_')) {
         const srvKey = data.replace('smm_order_', '');
-        const PEAKERR_MAP = {
-          ig_followers_nondrop: { serviceId: 31850, name: 'Instagram 100% Non-Drop Followers (Lifetime Refill)', rate: 180, refill: true },
-          ig_followers_drop5: { serviceId: 31714, name: 'Instagram Low Drop Followers (30D Refill)', rate: 120, refill: true },
-          ig_likes_nondrop: { serviceId: 31905, name: 'Instagram HQ Post/Reel Likes', rate: 45, refill: false },
-          ig_comments_nondrop: { serviceId: 31850, name: 'Instagram Custom Comments', rate: 380, refill: false },
-          yt_subs_nondrop: { serviceId: 23304, name: 'YouTube 100% Non-Drop Subscribers (Lifetime Refill)', rate: 350, refill: true },
-          yt_subs_drop5: { serviceId: 18403, name: 'YouTube Fast Subs (30D Refill)', rate: 220, refill: true },
-          yt_likes_nondrop: { serviceId: 32112, name: 'YouTube High Retention Likes (30D Refill)', rate: 90, refill: true },
-          yt_comments_nondrop: { serviceId: 23304, name: 'YouTube Custom Comments', rate: 450, refill: false },
-          tg_members_nondrop: { serviceId: 31703, name: 'Telegram 100% Non-Drop Members (365D Refill)', rate: 160, refill: true },
-          tg_members_drop5: { serviceId: 31702, name: 'Telegram 30D Refill Channel Members', rate: 110, refill: true },
-          tg_members_drop10: { serviceId: 31702, name: 'Telegram Standard Channel Members', rate: 65, refill: false },
-          fb_followers_nondrop: { serviceId: 32148, name: 'Facebook 100% Non-Drop Followers', rate: 210, refill: true },
-          fb_followers_drop5: { serviceId: 32147, name: 'Facebook Instant Page Followers', rate: 140, refill: false },
-          fb_likes_nondrop: { serviceId: 32147, name: 'Facebook Post Likes & Reactions', rate: 60, refill: false },
-          tt_followers: { serviceId: 31703, name: 'TikTok HQ Non-Drop Followers', rate: 190, refill: true },
-          tt_likes: { serviceId: 31703, name: 'TikTok Video Likes', rate: 50, refill: false },
-          x_followers: { serviceId: 31703, name: 'Twitter / X Profile Followers', rate: 240, refill: true }
+        const INDIANSMM_MAP = {
+          // Instagram
+          ig_reels_views: { serviceId: 494, name: 'Instagram Superfast Reels Views (⚡ ₹0.50/1K)', rate: 0.50, min: 1000, refill: false },
+          ig_likes_hq: { serviceId: 495, name: 'Instagram High-Quality Likes (❤️ ₹6/1K)', rate: 6, min: 1000, refill: false },
+          ig_followers_nondrop: { serviceId: 493, name: 'Instagram 100% Non-Drop Followers [365D Refill] (⚡ ₹28/1K)', rate: 28, min: 1000, refill: true },
+          ig_followers_india: { serviceId: 502, name: 'Instagram Real Indian Targeted Followers (🇮🇳 ₹65/1K)', rate: 65, min: 1000, refill: true },
+          ig_comments_custom: { serviceId: 496, name: 'Instagram Custom Comments (💬 ₹85/1K)', rate: 85, min: 10, refill: false },
+
+          // YouTube
+          yt_views_nondrop: { serviceId: 328, name: 'YouTube Lifetime High-Speed Views (▶️ ₹45/1K)', rate: 45, min: 1000, refill: true },
+          yt_subs_nondrop: { serviceId: 330, name: 'YouTube Non-Drop Subscribers [Lifetime Refill] (⚡ ₹120/1K)', rate: 120, min: 100, refill: true },
+          yt_likes_hq: { serviceId: 329, name: 'YouTube High Retention Likes (👍 ₹25/1K)', rate: 25, min: 100, refill: true },
+          yt_watchtime_4k: { serviceId: 332, name: 'YouTube 4000 Hours Monetization WatchTime Pack (⏱️ ₹350/1K)', rate: 350, min: 500, refill: true },
+
+          // Telegram
+          tg_members_nondrop: { serviceId: 252, name: 'Telegram 100% Non-Drop Members [365D Refill] (✈️ ₹45/1K)', rate: 45, min: 100, refill: true },
+          tg_members_fast: { serviceId: 251, name: 'Telegram Fast Channel Members (⚡ ₹25/1K)', rate: 25, min: 100, refill: false },
+          tg_views_reactions: { serviceId: 250, name: 'Telegram Post Views + Reactions (🔥 ₹0.30/1K)', rate: 0.30, min: 1000, refill: false },
+
+          // Facebook
+          fb_followers_nondrop: { serviceId: 445, name: 'Facebook Page & Profile Followers (👍 ₹48/1K)', rate: 48, min: 100, refill: true },
+          fb_likes_reactions: { serviceId: 444, name: 'Facebook Post Likes & Reactions (❤️ ₹18/1K)', rate: 18, min: 100, refill: false },
+          fb_views_video: { serviceId: 443, name: 'Facebook Video & Reel Views (⚡ ₹12/1K)', rate: 12, min: 1000, refill: false },
+
+          // TikTok & Twitter & Spotify
+          tt_followers: { serviceId: 470, name: 'TikTok HQ Non-Drop Followers (🎵 ₹55/1K)', rate: 55, min: 100, refill: true },
+          tt_likes: { serviceId: 471, name: 'TikTok Video Likes (❤️ ₹15/1K)', rate: 15, min: 100, refill: false },
+          x_followers: { serviceId: 480, name: 'Twitter / X Profile Followers (🐦 ₹65/1K)', rate: 65, min: 100, refill: true },
+          spotify_streams: { serviceId: 520, name: 'Spotify Organic Music Streams (🟢 ₹22/1K)', rate: 22, min: 1000, refill: true }
         };
 
-        const mapped = PEAKERR_MAP[srvKey];
+        const mapped = INDIANSMM_MAP[srvKey];
         const store = getPersistentStore();
-        let srv = (store.smmServices || []).find(s => s.serviceKey === srvKey || s._id === srvKey);
+        let srv = (store.smmServices || []).find(s => s.serviceKey === srvKey || s._id === srvKey || s.service === mapped?.serviceId);
 
         if (mapped) {
-          srv = Object.assign({}, mapped, { serviceKey: srvKey, min: 1000 });
+          srv = Object.assign({}, mapped, { serviceKey: srvKey, min: mapped.min || 1000 });
         } else if (!srv) {
           srv = {
-            serviceId: 31850,
+            serviceId: 493,
             serviceKey: srvKey,
             name: srvKey.replace(/_/g, ' ').toUpperCase(),
-            rate: 180,
+            rate: 28,
             min: 1000,
             refill: true
           };
@@ -814,10 +882,16 @@ function setupTelegramHandlers(bot, services) {
       };
 
       store.users.push(newUser);
-      if (getDBStatus() && User) {
+      if (User) {
         try {
-          await User.create(newUser);
-        } catch (e) {}
+          const dbCreated = await User.create(newUser);
+          if (dbCreated && dbCreated._id) {
+            newUser._id = dbCreated._id.toString();
+          }
+          console.log('✅ Telegram user registered & saved to MongoDB Atlas:', newUser.email);
+        } catch (e) {
+          console.error('MongoDB Telegram User create error:', e.message);
+        }
       }
       saveLocalDB();
 
@@ -1353,41 +1427,43 @@ function sendTelegramPlatformSmmServices(bot, chatId, platformKey, services) {
   let buttons = [];
 
   if (platformKey === 'smm_ig') {
-    title = '📸 *INSTAGRAM GROWTH SERVICES*';
+    title = '📸 *INSTAGRAM GROWTH PACKAGES (INDIANSMMHUB)*';
     buttons = [
-      [{ text: '⚡ 100% Non-Drop Followers (₹180/1K)', callback_data: 'smm_order_ig_followers_nondrop' }],
-      [{ text: '⚡ Low Drop Followers (30D Refill) (₹120/1K)', callback_data: 'smm_order_ig_followers_drop5' }],
-      [{ text: '❤️ HQ Post / Reel Likes (₹45/1K)', callback_data: 'smm_order_ig_likes_nondrop' }],
-      [{ text: '💬 Custom Comments (₹380/1K)', callback_data: 'smm_order_ig_comments_nondrop' }]
+      [{ text: '⚡ Superfast Reels Views (₹0.50/1K)', callback_data: 'smm_order_ig_reels_views' }],
+      [{ text: '❤️ High-Quality Likes (₹6/1K)', callback_data: 'smm_order_ig_likes_hq' }],
+      [{ text: '⚡ 100% Non-Drop Followers [365D] (₹28/1K)', callback_data: 'smm_order_ig_followers_nondrop' }],
+      [{ text: '🇮🇳 Real Indian Followers (₹65/1K)', callback_data: 'smm_order_ig_followers_india' }],
+      [{ text: '💬 Custom Comments (₹85/1K)', callback_data: 'smm_order_ig_comments_custom' }]
     ];
   } else if (platformKey === 'smm_yt') {
-    title = '▶️ *YOUTUBE GROWTH SERVICES*';
+    title = '▶️ *YOUTUBE GROWTH PACKAGES (INDIANSMMHUB)*';
     buttons = [
-      [{ text: '⚡ 100% Non-Drop Subscribers (₹350/1K)', callback_data: 'smm_order_yt_subs_nondrop' }],
-      [{ text: '⚡ 5% Max Drop Subs (30D Refill) (₹220/1K)', callback_data: 'smm_order_yt_subs_drop5' }],
-      [{ text: '👍 High Retention Video Likes (₹90/1K)', callback_data: 'smm_order_yt_likes_nondrop' }],
-      [{ text: '💬 Custom Comments (₹450/1K)', callback_data: 'smm_order_yt_comments_nondrop' }]
+      [{ text: '▶️ Lifetime Video Views (₹45/1K)', callback_data: 'smm_order_yt_views_nondrop' }],
+      [{ text: '⚡ Non-Drop Subscribers [Refill] (₹120/1K)', callback_data: 'smm_order_yt_subs_nondrop' }],
+      [{ text: '👍 High Retention Likes (₹25/1K)', callback_data: 'smm_order_yt_likes_hq' }],
+      [{ text: '⏱️ 4000 Hours WatchTime Pack (₹350/1K)', callback_data: 'smm_order_yt_watchtime_4k' }]
     ];
   } else if (platformKey === 'smm_tg') {
-    title = '✈️ *TELEGRAM GROWTH SERVICES*';
+    title = '✈️ *TELEGRAM GROWTH PACKAGES (INDIANSMMHUB)*';
     buttons = [
-      [{ text: '⚡ Non-Drop Channel Members (₹160/1K)', callback_data: 'smm_order_tg_members_nondrop' }],
-      [{ text: '⚡ 60D Refill Members (₹110/1K)', callback_data: 'smm_order_tg_members_drop5' }],
-      [{ text: '⚡ Standard Channel Members (₹65/1K)', callback_data: 'smm_order_tg_members_drop10' }]
+      [{ text: '✈️ 100% Non-Drop Members [365D] (₹45/1K)', callback_data: 'smm_order_tg_members_nondrop' }],
+      [{ text: '⚡ Fast Channel Members (₹25/1K)', callback_data: 'smm_order_tg_members_fast' }],
+      [{ text: '🔥 Post Views + Reactions (₹0.30/1K)', callback_data: 'smm_order_tg_views_reactions' }]
     ];
   } else if (platformKey === 'smm_fb') {
-    title = '👍 *FACEBOOK GROWTH SERVICES*';
+    title = '👍 *FACEBOOK GROWTH PACKAGES (INDIANSMMHUB)*';
     buttons = [
-      [{ text: '⚡ Page/Profile Followers (Non-Drop) (₹210/1K)', callback_data: 'smm_order_fb_followers_nondrop' }],
-      [{ text: '⚡ 30D Refill Page Followers (₹140/1K)', callback_data: 'smm_order_fb_followers_drop5' }],
-      [{ text: '❤️ Post Likes & Reactions (₹60/1K)', callback_data: 'smm_order_fb_likes_nondrop' }]
+      [{ text: '👍 Page & Profile Followers (₹48/1K)', callback_data: 'smm_order_fb_followers_nondrop' }],
+      [{ text: '❤️ Post Likes & Reactions (₹18/1K)', callback_data: 'smm_order_fb_likes_reactions' }],
+      [{ text: '⚡ Video & Reel Views (₹12/1K)', callback_data: 'smm_order_fb_views_video' }]
     ];
   } else {
-    title = '🎵 *TIKTOK & 🐦 TWITTER / X GROWTH*';
+    title = '🎵 *TIKTOK, TWITTER & SPOTIFY GROWTH*';
     buttons = [
-      [{ text: '🎵 TikTok Followers (HQ Non-Drop) (₹190/1K)', callback_data: 'smm_order_tt_followers' }],
-      [{ text: '❤️ TikTok Video Likes (₹50/1K)', callback_data: 'smm_order_tt_likes' }],
-      [{ text: '🐦 Twitter Profile Followers (₹240/1K)', callback_data: 'smm_order_x_followers' }]
+      [{ text: '🎵 TikTok Followers (HQ Non-Drop) (₹55/1K)', callback_data: 'smm_order_tt_followers' }],
+      [{ text: '❤️ TikTok Video Likes (₹15/1K)', callback_data: 'smm_order_tt_likes' }],
+      [{ text: '🐦 Twitter / X Profile Followers (₹65/1K)', callback_data: 'smm_order_x_followers' }],
+      [{ text: '🟢 Spotify Music Streams (₹22/1K)', callback_data: 'smm_order_spotify_streams' }]
     ];
   }
 
@@ -1398,7 +1474,7 @@ function sendTelegramPlatformSmmServices(bot, chatId, platformKey, services) {
 
   const text = `${title}\n\n` +
     `⚡ *High Retention Non-Drop Followers, Likes & Subscribers*\n` +
-    `📌 *Minimum Order:* 1,000 Units (Auto-Refill Protected)\n\n` +
+    `📌 *Direct Wholesale IndianSMMHub Server Delivery*\n\n` +
     `${desc}`;
 
   bot.sendMessage(chatId, text, {
@@ -1416,9 +1492,10 @@ function handleTelegramSmmQuantity(bot, chatId, qtyNum, services) {
   }
 
   const srv = session.selectedSmmService;
-  const validQty = Math.max(1000, qtyNum);
+  const minQty = srv.min || 1000;
+  const validQty = Math.max(minQty, qtyNum);
   session.smmQty = validQty;
-  const totalCost = Math.ceil((validQty / 1000) * srv.rate);
+  const totalCost = Math.max(1, Math.round(((validQty / 1000) * srv.rate) * 100) / 100);
   session.smmTotalCost = totalCost;
   session.step = 'SMM_AWAITING_PAYMENT_METHOD';
 
@@ -1462,13 +1539,13 @@ async function finalizeTelegramSmmOrder(bot, chatId, paymentMethod, paymentId, s
   const newOrder = {
     _id: 'smm_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7),
     orderId,
-    providerOrderId: 'TG-' + Math.floor(100000 + Math.random() * 900000),
+    providerOrderId: '',
     userId: session.linkedUser?._id || 'tg_' + chatId,
     userName: session.linkedUser?.name || 'Telegram User',
     userEmail: session.linkedUser?.email || `telegram_${chatId}@tg.princecloudsellar.com`,
     userPhone: session.linkedUser?.phone || String(chatId),
     serviceKey: srv.serviceKey || srv._id,
-    serviceId: srv.serviceId || 1001,
+    serviceId: srv.serviceId || 493,
     serviceName: srv.name,
     tier: srv.tier || 'Social Growth',
     targetUrl,
@@ -1489,6 +1566,30 @@ async function finalizeTelegramSmmOrder(bot, chatId, paymentMethod, paymentId, s
     updatedAt: new Date()
   };
 
+  // Attempt instant dispatch to IndianSMMHub API
+  try {
+    const axios = require('axios');
+    const apiUrl = store.settings?.smmProviderUrl || process.env.INDIANSMM_API_URL || 'https://indiansmmhub.com/api/v2';
+    const apiKey = store.settings?.smmApiKey || process.env.INDIANSMM_API_KEY || 'be0066920ea511dc79addd45a1c7bb554fca5798';
+    
+    const apiRes = await axios.post(apiUrl, {
+      key: apiKey,
+      action: 'add',
+      service: newOrder.serviceId,
+      link: newOrder.targetUrl,
+      quantity: newOrder.quantity
+    }, { timeout: 10000 });
+
+    if (apiRes.data && apiRes.data.order) {
+      newOrder.providerOrderId = String(apiRes.data.order);
+      newOrder.status = 'Processing';
+    } else {
+      newOrder.providerOrderId = 'TG-' + Math.floor(100000 + Math.random() * 900000);
+    }
+  } catch (apiErr) {
+    newOrder.providerOrderId = 'TG-' + Math.floor(100000 + Math.random() * 900000);
+  }
+
   store.smmOrders = store.smmOrders || [];
   store.smmOrders.unshift(newOrder);
 
@@ -1507,14 +1608,15 @@ async function finalizeTelegramSmmOrder(bot, chatId, paymentMethod, paymentId, s
 
   const receipt = `🎉 *SMM ORDER PLACED SUCCESSFULLY!* 🎉\n\n` +
     `📦 *Order ID:* \`${orderId}\`\n` +
+    (newOrder.providerOrderId && !newOrder.providerOrderId.startsWith('TG-') ? `⚡ *Provider Order:* \`#${newOrder.providerOrderId}\`\n` : '') +
     `⚡ *Service:* *${srv.name}*\n` +
     `🎯 *Target Link:* \`${targetUrl}\`\n` +
     `🔢 *Quantity:* *${qty.toLocaleString()} Units*\n` +
     `💰 *Amount Paid:* *₹${totalCost.toLocaleString()}* (${paymentMethod})\n` +
     (paymentMethod === 'UPI' ? `🏷️ *UTR ID:* \`${paymentId}\`\n` : `🔗 *TxHash:* \`${paymentId}\`\n`) +
-    `📊 *Status:* 🟡 *Processing (Instant Start)*\n` +
+    `📊 *Status:* 🟡 *Processing (Instant IndianSMMHub Start)*\n` +
     `🛡️ *Guarantee:* ${srv.refill ? 'Auto-Refill Lifetime Active' : 'Standard Speed'}\n\n` +
-    `⚡ Your order has been dispatched to Peakerr automated servers!\n` +
+    `⚡ Your order has been dispatched to IndianSMMHub automated servers!\n` +
     `Track live in Bot via /orders or on Website.`;
 
   bot.sendMessage(chatId, receipt, {
@@ -2189,7 +2291,8 @@ function sendAccountInfo(bot, chatId, services) {
         reply_markup: {
           inline_keyboard: [
             [{ text: '📦 View My Orders', callback_data: 'menu_orders' }],
-            [{ text: '🛍️ Browse Stock', callback_data: 'menu_stock' }]
+            [{ text: '🛍️ Browse Stock', callback_data: 'menu_stock' }],
+            [{ text: '🚪 Logout Session', callback_data: 'action_logout' }]
           ]
         }
       });

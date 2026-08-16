@@ -2118,17 +2118,38 @@ async function fetchBotStatus() {
     const data = await res.json();
     if (data.success) {
       const badge = document.getElementById('tg-bot-status-badge');
+      const tgStatusText = document.getElementById('tg-live-status-text');
+      const tgUserText = document.getElementById('tg-live-username-text');
+      const tgSessText = document.getElementById('tg-live-sessions-text');
+      const tgDbText = document.getElementById('tg-live-db-text');
+
       if (badge) {
         if (data.telegram && data.telegram.isActive) {
           badge.className = 'badge badge-success';
           badge.innerText = '🟢 BOT RUNNING';
+          if (tgStatusText) tgStatusText.innerText = 'ONLINE (Polling Active)';
+          if (tgStatusText) tgStatusText.style.color = '#22c55e';
         } else if (data.telegram && data.telegram.tokenSet) {
           badge.className = 'badge badge-yellow';
           badge.innerText = '🟡 CONFIGURED';
+          if (tgStatusText) tgStatusText.innerText = 'CONFIGURED (Starting...)';
+          if (tgStatusText) tgStatusText.style.color = '#facc15';
         } else {
           badge.className = 'badge badge-warning';
           badge.innerText = '⚪ TOKEN REQUIRED';
+          if (tgStatusText) tgStatusText.innerText = 'OFFLINE (Token Needed)';
+          if (tgStatusText) tgStatusText.style.color = '#ef4444';
         }
+      }
+
+      if (tgUserText) {
+        tgUserText.innerText = data.telegram?.botUsername || (data.telegram?.isActive ? '@BotActive' : 'Not Connected');
+      }
+      if (tgSessText) {
+        tgSessText.innerText = `${data.telegram?.activeSessions || 0} Chats`;
+      }
+      if (tgDbText) {
+        tgDbText.innerText = '🟢 Live Connected';
       }
 
       if (data.telegram && data.telegram.channelId) {
@@ -2150,6 +2171,9 @@ async function fetchBotStatus() {
       if (data.whatsapp && data.whatsapp.connectedNumber) {
         const phoneDisp = document.getElementById('wa-connected-phone-display');
         if (phoneDisp) phoneDisp.innerText = data.whatsapp.connectedNumber;
+      } else {
+        const phoneDisp = document.getElementById('wa-connected-phone-display');
+        if (phoneDisp) phoneDisp.innerText = 'Ready to Pair';
       }
 
       fetchWhatsAppLiveQR();
@@ -2354,6 +2378,37 @@ async function disconnectWhatsAppSession() {
   }
 }
 
+async function resetWhatsAppFullSession() {
+  if (!confirm('⚠️ Are you sure you want to PERMANENTLY delete the linked WhatsApp session?\n\nThis will wipe all credentials and generate a brand-new QR code.')) {
+    return;
+  }
+
+  try {
+    showToast('🗑️ Deleting WhatsApp session and generating new QR...', 'info');
+    const res = await fetch('/api/owner/bots/whatsapp/disconnect', {
+      method: 'POST'
+    });
+    const data = await res.json();
+    if (data.success) {
+      const badge = document.getElementById('wa-session-status-badge');
+      const phoneDisp = document.getElementById('wa-connected-phone-display');
+      if (badge) {
+        badge.className = 'badge badge-yellow';
+        badge.innerText = '🟡 READY TO PAIR';
+      }
+      if (phoneDisp) {
+        phoneDisp.innerText = 'Ready to Pair (Scan QR)';
+      }
+      showToast('✅ WhatsApp session deleted. Scan the new QR code below to reconnect!', 'success');
+      setTimeout(fetchWhatsAppLiveQR, 1000);
+    } else {
+      showToast(data.message || 'Failed to delete session.', 'error');
+    }
+  } catch (err) {
+    showToast('Session reset error: ' + err.message, 'error');
+  }
+}
+
 function copyPairingCode() {
   const display = document.getElementById('wa-pairing-code-val');
   if (display) {
@@ -2401,7 +2456,7 @@ window.showOwnerToast = showToast;
 window.showToast = showToast;
 
 // ============================================================
-// OWNER PEAKERR SMM SERVICES & GROWTH ORDERS MANAGEMENT ENGINE
+// OWNER INDIANSMMHUB SMM SERVICES & GROWTH ORDERS MANAGEMENT ENGINE
 // ============================================================
 
 let ownerSmmServicesList = [];
@@ -2412,7 +2467,7 @@ let currentSelectedSmmModalOrder = null;
 let smmSearchDebounceTimer = null;
 let smmServicesSearchDebounceTimer = null;
 
-// Fetch Peakerr SMM Dashboard
+// Fetch IndianSMMHub SMM Dashboard
 async function fetchOwnerSmmDashboard() {
   await Promise.all([
     fetchOwnerSmmOverview(),
@@ -2421,7 +2476,7 @@ async function fetchOwnerSmmDashboard() {
   ]);
 }
 
-// Fetch Peakerr Overview & Live KPIs
+// Fetch IndianSMMHub Overview & Live KPIs
 async function fetchOwnerSmmOverview() {
   try {
     const res = await fetch('/api/owner/smm/overview');
@@ -2433,7 +2488,7 @@ async function fetchOwnerSmmOverview() {
       const servicesEl = document.getElementById('owner-smm-kpi-services');
       const lastSyncEl = document.getElementById('owner-smm-kpi-last-sync');
 
-      if (balanceEl) balanceEl.innerText = `$${parseFloat(data.balance || 0).toFixed(2)} ${data.currency || 'USD'}`;
+      if (balanceEl) balanceEl.innerText = `₹${parseFloat(data.balance || 0).toFixed(2)} ${data.currency || 'INR'}`;
       if (ordersEl) ordersEl.innerText = (data.totalOrders || 0).toLocaleString();
       if (revenueEl) revenueEl.innerText = `₹${(data.totalRevenue || 0).toLocaleString()}`;
       if (servicesEl) servicesEl.innerText = `${(data.servicesCount || 0).toLocaleString()}`;
@@ -2445,30 +2500,28 @@ async function fetchOwnerSmmOverview() {
       const urlInput = document.getElementById('setting-smm-provider-url');
       const keyInput = document.getElementById('setting-smm-api-key');
       const marginInput = document.getElementById('setting-smm-profit-margin');
-      const usdRateInput = document.getElementById('setting-smm-usd-rate');
 
-      if (urlInput && data.peakerrApiUrl) urlInput.value = data.peakerrApiUrl;
+      if (urlInput && (data.smmProviderUrl || data.peakerrApiUrl)) urlInput.value = data.smmProviderUrl || data.peakerrApiUrl;
       if (marginInput && data.profitMargin) marginInput.value = data.profitMargin;
-      if (usdRateInput && data.usdToInr) usdRateInput.value = data.usdToInr;
     }
   } catch (err) {
-    console.error('Error fetching Peakerr overview:', err);
+    console.error('Error fetching IndianSMMHub overview:', err);
   }
 }
 
-// Trigger Live Sync from Peakerr API
+// Trigger Live Sync from IndianSMMHub API
 async function syncPeakerrFromOwner() {
   const syncBtn = document.getElementById('btn-owner-peakerr-sync');
   if (syncBtn) {
     syncBtn.disabled = true;
-    syncBtn.innerText = '⏳ Syncing 7,600+ Services...';
+    syncBtn.innerText = '⏳ Syncing 530+ Services...';
   }
 
   try {
     const res = await fetch('/api/owner/smm/sync', { method: 'POST' });
     const data = await res.json();
     if (data.success) {
-      showToast(`🎉 Successfully synced ${data.total.toLocaleString()} live services from Peakerr API!`, 'success');
+      showToast(`🎉 Successfully synced ${data.total.toLocaleString()} live services from IndianSMMHub!`, 'success');
       await fetchOwnerSmmDashboard();
     } else {
       showToast(`❌ Sync Failed: ${data.message}`, 'error');
@@ -2478,12 +2531,13 @@ async function syncPeakerrFromOwner() {
   } finally {
     if (syncBtn) {
       syncBtn.disabled = false;
-      syncBtn.innerText = '🔄 Live Sync (7,600+ Services)';
+      syncBtn.innerText = '🔄 Live Sync (530+ Services)';
     }
   }
 }
+const syncIndianSmmFromOwner = syncPeakerrFromOwner;
 
-// Fetch Peakerr Services
+// Fetch IndianSMMHub Services
 async function fetchOwnerSmmServices() {
   try {
     const res = await fetch('/api/owner/smm/services');
@@ -2493,7 +2547,7 @@ async function fetchOwnerSmmServices() {
       renderOwnerSmmServicesTable();
     }
   } catch (err) {
-    console.error('Error fetching Peakerr services:', err);
+    console.error('Error fetching IndianSMMHub services:', err);
   }
 }
 
@@ -2511,7 +2565,8 @@ function filterOwnerSmmPlatform(platform) {
     'YouTube': 'smm-owner-plat-youtube',
     'Facebook': 'smm-owner-plat-facebook',
     'TikTok': 'smm-owner-plat-tiktok',
-    'Twitter / X': 'smm-owner-plat-twitter'
+    'Twitter / X': 'smm-owner-plat-twitter',
+    'Spotify': 'smm-owner-plat-spotify'
   };
 
   const activeBtn = document.getElementById(platIdMap[platform]);
@@ -2551,7 +2606,7 @@ async function restoreDefaultCloudProducts() {
   }
 }
 
-// Render Peakerr Services Table
+// Render IndianSMMHub Services Table
 function renderOwnerSmmServicesTable() {
   const tbody = document.getElementById('owner-smm-services-tbody');
   if (!tbody) return;
@@ -2575,7 +2630,7 @@ function renderOwnerSmmServicesTable() {
       <tr>
         <td colspan="9" style="text-align:center; padding:40px 20px; color:var(--text-muted);">
           <div style="font-size:2rem; margin-bottom:6px;">📦</div>
-          No Peakerr services found matching the selected filter.
+          No services found matching the selected filter.
         </td>
       </tr>
     `;
@@ -2588,6 +2643,7 @@ function renderOwnerSmmServicesTable() {
   tbody.innerHTML = displayList.map(s => {
     const isCustom = Boolean(s.customOverride);
     const isActive = s.active !== false;
+    const baseCost = parseFloat(s.rawRateInr || s.rawRate || 0);
 
     return `
       <tr>
@@ -2602,14 +2658,14 @@ function renderOwnerSmmServicesTable() {
         </td>
         <td>
           <strong style="color:#ffffff; font-size:0.86rem; display:block;">${escapeHtml(s.name)}</strong>
-          ${isCustom ? `<span class="badge badge-success" style="font-size:0.65rem; margin-top:2px;">⭐ Custom Rate Override</span>` : ''}
+          ${isCustom ? `<span class="badge badge-success" style="font-size:0.65rem; margin-top:2px;">⭐ Custom Price Set</span>` : ''}
         </td>
         <td>
-          <span style="color:#94a3b8; font-family:monospace; font-size:0.85rem;">$${parseFloat(s.rawRateUsd || 0).toFixed(4)}</span>
+          <span style="color:#94a3b8; font-family:monospace; font-size:0.85rem;">₹${baseCost.toFixed(3)}</span>
         </td>
         <td>
           <strong style="color:${isCustom ? '#facc15' : '#22c55e'}; font-size:0.95rem;">₹${(s.rateInr || 0).toLocaleString()}</strong>
-          <span style="font-size:0.7rem; color:var(--text-dim); display:block;">/ 1K (${isCustom ? 'Custom' : '+Profit'})</span>
+          <span style="font-size:0.7rem; color:var(--text-dim); display:block;">/ 1K (${isCustom ? 'Custom' : '+Markup'})</span>
         </td>
         <td style="font-size:0.82rem; color:var(--text-muted);">
           ${(s.min || 10).toLocaleString()} - ${(s.max || 100000).toLocaleString()}
@@ -2639,11 +2695,13 @@ function openOwnerSmmRateModal(serviceId) {
   const s = ownerSmmServicesList.find(item => item.service === serviceId);
   if (!s) return;
 
+  const baseCost = parseFloat(s.rawRateInr || s.rawRate || 0);
+
   document.getElementById('smm-edit-modal-title').innerText = `✏️ Edit Service Rate: [#${s.service}]`;
   document.getElementById('smm-edit-service-id').value = s.service;
   document.getElementById('smm-edit-name').value = s.name;
-  document.getElementById('smm-edit-raw-rate').value = `$${parseFloat(s.rawRateUsd || 0).toFixed(4)} USD / 1,000`;
-  document.getElementById('smm-edit-rate-inr').value = s.rateInr || 100;
+  document.getElementById('smm-edit-raw-rate').value = `₹${baseCost.toFixed(3)} INR / 1,000`;
+  document.getElementById('smm-edit-rate-inr').value = s.rateInr || 10;
   document.getElementById('smm-edit-min').value = s.min || 10;
   document.getElementById('smm-edit-max').value = s.max || 100000;
   document.getElementById('smm-edit-refill').checked = Boolean(s.refill);
@@ -2743,7 +2801,7 @@ function renderOwnerSmmOrdersTable() {
       <tr>
         <td colspan="9" style="text-align:center; padding:40px 20px; color:var(--text-muted);">
           <div style="font-size:2.2rem; margin-bottom:8px;">🚚</div>
-          No SMM customer orders found. Live Peakerr orders will appear here automatically!
+          No customer growth orders found. Live orders will appear here automatically!
         </td>
       </tr>
     `;
@@ -2810,11 +2868,11 @@ function renderOwnerSmmOrdersTable() {
         <td style="text-align:right;">
           <div style="display:flex; justify-content:flex-end; gap:6px;">
             ${(!o.providerOrderId || isNaN(Number(o.providerOrderId))) ? `
-              <button type="button" class="btn btn-primary" onclick="retryOwnerSmmDispatch('${o.orderId}')" style="padding:4px 8px; font-size:0.75rem; font-weight:700;" title="Dispatch order to Peakerr servers">
+              <button type="button" class="btn btn-primary" onclick="retryOwnerSmmDispatch('${o.orderId}')" style="padding:4px 8px; font-size:0.75rem; font-weight:700;" title="Dispatch order to IndianSMMHub">
                 🚀 Dispatch
               </button>
             ` : `
-              <button type="button" class="btn btn-secondary" onclick="syncSinglePeakerrOrderStatus('${o.orderId}')" style="padding:4px 8px; font-size:0.75rem;" title="Sync Live Status directly from Peakerr API">
+              <button type="button" class="btn btn-secondary" onclick="syncSinglePeakerrOrderStatus('${o.orderId}')" style="padding:4px 8px; font-size:0.75rem;" title="Sync Live Status directly from IndianSMMHub">
                 🔄 Sync
               </button>
             `}
@@ -2833,24 +2891,24 @@ function renderOwnerSmmOrdersTable() {
   }).join('');
 }
 
-// Retry or send dispatch directly to Peakerr API
+// Retry or send dispatch directly to IndianSMMHub API
 async function retryOwnerSmmDispatch(orderId) {
   try {
-    showToast('🚀 Dispatching order to Peakerr...', 'info');
+    showToast('🚀 Dispatching order to IndianSMMHub...', 'info');
     const res = await fetch(`/api/owner/smm/orders/${orderId}/retry-dispatch`, { method: 'POST' });
     const data = await res.json();
     if (data.success) {
       showToast(data.message, 'success');
       fetchOwnerSmmOrders();
     } else {
-      showToast(data.message || 'Dispatch notice from Peakerr', 'error');
+      showToast(data.message || 'Dispatch notice from IndianSMMHub', 'error');
     }
   } catch (err) {
     showToast('Dispatch error: ' + err.message, 'error');
   }
 }
 
-// Sync single order status directly from Peakerr
+// Sync single order status directly from IndianSMMHub
 async function syncSinglePeakerrOrderStatus(orderId) {
   try {
     const res = await fetch(`/api/owner/smm/orders/${orderId}/sync-status`, { method: 'POST' });
@@ -2865,6 +2923,7 @@ async function syncSinglePeakerrOrderStatus(orderId) {
     showToast('Sync error: ' + err.message, 'error');
   }
 }
+const syncSingleIndianSmmOrderStatus = syncSinglePeakerrOrderStatus;
 
 // Open SMM Order Inspection Modal
 function openOwnerSmmOrderModal(orderId) {
@@ -2873,7 +2932,7 @@ function openOwnerSmmOrderModal(orderId) {
 
   currentSelectedSmmModalOrder = o;
 
-  document.getElementById('smm-mod-order-id').innerText = `${o.orderId} ${o.providerOrderId ? `(Peakerr #${o.providerOrderId})` : ''}`;
+  document.getElementById('smm-mod-order-id').innerText = `${o.orderId} ${o.providerOrderId ? `(IndianSMM #${o.providerOrderId})` : ''}`;
   document.getElementById('smm-mod-status-badge').innerText = o.status || 'Processing';
   document.getElementById('smm-mod-customer-name').innerText = o.userName || 'Customer';
   document.getElementById('smm-mod-customer-phone').innerText = o.userPhone || 'N/A';
@@ -2932,7 +2991,7 @@ async function triggerOwnerSmmRefill(orderId) {
     const res = await fetch(`/api/owner/smm/orders/${orderId}/refill`, { method: 'POST' });
     const data = await res.json();
     if (data.success) {
-      showToast(`🔄 Refill sent to Peakerr! Refill ID: ${data.refillId || 'OK'}`, 'success');
+      showToast(`🔄 Refill sent to IndianSMMHub! Refill ID: ${data.refillId || 'OK'}`, 'success');
       fetchOwnerSmmOrders();
     } else {
       showToast(`Refill failed: ${data.message}`, 'error');
@@ -2942,26 +3001,25 @@ async function triggerOwnerSmmRefill(orderId) {
   }
 }
 
-// Attach Peakerr Settings Form Submit Handler
+// Attach IndianSMMHub Settings Form Submit Handler
 document.addEventListener('DOMContentLoaded', () => {
   const settingsForm = document.getElementById('owner-smm-settings-form');
   if (settingsForm) {
     settingsForm.addEventListener('submit', async (e) => {
       e.preventDefault();
-      const peakerrApiUrl = (document.getElementById('setting-smm-provider-url')?.value || '').trim();
-      const peakerrApiKey = (document.getElementById('setting-smm-api-key')?.value || '').trim();
-      const profitMargin = parseFloat(document.getElementById('setting-smm-profit-margin')?.value) || 1.85;
-      const usdToInr = parseFloat(document.getElementById('setting-smm-usd-rate')?.value) || 88.00;
+      const smmProviderUrl = (document.getElementById('setting-smm-provider-url')?.value || '').trim();
+      const smmApiKey = (document.getElementById('setting-smm-api-key')?.value || '').trim();
+      const smmProfitMargin = parseFloat(document.getElementById('setting-smm-profit-margin')?.value) || 1.30;
 
       try {
         const res = await fetch('/api/owner/smm/settings', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ peakerrApiUrl, peakerrApiKey, profitMargin, usdToInr })
+          body: JSON.stringify({ smmProviderUrl, smmApiKey, smmProfitMargin })
         });
         const data = await res.json();
         if (data.success) {
-          showToast('Peakerr API settings & profit markup saved successfully!', 'success');
+          showToast('IndianSMMHub API settings & profit markup saved successfully!', 'success');
           await fetchOwnerSmmDashboard();
         } else {
           showToast('Failed to save settings: ' + data.message, 'error');

@@ -52,42 +52,31 @@ if (!fs.existsSync(dataDir)) {
 }
 
 const DEFAULT_SMM_SERVICES = [
-  // --- YOUTUBE ---
-  { _id: "yt_subs_nondrop", serviceKey: "yt_subs_nondrop", serviceId: 1001, platform: "youtube", category: "Subscribers", name: "YouTube Subscribers (100% Non-Drop Lifetime)", tier: "Tier 1: 100% Non-Drop (Lifetime Refill)", rate: 350, min: 1000, max: 100000, refill: true, refillDays: 0, description: "High-Retention, 0% Drop, Instant Start, Real Accounts", active: true },
-  { _id: "yt_subs_drop5",   serviceKey: "yt_subs_drop5",   serviceId: 1002, platform: "youtube", category: "Subscribers", name: "YouTube Subscribers (5% Max Drop / 30D Refill)", tier: "Tier 2: 5% Max Drop (30D Refill)", rate: 220, min: 1000, max: 50000, refill: true, refillDays: 30, description: "Fast Speed, Max 5% Variance, 30-Day Auto Refill", active: true },
-  { _id: "yt_subs_drop10",  serviceKey: "yt_subs_drop10",  serviceId: 1003, platform: "youtube", category: "Subscribers", name: "YouTube Subscribers (10% Standard Drop)", tier: "Tier 3: 10% Standard Drop", rate: 140, min: 1000, max: 50000, refill: false, refillDays: 0, description: "Budget Speed, 10% Drop Post-Delivery, No Refill", active: true },
-
-  { _id: "yt_likes_nondrop", serviceKey: "yt_likes_nondrop", serviceId: 1011, platform: "youtube", category: "Likes", name: "YouTube Likes (100% Non-Drop)", tier: "Tier 1: 100% Non-Drop (Lifetime Refill)", rate: 90, min: 1000, max: 100000, refill: true, refillDays: 0, description: "High-Quality Non-Drop Video Likes with Fast Delivery", active: true },
-  { _id: "yt_likes_drop5",   serviceKey: "yt_likes_drop5",   serviceId: 1012, platform: "youtube", category: "Likes", name: "YouTube Likes (5% Drop)", tier: "Tier 2: 5% Max Drop (30D Refill)", rate: 60, min: 1000, max: 50000, refill: true, refillDays: 30, description: "Stable Likes with 5% Variance Buffer", active: true },
-  { _id: "yt_likes_drop10",  serviceKey: "yt_likes_drop10",  serviceId: 1013, platform: "youtube", category: "Likes", name: "YouTube Likes (10% Drop)", tier: "Tier 3: 10% Standard Drop", rate: 40, min: 1000, max: 50000, refill: false, refillDays: 0, description: "Budget Video Likes for quick boost", active: true },
-
-  { _id: "yt_comments_nondrop", serviceKey: "yt_comments_nondrop", serviceId: 1021, platform: "youtube", category: "Comments", name: "YouTube Custom Comments (100% Non-Drop)", tier: "Tier 1: 100% Non-Drop (Lifetime Refill)", rate: 450, min: 10, max: 1000, refill: true, refillDays: 0, description: "Relevant custom typed comments from verified profiles", active: true },
-  { _id: "yt_comments_drop10",  serviceKey: "yt_comments_drop10",  serviceId: 1022, platform: "youtube", category: "Comments", name: "YouTube Random Comments (10% Drop)", tier: "Tier 3: 10% Standard Drop", rate: 200, min: 10, max: 5000, refill: false, refillDays: 0, description: "Positive random English/Hindi comments", active: true },
-
   // --- INSTAGRAM ---
-  { _id: "ig_followers_nondrop", serviceKey: "ig_followers_nondrop", serviceId: 2001, platform: "instagram", category: "Followers", name: "Instagram Followers (100% Non-Drop Lifetime)", tier: "Tier 1: 100% Non-Drop (Lifetime Refill)", rate: 180, min: 1000, max: 200000, refill: true, refillDays: 365, description: "Real Organic Accounts, 365-Day Refill Guarantee", active: true },
-  { _id: "ig_followers_drop5",   serviceKey: "ig_followers_drop5",   serviceId: 2002, platform: "instagram", category: "Followers", name: "Instagram Followers (5% Low Drop / 30D Refill)", tier: "Tier 2: 5% Max Drop (30D Refill)", rate: 120, min: 1000, max: 100000, refill: true, refillDays: 30, description: "HQ Accounts, 5% Drop Margin with Auto Refill", active: true },
-  { _id: "ig_followers_drop10",  serviceKey: "ig_followers_drop10",  serviceId: 2003, platform: "instagram", category: "Followers", name: "Instagram Followers (10% Standard Drop)", tier: "Tier 3: 10% Standard Drop", rate: 70, min: 1000, max: 100000, refill: false, refillDays: 0, description: "Standard Bots, 10% Drop Rate, Instant Delivery", active: true },
+  { _id: "ig_1529", serviceKey: "ig_1529", serviceId: 1529, platform: "instagram", category: "Limited Time Sale 🚨", name: "Instagram Reels Views [100k/Day] [Cheapest in Market]", tier: "Super Fast Views", rate: 0.25, min: 1000, max: 100000, refill: false, refillDays: 0, description: "Instant Start, 100K/Day speed, High Quality", active: true },
+  { _id: "ig_17", serviceKey: "ig_17", serviceId: 17, platform: "instagram", category: "Limited Time Sale 🚨", name: "Instagram Likes (365 Days Refill) [20K/Day]", tier: "365-Day Refill Guaranteed", rate: 5.15, min: 10, max: 250000, refill: true, refillDays: 365, description: "Instant start, 20K/day, 365 Days Refill", active: true },
+  { _id: "ig_105", serviceKey: "ig_105", serviceId: 105, platform: "instagram", category: "Limited Time Sale 🚨", name: "Instagram Followers - Fast Delivery [50K/Day]", tier: "Cheapest Followers", rate: 25.68, min: 100, max: 100000, refill: false, refillDays: 0, description: "Instant start, 50K/Day, Budget speed", active: true },
+  { _id: "ig_21", serviceKey: "ig_21", serviceId: 21, platform: "instagram", category: "Instagram ➙ Followers | 365Day Refill ♻️", name: "Instagram Followers [365 Days Refill - Non Drop]", tier: "100% Refill Guaranteed", rate: 48.50, min: 100, max: 100000, refill: true, refillDays: 365, description: "HQ Profiles, 365 Days Refill, Non-Drop", active: true },
 
-  { _id: "ig_likes_nondrop", serviceKey: "ig_likes_nondrop", serviceId: 2011, platform: "instagram", category: "Likes", name: "Instagram Likes (100% Non-Drop HQ)", tier: "Tier 1: 100% Non-Drop (Lifetime Refill)", rate: 45, min: 1000, max: 100000, refill: true, refillDays: 0, description: "Instant delivery high quality post/reel likes", active: true },
-  { _id: "ig_likes_drop5",   serviceKey: "ig_likes_drop5",   serviceId: 2012, platform: "instagram", category: "Likes", name: "Instagram Likes (5% Drop)", tier: "Tier 2: 5% Max Drop (30D Refill)", rate: 30, min: 1000, max: 50000, refill: true, refillDays: 30, description: "Fast delivery with 5% drop margin", active: true },
-  { _id: "ig_likes_drop10",  serviceKey: "ig_likes_drop10",  serviceId: 2013, platform: "instagram", category: "Likes", name: "Instagram Likes (10% Drop)", tier: "Tier 3: 10% Standard Drop", rate: 18, min: 1000, max: 50000, refill: false, refillDays: 0, description: "Budget post & reels likes", active: true },
-
-  { _id: "ig_comments_nondrop", serviceKey: "ig_comments_nondrop", serviceId: 2021, platform: "instagram", category: "Comments", name: "Instagram Custom Comments (100% Non-Drop)", tier: "Tier 1: 100% Non-Drop (Lifetime Refill)", rate: 380, min: 10, max: 2000, refill: true, refillDays: 0, description: "Custom lines submitted per order, non-drop real accounts", active: true },
-  { _id: "ig_comments_drop10",  serviceKey: "ig_comments_drop10",  serviceId: 2022, platform: "instagram", category: "Comments", name: "Instagram Emoji/Random Comments (10% Drop)", tier: "Tier 3: 10% Standard Drop", rate: 140, min: 10, max: 5000, refill: false, refillDays: 0, description: "Emoji & positive hype comments for engagement", active: true },
-
-  // --- FACEBOOK ---
-  { _id: "fb_followers_nondrop", serviceKey: "fb_followers_nondrop", serviceId: 3001, platform: "facebook", category: "Followers", name: "Facebook Profile/Page Followers (100% Non-Drop)", tier: "Tier 1: 100% Non-Drop (Lifetime Refill)", rate: 210, min: 1000, max: 100000, refill: true, refillDays: 0, description: "Verified HQ Profiles, Non-Drop Lifetime Guarantee", active: true },
-  { _id: "fb_followers_drop5",   serviceKey: "fb_followers_drop5",   serviceId: 3002, platform: "facebook", category: "Followers", name: "Facebook Followers (5% Drop / Refill)", tier: "Tier 2: 5% Max Drop (30D Refill)", rate: 140, min: 1000, max: 50000, refill: true, refillDays: 30, description: "Organic Page Growth, 5% Drop Buffer", active: true },
-  { _id: "fb_followers_drop10",  serviceKey: "fb_followers_drop10",  serviceId: 3003, platform: "facebook", category: "Followers", name: "Facebook Followers (10% Drop Standard)", tier: "Tier 3: 10% Standard Drop", rate: 90, min: 1000, max: 50000, refill: false, refillDays: 0, description: "Fast Push, 10% Variance Budget Followers", active: true },
-
-  { _id: "fb_likes_nondrop", serviceKey: "fb_likes_nondrop", serviceId: 3011, platform: "facebook", category: "Likes", name: "Facebook Post Likes/Reactions (Non-Drop)", tier: "Tier 1: 100% Non-Drop (Lifetime Refill)", rate: 60, min: 1000, max: 50000, refill: true, refillDays: 0, description: "Post likes and love/care reactions non-drop", active: true },
-  { _id: "fb_likes_drop10",  serviceKey: "fb_likes_drop10",  serviceId: 3012, platform: "facebook", category: "Likes", name: "Facebook Post Likes (10% Drop)", tier: "Tier 3: 10% Standard Drop", rate: 35, min: 1000, max: 50000, refill: false, refillDays: 0, description: "Budget post likes", active: true },
+  // --- YOUTUBE ---
+  { _id: "yt_252", serviceKey: "yt_252", serviceId: 252, platform: "youtube", category: "YouTube ➙ Subscriber [ No Refill ]", name: "YouTube Subscribers (Super Fast 100K/Day)", tier: "Super Fast Delivery", rate: 141.59, min: 100, max: 150000, refill: false, refillDays: 0, description: "Instant Start, 100K/Day Speed, Fast Boost", active: true },
+  { _id: "yt_255", serviceKey: "yt_255", serviceId: 255, platform: "youtube", category: "YouTube ➙ Views [ Refill ]", name: "YouTube Views [Refill Guaranteed - Real HQ]", tier: "High Retention Refill", rate: 75.00, min: 1000, max: 1000000, refill: true, refillDays: 30, description: "High retention video views with 30-day refill guarantee", active: true },
+  { _id: "yt_260", serviceKey: "yt_260", serviceId: 260, platform: "youtube", category: "YouTube ➙ Likes [ Refill ]", name: "YouTube Video Likes [High Retention - Refill]", tier: "Lifetime Refill", rate: 42.00, min: 100, max: 100000, refill: true, refillDays: 30, description: "High-Quality Non-Drop Video Likes", active: true },
 
   // --- TELEGRAM ---
-  { _id: "tg_members_nondrop", serviceKey: "tg_members_nondrop", serviceId: 4001, platform: "telegram", category: "Members", name: "Telegram Channel Members (100% Non-Drop Lifetime)", tier: "Tier 1: 100% Non-Drop (Lifetime Refill)", rate: 160, min: 1000, max: 50000, refill: true, refillDays: 0, description: "Real Active Members (Lifetime Refill Guaranteed)", active: true },
-  { _id: "tg_members_drop5",   serviceKey: "tg_members_drop5",   serviceId: 4002, platform: "telegram", category: "Members", name: "Telegram Members (5% Drop / 60D Refill)", tier: "Tier 2: 5% Max Drop (30D Refill)", rate: 110, min: 1000, max: 50000, refill: true, refillDays: 60, description: "Stable Non-Drop (60 Days Refill Guarantee)", active: true },
-  { _id: "tg_members_drop10",  serviceKey: "tg_members_drop10",  serviceId: 4003, platform: "telegram", category: "Members", name: "Telegram Members (10% Standard Drop)", tier: "Tier 3: 10% Standard Drop", rate: 65, min: 1000, max: 50000, refill: false, refillDays: 0, description: "Fast Bulk Add, Standard 10% Drop rate", active: true }
+  { _id: "tg_345", serviceKey: "tg_345", serviceId: 345, platform: "telegram", category: "Telegram ➙ Deal's ✨", name: "Telegram Channel / Group Members [Working]", tier: "High Speed", rate: 120.00, min: 500, max: 50000, refill: false, refillDays: 0, description: "Fast delivery channel/group members", active: true },
+  { _id: "tg_346", serviceKey: "tg_346", serviceId: 346, platform: "telegram", category: "Telegram ➙ Deal's ✨", name: "Telegram Post Reactions (👍 ❤️ 🔥 🎉 🤩 😁)", tier: "Instant Start", rate: 6.50, min: 100, max: 10000, refill: false, refillDays: 0, description: "Positive Emoji Reactions on Telegram Posts", active: true },
+  { _id: "tg_350", serviceKey: "tg_350", serviceId: 350, platform: "telegram", category: "Telegram ➙ Views 1️⃣", name: "Telegram Post Views [100% Instant Delivery]", tier: "Instant Views", rate: 1.50, min: 100, max: 1000000, refill: false, refillDays: 0, description: "Instant post views for channel messages", active: true },
+
+  // --- FACEBOOK ---
+  { _id: "fb_122", serviceKey: "fb_122", serviceId: 122, platform: "facebook", category: "FaceBook ➙ Profile Services", name: "Facebook Profile / Page Followers", tier: "Fast Push", rate: 73.87, min: 100, max: 10000, refill: false, refillDays: 0, description: "All Type Followers for Facebook profiles & pages", active: true },
+  { _id: "fb_125", serviceKey: "fb_125", serviceId: 125, platform: "facebook", category: "FaceBook ➙ Post Likes", name: "Facebook Post Likes & Reactions", tier: "Instant Likes", rate: 25.00, min: 100, max: 50000, refill: false, refillDays: 0, description: "Post likes and reactions for Facebook posts", active: true },
+
+  // --- TWITTER / X ---
+  { _id: "tw_471", serviceKey: "tw_471", serviceId: 471, platform: "twitter", category: "X.com ➙ Twitter Views", name: "Twitter / X Video Views & Impressions", tier: "Fast Delivery", rate: 1.55, min: 100, max: 200000000, refill: false, refillDays: 0, description: "Super fast video views and impressions on X", active: true },
+
+  // --- SPOTIFY ---
+  { _id: "sp_513", serviceKey: "sp_513", serviceId: 513, platform: "spotify", category: "Spotify ➙ Followers", name: "Spotify Artist / Playlist Followers", tier: "Cheapest Rate", rate: 87.83, min: 100, max: 100000000, refill: false, refillDays: 0, description: "Fast delivery Spotify followers", active: true }
 ];
 
 let persistentStore = {
@@ -110,8 +99,9 @@ let persistentStore = {
     whatsappGroupUrl: 'https://wa.me/qr/DDVIRR5NFY2YO1',
     telegramGroupUrl: 'https://t.me/princecloudsellarshop_bot',
     defaultBep20Address: process.env.DEFAULT_BEP20 || '0xD3D65940718F769E66E1e5c425AcFf76C2D9bFf2',
-    smmProviderUrl: process.env.SMM_PROVIDER_URL || 'https://your-smm-provider.com/api/v2',
-    smmApiKey: process.env.SMM_API_KEY || ''
+    smmProviderUrl: process.env.INDIANSMM_API_URL || process.env.SMM_PROVIDER_URL || 'https://indiansmmhub.com/api/v2',
+    smmApiKey: process.env.INDIANSMM_API_KEY || process.env.SMM_API_KEY || 'be0066920ea511dc79addd45a1c7bb554fca5798',
+    smmProfitMargin: parseFloat(process.env.SMM_PROFIT_MARGIN) || 1.30
   }
 };
 
@@ -275,6 +265,27 @@ async function syncWithMongoDB() {
       }
     } else {
       Setting.create(persistentStore.settings).catch(() => {});
+    }
+
+    // Ensure SMM provider settings always point to IndianSMMHub
+    if (!persistentStore.settings.smmProviderUrl ||
+        persistentStore.settings.smmProviderUrl.includes('your-smm-provider') ||
+        persistentStore.settings.smmProviderUrl.includes('peakerr.com')) {
+      persistentStore.settings.smmProviderUrl = INDIANSMM_API_URL;
+      persistentStore.settings.peakerrApiUrl = INDIANSMM_API_URL;
+    }
+    if (!persistentStore.settings.smmApiKey ||
+        persistentStore.settings.smmApiKey.includes('b27883882a516b07c2f3b19c220161db') ||
+        persistentStore.settings.smmApiKey === 'YOUR_INDIANSMM_API_KEY') {
+      persistentStore.settings.smmApiKey = INDIANSMM_API_KEY;
+      persistentStore.settings.peakerrApiKey = INDIANSMM_API_KEY;
+    }
+    if (Setting) {
+      Setting.findOneAndUpdate({}, {
+        smmProviderUrl: persistentStore.settings.smmProviderUrl,
+        smmApiKey: persistentStore.settings.smmApiKey,
+        smmProfitMargin: persistentStore.settings.smmProfitMargin || 1.30
+      }, { upsert: true }).catch(() => {});
     }
 
     // 7. SYNC TICKETS, FEEDBACKS, NOTIFICATIONS
@@ -774,24 +785,29 @@ app.post('/api/auth/register', async (req, res) => {
 
     let newUser = null;
 
-    if (getDBStatus()) {
-      const existingUser = await User.findOne({ email: normalizedEmail });
-      if (existingUser) {
-        return res.status(400).json({ success: false, message: 'Email already registered! Please Sign In.' });
+    if (getDBStatus() || mongoose.connection.readyState === 1) {
+      try {
+        const existingUser = await User.findOne({ email: normalizedEmail });
+        if (existingUser) {
+          return res.status(400).json({ success: false, message: 'Email already registered! Please Sign In.' });
+        }
+        newUser = await User.create({
+          name,
+          email: normalizedEmail,
+          phone,
+          password,
+          role: 'user',
+          status: 'active',
+          lastOtpVerifiedAt: new Date()
+        });
+        console.log('✅ User successfully created in MongoDB Atlas:', newUser.email, newUser._id);
+      } catch (dbErr) {
+        console.error('⚠️ MongoDB User creation error:', dbErr.message);
       }
-      newUser = await User.create({
-        name,
-        email: normalizedEmail,
-        phone,
-        password,
-        role: 'user',
-        status: 'active',
-        lastOtpVerifiedAt: new Date()
-      });
     }
 
     const memUser = {
-      _id: newUser ? newUser._id.toString() : 'u_' + Date.now(),
+      _id: newUser ? (newUser._id ? newUser._id.toString() : 'u_' + Date.now()) : 'u_' + Date.now(),
       name,
       email: normalizedEmail,
       phone,
@@ -802,7 +818,12 @@ app.post('/api/auth/register', async (req, res) => {
       createdAt: new Date()
     };
 
-    persistentStore.users.push(memUser);
+    const existingIdx = persistentStore.users.findIndex(u => u.email && u.email.toLowerCase() === normalizedEmail);
+    if (existingIdx >= 0) {
+      persistentStore.users[existingIdx] = memUser;
+    } else {
+      persistentStore.users.push(memUser);
+    }
     saveLocalDB();
 
     try {
@@ -3528,57 +3549,63 @@ app.post('/api/owner/bots/whatsapp/disconnect', async (req, res) => {
 });
 
 // -------------------------------------------------------------
-// PEAKERR SMM LIVE GROWTH AUTOMATION ENGINE & API ENDPOINTS
+// INDIANSMMHUB LIVE SMM GROWTH AUTOMATION ENGINE & API ENDPOINTS
 // -------------------------------------------------------------
 
-const PEAKERR_DEFAULT_API_URL = process.env.PEAKERR_API_URL || 'https://peakerr.com/api/v2';
-const PEAKERR_DEFAULT_API_KEY = process.env.PEAKERR_API_KEY || 'b27883882a516b07c2f3b19c220161db';
+const INDIANSMM_API_URL = process.env.INDIANSMM_API_URL || process.env.SMM_PROVIDER_URL || 'https://indiansmmhub.com/api/v2';
+const INDIANSMM_API_KEY = process.env.INDIANSMM_API_KEY || process.env.SMM_API_KEY || 'be0066920ea511dc79addd45a1c7bb554fca5798';
 
-let peakerrServicesCache = [];
-let peakerrCategoriesCache = [];
-let lastPeakerrSyncTime = null;
-let isPeakerrSyncing = false;
+let smmServicesCache = [];
+let smmCategoriesCache = [];
+let lastSmmSyncTime = null;
+let isSmmSyncing = false;
 
 // Helper: Determine clean platform from category/name
 function detectPlatformFromCategory(category = '', name = '') {
   const text = `${category} ${name}`.toLowerCase();
-  if (text.includes('instagram') || text.includes('ig ') || text.includes(' ig')) return 'Instagram';
+  if (text.includes('instagram') || text.includes('ig ') || text.includes(' ig') || text.includes('reel')) return 'Instagram';
+  if (text.includes('youtube') || text.includes('yt ') || text.includes(' yt') || text.includes('shorts') || text.includes('watchtime')) return 'YouTube';
   if (text.includes('telegram') || text.includes('tg ') || text.includes(' tg')) return 'Telegram';
-  if (text.includes('youtube') || text.includes('yt ') || text.includes(' yt')) return 'YouTube';
   if (text.includes('facebook') || text.includes('fb ') || text.includes(' fb')) return 'Facebook';
+  if (text.includes('twitter') || text.includes('x.com') || text.includes('tweet')) return 'Twitter / X';
   if (text.includes('tiktok') || text.includes('tik tok')) return 'TikTok';
-  if (text.includes('twitter') || text.includes(' x ') || text.includes('tweet')) return 'Twitter / X';
   if (text.includes('spotify')) return 'Spotify';
-  if (text.includes('discord')) return 'Discord';
   if (text.includes('threads')) return 'Threads';
-  if (text.includes('linkedin')) return 'LinkedIn';
+  if (text.includes('whatsapp')) return 'WhatsApp';
   if (text.includes('traffic') || text.includes('website') || text.includes('visitor')) return 'Website Traffic';
+  if (text.includes('discord')) return 'Discord';
+  if (text.includes('linkedin')) return 'LinkedIn';
   if (text.includes('twitch')) return 'Twitch';
-  if (text.includes('reddit')) return 'Reddit';
-  if (text.includes('pinterest')) return 'Pinterest';
+  if (text.includes('audiomack')) return 'Audiomack';
+  if (text.includes('soundcloud')) return 'SoundCloud';
   return 'Other Social Growth';
 }
 
-// Helper: Sync all active services from Peakerr API
-async function syncPeakerrServices(force = false) {
+// Helper: Sync all active services from IndianSMMHub API
+async function syncIndianSmmServices(force = false) {
   const now = Date.now();
-  if (!force && peakerrServicesCache.length > 0 && lastPeakerrSyncTime && (now - lastPeakerrSyncTime < 30 * 60 * 1000)) {
-    return { success: true, total: peakerrServicesCache.length, categories: peakerrCategoriesCache, cached: true };
+  if (!force && smmServicesCache.length > 0 && lastSmmSyncTime && (now - lastSmmSyncTime < 30 * 60 * 1000)) {
+    return { success: true, total: smmServicesCache.length, categories: smmCategoriesCache, cached: true };
   }
 
-  if (isPeakerrSyncing) {
-    return { success: true, total: peakerrServicesCache.length, categories: peakerrCategoriesCache, inProgress: true };
+  if (isSmmSyncing) {
+    return { success: true, total: smmServicesCache.length, categories: smmCategoriesCache, inProgress: true };
   }
 
-  isPeakerrSyncing = true;
-  const apiUrl = persistentStore.settings.peakerrApiUrl || PEAKERR_DEFAULT_API_URL;
-  const apiKey = persistentStore.settings.peakerrApiKey || PEAKERR_DEFAULT_API_KEY;
-  const profitMargin = parseFloat(persistentStore.settings.peakerrProfitMargin) || parseFloat(process.env.PEAKERR_PROFIT_MARGIN) || 1.85;
-  const usdToInr = parseFloat(persistentStore.settings.peakerrUsdToInr) || parseFloat(process.env.PEAKERR_USD_TO_INR) || 88.00;
+  isSmmSyncing = true;
+  let apiUrl = persistentStore.settings.smmProviderUrl || persistentStore.settings.peakerrApiUrl || INDIANSMM_API_URL;
+  let apiKey = persistentStore.settings.smmApiKey || persistentStore.settings.peakerrApiKey || INDIANSMM_API_KEY;
+  if (!apiUrl || apiUrl.includes('your-smm-provider') || apiUrl.includes('peakerr.com')) {
+    apiUrl = INDIANSMM_API_URL;
+  }
+  if (!apiKey || apiKey.includes('b27883882a516b07c2f3b19c220161db') || apiKey === 'YOUR_INDIANSMM_API_KEY') {
+    apiKey = INDIANSMM_API_KEY;
+  }
+  const profitMargin = parseFloat(persistentStore.settings.smmProfitMargin) || parseFloat(persistentStore.settings.peakerrProfitMargin) || parseFloat(process.env.SMM_PROFIT_MARGIN) || 1.30;
   const customRates = persistentStore.settings.customServiceRates || {};
 
   try {
-    console.log('🔄 Fetching live services from Peakerr API...');
+    console.log(`🔄 Fetching live services from IndianSMMHub API (${apiUrl})...`);
     const response = await axios.post(apiUrl, {
       key: apiKey,
       action: 'services'
@@ -3587,14 +3614,21 @@ async function syncPeakerrServices(force = false) {
     if (Array.isArray(response.data) && response.data.length > 0) {
       const categoriesMap = {};
 
-      peakerrServicesCache = response.data.map(srv => {
+      // Filter out divider dummy categories like "=============================="
+      const validServices = response.data.filter(s =>
+        s &&
+        s.service &&
+        !String(s.category || '').includes('===') &&
+        !String(s.name || '').includes('Category Services')
+      );
+
+      smmServicesCache = validServices.map(srv => {
         const srvId = parseInt(srv.service, 10);
-        const rawRate = parseFloat(srv.rate) || 0;
-        const rateUsd = parseFloat((rawRate * profitMargin).toFixed(4));
+        const rawRateInr = parseFloat(srv.rate) || 0;
         
-        // Calculated rate with high profit markup & minimum floor price (₹15 minimum per 1K)
-        const calculatedInr = Math.round(rawRate * usdToInr * profitMargin * 100) / 100;
-        let rateInr = Math.max(15, calculatedInr);
+        // Calculated rate with profit markup (INR based)
+        const calculatedInr = Math.round(rawRateInr * profitMargin * 100) / 100;
+        let rateInr = Math.max(0.10, calculatedInr);
 
         // Custom rate override if set by owner
         let customOverride = false;
@@ -3616,75 +3650,87 @@ async function syncPeakerrServices(force = false) {
         }
         categoriesMap[cleanCategory].count += 1;
 
-        const srvNameLower = (srv.name || '').toLowerCase();
-        const srvCatLower = (cleanCategory || '').toLowerCase();
-
-        // Enforce minimum 1,000 globally across all SMM growth services
-        let defaultMin = Math.max(1000, parseInt(srv.min, 10) || 1000);
+        const defaultMin = Math.max(1, parseInt(srv.min, 10) || 100);
+        const defaultMax = parseInt(srv.max, 10) || 100000;
 
         const finalMin = customRates[srvId]?.min ? parseInt(customRates[srvId].min, 10) : defaultMin;
-        const finalMax = customRates[srvId]?.max ? parseInt(customRates[srvId].max, 10) : (parseInt(srv.max, 10) || 100000);
+        const finalMax = customRates[srvId]?.max ? parseInt(customRates[srvId].max, 10) : defaultMax;
 
         return {
           service: srvId,
           serviceId: srvId,
-          serviceKey: `pk_${srv.service}`,
+          serviceKey: `smm_${srv.service}`,
           name: (customRates[srvId]?.name || srv.name || `Service #${srv.service}`).trim(),
           category: cleanCategory,
           platform: platform,
           type: srv.type || 'Default',
-          rawRateUsd: rawRate,
-          rateUsd: rateUsd,
+          rawRate: rawRateInr,
+          rawRateInr: rawRateInr,
           rateInr: rateInr,
           rate: rateInr,
+          rateUsd: (rateInr / 88.0).toFixed(4),
           customOverride: customOverride,
           min: finalMin,
           max: finalMax,
           refill: customRates[srvId]?.refill !== undefined ? Boolean(customRates[srvId].refill) : Boolean(srv.refill),
           cancel: Boolean(srv.cancel),
           dripfeed: Boolean(srv.dripfeed),
+          description: srv.description || '',
           active: customRates[srvId]?.active !== undefined ? Boolean(customRates[srvId].active) : true
         };
       });
 
-      peakerrCategoriesCache = Object.values(categoriesMap);
-      lastPeakerrSyncTime = Date.now();
-      console.log(`✅ Peakerr Services Synced: ${peakerrServicesCache.length} active services across ${peakerrCategoriesCache.length} categories.`);
-      isPeakerrSyncing = false;
-      return { success: true, total: peakerrServicesCache.length, categories: peakerrCategoriesCache, cached: false };
+      smmCategoriesCache = Object.values(categoriesMap);
+      lastSmmSyncTime = Date.now();
+      console.log(`✅ IndianSMMHub Services Synced: ${smmServicesCache.length} active services across ${smmCategoriesCache.length} categories.`);
+      isSmmSyncing = false;
+      return { success: true, total: smmServicesCache.length, categories: smmCategoriesCache, cached: false };
     } else {
-      isPeakerrSyncing = false;
-      return { success: false, message: 'Invalid response received from Peakerr API.' };
+      isSmmSyncing = false;
+      return { success: false, message: 'Invalid response received from IndianSMMHub API.' };
     }
   } catch (err) {
-    isPeakerrSyncing = false;
-    console.error('❌ Error syncing Peakerr services:', err.message);
+    isSmmSyncing = false;
+    console.error('❌ Error syncing IndianSMMHub services:', err.message);
     return { success: false, message: err.message };
   }
 }
 
-// Auto-sync Peakerr services on server launch
+// Alias for backwards compatibility
+const syncPeakerrServices = syncIndianSmmServices;
+const peakerrServicesCache = new Proxy([], {
+  get(target, prop) {
+    return smmServicesCache[prop];
+  }
+});
+const peakerrCategoriesCache = new Proxy([], {
+  get(target, prop) {
+    return smmCategoriesCache[prop];
+  }
+});
+
+// Auto-sync IndianSMMHub services on server launch
 setTimeout(() => {
-  syncPeakerrServices().catch(e => console.warn('Peakerr initial sync notice:', e.message));
+  syncIndianSmmServices().catch(e => console.warn('IndianSMMHub initial sync notice:', e.message));
 }, 2000);
 
-// 1. Get All Live Peakerr SMM Services & Categories (Public API)
-app.get('/api/smm/services', async (req, res) => {
+// 1. Get All Live IndianSMMHub Services & Categories (Public API)
+app.get(['/api/smm/indiansmm-services', '/api/smm/services'], async (req, res) => {
   try {
-    if (peakerrServicesCache.length === 0) {
-      if (isPeakerrSyncing) {
+    if (smmServicesCache.length === 0) {
+      if (isSmmSyncing) {
         let attempts = 0;
-        while (isPeakerrSyncing && attempts < 25) {
+        while (isSmmSyncing && attempts < 25) {
           await new Promise(r => setTimeout(r, 300));
           attempts++;
         }
       } else {
-        await syncPeakerrServices();
+        await syncIndianSmmServices();
       }
     }
 
     const { platform, category, search, limit } = req.query;
-    let filtered = peakerrServicesCache;
+    let filtered = smmServicesCache;
 
     if (platform && platform !== 'ALL') {
       filtered = filtered.filter(s => s.platform.toLowerCase() === platform.toLowerCase());
@@ -3706,17 +3752,16 @@ app.get('/api/smm/services', async (req, res) => {
     const maxLimit = parseInt(limit, 10);
     const resultServices = (!isNaN(maxLimit) && maxLimit > 0) ? filtered.slice(0, maxLimit) : filtered;
 
-    const profitMargin = parseFloat(persistentStore.settings.peakerrProfitMargin) || parseFloat(process.env.PEAKERR_PROFIT_MARGIN) || 1.45;
-    const usdToInr = parseFloat(persistentStore.settings.peakerrUsdToInr) || parseFloat(process.env.PEAKERR_USD_TO_INR) || 88.00;
+    const profitMargin = parseFloat(persistentStore.settings.smmProfitMargin) || parseFloat(persistentStore.settings.peakerrProfitMargin) || parseFloat(process.env.SMM_PROFIT_MARGIN) || 1.30;
 
     return res.json({
       success: true,
       total: filtered.length,
-      categories: peakerrCategoriesCache,
+      categories: smmCategoriesCache,
       services: resultServices,
       profitMargin: profitMargin,
-      usdToInr: usdToInr,
-      lastSync: lastPeakerrSyncTime
+      currency: 'INR',
+      lastSync: lastSmmSyncTime
     });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
@@ -3763,7 +3808,7 @@ async function sendSmmInvoiceEmail(order, targetEmail = null) {
             <p style="margin: 6px 0;"><strong>Total Paid:</strong> ₹${order.totalCost || order.totalPaid} (${order.paymentMethod || 'UPI'})</p>
             <p style="margin: 6px 0;"><strong>Status:</strong> <span style="color: #22c55e; font-weight: 700;">🟢 ${order.status || 'Processing'}</span></p>
             ${order.utrId ? `<p style="margin: 6px 0;"><strong>UTR / TxRef:</strong> <code style="color: #22c55e;">${order.utrId}</code></p>` : ''}
-            <p style="margin: 6px 0; color: #facc15;"><strong>Guarantee:</strong> Lifetime Auto-Refill Warranty Active</p>
+            <p style="margin: 6px 0; color: #facc15;"><strong>Guarantee:</strong> ${order.refillable ? 'Auto-Refill Protected' : 'Fast Delivery'}</p>
           </div>
 
           <div style="text-align: center; margin: 22px 0;">
@@ -3796,11 +3841,12 @@ async function sendSmmInvoiceEmail(order, targetEmail = null) {
   }
 }
 
-// 2. Place SMM Order (Dispatches live order to Peakerr API)
-app.post('/api/smm/order', async (req, res) => {
+// 2. Place SMM Order (Dispatches live order to IndianSMMHub API)
+app.post(['/api/smm/indiansmm-order', '/api/smm/order'], express.json(), async (req, res) => {
   try {
     const {
       serviceId,
+      service,
       serviceKey,
       targetUrl,
       link,
@@ -3816,7 +3862,8 @@ app.post('/api/smm/order', async (req, res) => {
       utrId
     } = req.body;
 
-    const cleanServiceId = parseInt(serviceId, 10) || (serviceKey ? parseInt(serviceKey.replace('pk_', ''), 10) : 0);
+    const rawSrvId = serviceId || service || (serviceKey ? serviceKey.replace('smm_', '').replace('pk_', '') : null);
+    const cleanServiceId = parseInt(rawSrvId, 10);
     const cleanTargetUrl = (targetUrl || link || '').trim();
     const qty = parseInt(quantity, 10);
 
@@ -3833,20 +3880,19 @@ app.post('/api/smm/order', async (req, res) => {
     }
 
     // Find service details from cache or fallback
-    let service = peakerrServicesCache.find(s => s.service === cleanServiceId || s.serviceId === cleanServiceId);
-    if (!service) {
-      // If cache missed, attempt a quick sync
-      await syncPeakerrServices();
-      service = peakerrServicesCache.find(s => s.service === cleanServiceId || s.serviceId === cleanServiceId);
+    let srvObj = smmServicesCache.find(s => s.service === cleanServiceId || s.serviceId === cleanServiceId);
+    if (!srvObj) {
+      await syncIndianSmmServices();
+      srvObj = smmServicesCache.find(s => s.service === cleanServiceId || s.serviceId === cleanServiceId);
     }
 
-    const serviceName = service ? service.name : `Peakerr Service #${cleanServiceId}`;
-    const serviceCategory = service ? service.category : 'Social Growth';
-    const servicePlatform = service ? service.platform : detectPlatformFromCategory(serviceCategory, serviceName);
-    const rateInr = service ? service.rateInr : 100;
-    const minQty = service ? service.min : 10;
-    const maxQty = service ? service.max : 1000000;
-    const isRefillable = service ? service.refill : false;
+    const serviceName = srvObj ? srvObj.name : `IndianSMMHub Service #${cleanServiceId}`;
+    const serviceCategory = srvObj ? srvObj.category : 'Social Growth';
+    const servicePlatform = srvObj ? srvObj.platform : detectPlatformFromCategory(serviceCategory, serviceName);
+    const rateInr = srvObj ? srvObj.rateInr : 10;
+    const minQty = srvObj ? srvObj.min : 10;
+    const maxQty = srvObj ? srvObj.max : 1000000;
+    const isRefillable = srvObj ? srvObj.refill : false;
 
     if (qty < minQty || qty > maxQty) {
       return res.status(400).json({
@@ -3855,7 +3901,7 @@ app.post('/api/smm/order', async (req, res) => {
       });
     }
 
-    const totalCost = Math.max(1, Math.round(((qty / 1000) * rateInr) * 100) / 100);
+    const totalCost = Math.max(0.1, Math.round(((qty / 1000) * rateInr) * 100) / 100);
     const cleanPaymentMethod = paymentMethod || 'UPI';
 
     // Verify Crypto payment if BEP20 USDT
@@ -3870,12 +3916,12 @@ app.post('/api/smm/order', async (req, res) => {
       }
     }
 
-    // Call Peakerr API
-    const apiUrl = persistentStore.settings.peakerrApiUrl || PEAKERR_DEFAULT_API_URL;
-    const apiKey = persistentStore.settings.peakerrApiKey || PEAKERR_DEFAULT_API_KEY;
+    // Call IndianSMMHub API
+    const apiUrl = persistentStore.settings.smmProviderUrl || persistentStore.settings.peakerrApiUrl || INDIANSMM_API_URL;
+    const apiKey = persistentStore.settings.smmApiKey || persistentStore.settings.peakerrApiKey || INDIANSMM_API_KEY;
 
-    let peakerrOrderId = '';
-    let peakerrError = '';
+    let providerOrderId = '';
+    let providerError = '';
 
     const payload = {
       key: apiKey,
@@ -3891,29 +3937,29 @@ app.post('/api/smm/order', async (req, res) => {
     }
 
     try {
-      const peakerrRes = await axios.post(apiUrl, payload, { timeout: 20000 });
-      if (peakerrRes.data && peakerrRes.data.order) {
-        peakerrOrderId = String(peakerrRes.data.order);
-      } else if (peakerrRes.data && peakerrRes.data.error) {
-        peakerrError = String(peakerrRes.data.error);
-        console.warn(`Peakerr API notice for service #${cleanServiceId}:`, peakerrError);
+      const orderRes = await axios.post(apiUrl, payload, { timeout: 20000 });
+      if (orderRes.data && orderRes.data.order) {
+        providerOrderId = String(orderRes.data.order);
+      } else if (orderRes.data && orderRes.data.error) {
+        providerError = String(orderRes.data.error);
+        console.warn(`IndianSMMHub API notice for service #${cleanServiceId}:`, providerError);
       }
     } catch (apiErr) {
-      peakerrError = apiErr.message;
-      console.error('Peakerr API dispatch failed:', apiErr.message);
+      providerError = apiErr.message;
+      console.error('IndianSMMHub API dispatch failed:', apiErr.message);
     }
 
-    const orderId = 'PK-' + Date.now().toString().slice(-6);
+    const orderId = 'SMM-' + Date.now().toString().slice(-6);
     const newOrder = {
       _id: 'smm_' + Date.now() + '_' + Math.floor(Math.random() * 1000),
       orderId: orderId,
-      providerOrderId: peakerrOrderId,
+      providerOrderId: providerOrderId,
       userId: userId || 'guest',
       userName: userName || 'Customer',
       userPhone: userPhone || '',
       userEmail: userEmail || '',
       platform: servicePlatform.toLowerCase(),
-      serviceKey: `pk_${cleanServiceId}`,
+      serviceKey: `smm_${cleanServiceId}`,
       serviceName: serviceName,
       serviceId: cleanServiceId,
       tier: serviceCategory,
@@ -3926,13 +3972,13 @@ app.post('/api/smm/order', async (req, res) => {
       paymentStatus: cleanPaymentMethod === 'BEP20' ? 'PAID' : (utrId ? 'PENDING_UPI_VERIFICATION' : 'PAID'),
       txHash: txHash || '',
       utrId: utrId || '',
-      status: peakerrOrderId ? 'Processing' : 'Processing (Queued)',
+      status: providerOrderId ? 'Processing' : 'Processing (Queued)',
       remains: qty,
       startCount: 0,
       refillable: isRefillable,
       refillStatus: isRefillable ? 'Eligible' : 'Not Supported',
       refillId: '',
-      notes: peakerrError ? `Peakerr Notice: ${peakerrError}` : 'Live Dispatched to Peakerr API',
+      notes: providerError ? `IndianSMMHub Notice: ${providerError}` : 'Live Dispatched to IndianSMMHub API',
       createdAt: new Date(),
       updatedAt: new Date()
     };
@@ -3952,9 +3998,9 @@ app.post('/api/smm/order', async (req, res) => {
     // Broadcast Telegram notification to Owner
     try {
       broadcastToTelegramGroup(
-        `⚡ *NEW PEAKERR SMM ORDER PLACED!*\n\n` +
+        `⚡ *NEW INDIANSMMHUB ORDER PLACED!*\n\n` +
         `📦 *Order ID:* \`${orderId}\`\n` +
-        `🔌 *Peakerr Order ID:* \`#${peakerrOrderId || 'Queued'}\`\n` +
+        `🔌 *Provider Order ID:* \`#${providerOrderId || 'Queued'}\`\n` +
         `👤 *Customer:* ${escapeHtml(userName || 'Customer')} (${userPhone || 'No Phone'})\n` +
         `⚡ *Service:* ${escapeHtml(serviceName)} (ID: ${cleanServiceId})\n` +
         `🎯 *Target Link:* \`${cleanTargetUrl}\`\n` +
@@ -3972,10 +4018,10 @@ app.post('/api/smm/order', async (req, res) => {
     return res.json({
       success: true,
       orderId: orderId,
-      providerOrderId: peakerrOrderId,
+      providerOrderId: providerOrderId,
       details: newOrder,
-      message: peakerrOrderId
-        ? `🎉 Order Placed Successfully on Peakerr! Provider Order ID: #${peakerrOrderId}`
+      message: providerOrderId
+        ? `🎉 Order Placed Successfully on IndianSMMHub! Provider Order ID: #${providerOrderId}`
         : `🎉 Order Placed Successfully! Your Order ID: ${orderId}`
     });
   } catch (err) {
@@ -3984,70 +4030,70 @@ app.post('/api/smm/order', async (req, res) => {
   }
 });
 
-// 3. Live Peakerr Order Status Check
-app.get('/api/smm/status/:orderId', async (req, res) => {
+// 3. Live IndianSMMHub Order Status Check
+app.get(['/api/smm/indiansmm-status/:orderId', '/api/smm/status/:orderId'], async (req, res) => {
   try {
     const { orderId } = req.params;
     const order = (persistentStore.smmOrders || []).find(o => o.orderId === orderId || o._id === orderId || o.providerOrderId === orderId);
 
-    if (!order) {
-      return res.status(404).json({ success: false, message: "Order not found." });
-    }
+    const apiUrl = persistentStore.settings.smmProviderUrl || persistentStore.settings.peakerrApiUrl || INDIANSMM_API_URL;
+    const apiKey = persistentStore.settings.smmApiKey || persistentStore.settings.peakerrApiKey || INDIANSMM_API_KEY;
 
-    const apiUrl = persistentStore.settings.peakerrApiUrl || PEAKERR_DEFAULT_API_URL;
-    const apiKey = persistentStore.settings.peakerrApiKey || PEAKERR_DEFAULT_API_KEY;
+    let providerData = null;
 
-    let peakerrData = null;
-    if (order.providerOrderId) {
+    // Direct provider order ID lookup if no local order found or order has provider ID
+    const targetProvId = (order && order.providerOrderId) ? order.providerOrderId : orderId;
+
+    if (targetProvId && !isNaN(Number(targetProvId))) {
       try {
         const statusRes = await axios.post(apiUrl, {
           key: apiKey,
           action: 'status',
-          order: order.providerOrderId
+          order: Number(targetProvId)
         }, { timeout: 15000 });
 
         if (statusRes.data && !statusRes.data.error) {
-          peakerrData = statusRes.data;
-          if (peakerrData.status) {
-            order.status = peakerrData.status;
-          }
-          if (peakerrData.remains !== undefined) {
-            order.remains = parseInt(peakerrData.remains, 10) || 0;
-          }
-          if (peakerrData.start_count !== undefined) {
-            order.startCount = parseInt(peakerrData.start_count, 10) || 0;
-          }
-          order.updatedAt = new Date();
-          saveLocalDB();
+          providerData = statusRes.data;
+          if (order) {
+            if (providerData.status) order.status = providerData.status;
+            if (providerData.remains !== undefined) order.remains = parseInt(providerData.remains, 10) || 0;
+            if (providerData.start_count !== undefined) order.startCount = parseInt(providerData.start_count, 10) || 0;
+            order.updatedAt = new Date();
+            saveLocalDB();
 
-          if (getDBStatus()) {
-            try {
-              await SmmOrder.updateOne({ _id: order._id }, { $set: { status: order.status, remains: order.remains, startCount: order.startCount, updatedAt: new Date() } });
-            } catch (e) {}
+            if (getDBStatus()) {
+              try {
+                await SmmOrder.updateOne({ _id: order._id }, { $set: { status: order.status, remains: order.remains, startCount: order.startCount, updatedAt: new Date() } });
+              } catch (e) {}
+            }
           }
         }
       } catch (apiErr) {
-        console.warn('Peakerr Status fetch notice:', apiErr.message);
+        console.warn('IndianSMMHub Status fetch notice:', apiErr.message);
       }
     }
 
-    const qty = order.quantity || 1;
-    let remains = order.remains !== undefined ? order.remains : (order.status === 'Completed' ? 0 : qty);
-    if (order.status === 'Completed') remains = 0;
+    if (!order && !providerData) {
+      return res.status(404).json({ success: false, message: "Order not found." });
+    }
+
+    const qty = (order && order.quantity) || 1000;
+    let remains = order ? (order.remains !== undefined ? order.remains : (order.status === 'Completed' ? 0 : qty)) : 0;
+    if (order && order.status === 'Completed') remains = 0;
     const delivered = Math.max(0, Math.min(qty, qty - remains));
-    const progressPercent = order.status === 'Completed' ? 100 : Math.min(100, Math.round((delivered / qty) * 100));
+    const progressPercent = (order && order.status === 'Completed') ? 100 : Math.min(100, Math.round((delivered / qty) * 100));
 
     return res.json({
       success: true,
-      orderId: order.orderId,
-      providerOrderId: order.providerOrderId,
-      status: order.status,
+      orderId: order ? order.orderId : orderId,
+      providerOrderId: (order && order.providerOrderId) || targetProvId,
+      status: (order && order.status) || (providerData && providerData.status) || 'Processing',
       remains: remains,
       delivered: delivered,
       quantity: qty,
       progressPercent: progressPercent,
-      startCount: order.startCount || 0,
-      peakerr: peakerrData,
+      startCount: (order && order.startCount) || (providerData && providerData.start_count) || 0,
+      statusData: providerData,
       details: order
     });
   } catch (err) {
@@ -4055,8 +4101,8 @@ app.get('/api/smm/status/:orderId', async (req, res) => {
   }
 });
 
-// 4. Trigger Refill on Peakerr API
-app.post('/api/smm/refill', async (req, res) => {
+// 4. Trigger Refill on IndianSMMHub API
+app.post(['/api/smm/refill', '/api/smm/indiansmm-refill'], async (req, res) => {
   try {
     const { orderId } = req.body;
     const order = (persistentStore.smmOrders || []).find(o => o.orderId === orderId || o._id === orderId || o.providerOrderId === orderId);
@@ -4065,11 +4111,11 @@ app.post('/api/smm/refill', async (req, res) => {
       return res.status(404).json({ success: false, message: "Order not found." });
     }
 
-    const apiUrl = persistentStore.settings.peakerrApiUrl || PEAKERR_DEFAULT_API_URL;
-    const apiKey = persistentStore.settings.peakerrApiKey || PEAKERR_DEFAULT_API_KEY;
+    const apiUrl = persistentStore.settings.smmProviderUrl || persistentStore.settings.peakerrApiUrl || INDIANSMM_API_URL;
+    const apiKey = persistentStore.settings.smmApiKey || persistentStore.settings.peakerrApiKey || INDIANSMM_API_KEY;
 
     let refillId = 'REF-' + Date.now().toString().slice(-6);
-    let peakerrError = '';
+    let providerError = '';
 
     if (order.providerOrderId) {
       try {
@@ -4082,10 +4128,10 @@ app.post('/api/smm/refill', async (req, res) => {
         if (refillRes.data && refillRes.data.refill) {
           refillId = String(refillRes.data.refill);
         } else if (refillRes.data && refillRes.data.error) {
-          peakerrError = String(refillRes.data.error);
+          providerError = String(refillRes.data.error);
         }
       } catch (e) {
-        peakerrError = e.message;
+        providerError = e.message;
       }
     }
 
@@ -4105,8 +4151,8 @@ app.post('/api/smm/refill', async (req, res) => {
     return res.json({
       success: true,
       refillId: refillId,
-      message: peakerrError
-        ? `Refill queued locally: ${peakerrError}`
+      message: providerError
+        ? `Refill queued locally: ${providerError}`
         : `🔄 Refill request submitted successfully! Refill Reference: ${refillId}`
     });
   } catch (err) {
@@ -4114,11 +4160,11 @@ app.post('/api/smm/refill', async (req, res) => {
   }
 });
 
-// 5. Get Live Peakerr Balance
-app.get('/api/smm/balance', async (req, res) => {
+// 5. Get Live IndianSMMHub Balance
+app.get(['/api/smm/balance', '/api/smm/indiansmm-balance'], async (req, res) => {
   try {
-    const apiUrl = persistentStore.settings.peakerrApiUrl || PEAKERR_DEFAULT_API_URL;
-    const apiKey = persistentStore.settings.peakerrApiKey || PEAKERR_DEFAULT_API_KEY;
+    const apiUrl = persistentStore.settings.smmProviderUrl || persistentStore.settings.peakerrApiUrl || INDIANSMM_API_URL;
+    const apiKey = persistentStore.settings.smmApiKey || persistentStore.settings.peakerrApiKey || INDIANSMM_API_KEY;
 
     const balanceRes = await axios.post(apiUrl, {
       key: apiKey,
@@ -4129,10 +4175,10 @@ app.get('/api/smm/balance', async (req, res) => {
       return res.json({
         success: true,
         balance: balanceRes.data.balance,
-        currency: balanceRes.data.currency || 'USD'
+        currency: balanceRes.data.currency || 'INR'
       });
     }
-    return res.json({ success: false, message: balanceRes.data.error || 'Failed to fetch balance' });
+    return res.json({ success: false, message: balanceRes.data?.error || 'Failed to fetch balance' });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
@@ -4149,7 +4195,7 @@ app.get('/api/smm/orders/user/:userId', (req, res) => {
   }
 });
 
-// 7. Live Customer SMM Status Sync from Peakerr
+// 7. Live Customer SMM Status Sync from IndianSMMHub
 app.post('/api/smm/orders/:id/sync-status', async (req, res) => {
   try {
     const { id } = req.params;
@@ -4158,7 +4204,6 @@ app.post('/api/smm/orders/:id/sync-status', async (req, res) => {
       return res.status(404).json({ success: false, message: "Order not found." });
     }
 
-    // If order has no real Peakerr numeric ID yet (e.g. pending approval or waiting for owner to fund Peakerr)
     if (!order.providerOrderId || isNaN(Number(order.providerOrderId))) {
       const msg = order.paymentStatus === 'PENDING_UPI_VERIFICATION' 
         ? 'Pending Owner Approval (UPI UTR Submitted)'
@@ -4171,8 +4216,8 @@ app.post('/api/smm/orders/:id/sync-status', async (req, res) => {
       });
     }
 
-    const apiUrl = persistentStore.settings.peakerrApiUrl || PEAKERR_DEFAULT_API_URL;
-    const apiKey = persistentStore.settings.peakerrApiKey || PEAKERR_DEFAULT_API_KEY;
+    const apiUrl = persistentStore.settings.smmProviderUrl || persistentStore.settings.peakerrApiUrl || INDIANSMM_API_URL;
+    const apiKey = persistentStore.settings.smmApiKey || persistentStore.settings.peakerrApiKey || INDIANSMM_API_KEY;
 
     try {
       const statusRes = await axios.post(apiUrl, {
@@ -4196,7 +4241,6 @@ app.post('/api/smm/orders/:id/sync-status', async (req, res) => {
 
         return res.json({ success: true, message: `Live status: ${order.status}`, status: order.status, order, data: statusRes.data });
       } else if (statusRes.data && statusRes.data.error) {
-        // If Peakerr returns error notice (like incorrect order ID or expired status), return current order status gracefully
         return res.json({ 
           success: true, 
           status: order.status, 
@@ -4205,7 +4249,7 @@ app.post('/api/smm/orders/:id/sync-status', async (req, res) => {
         });
       }
     } catch (apiErr) {
-      console.warn('Peakerr status check notice:', apiErr.message);
+      console.warn('IndianSMMHub status check notice:', apiErr.message);
     }
 
     return res.json({ success: true, status: order.status, order });
@@ -4214,7 +4258,7 @@ app.post('/api/smm/orders/:id/sync-status', async (req, res) => {
   }
 });
 
-// 8. Owner: Approve SMM UPI Payment & Auto-Dispatch to Peakerr
+// 8. Owner: Approve SMM UPI Payment & Auto-Dispatch to IndianSMMHub
 app.post('/api/owner/smm/orders/:id/approve-upi', async (req, res) => {
   try {
     const { id } = req.params;
@@ -4227,28 +4271,28 @@ app.post('/api/owner/smm/orders/:id/approve-upi', async (req, res) => {
     order.status = 'Processing';
     order.updatedAt = new Date();
 
-    // Dispatch to Peakerr API if not already dispatched
+    // Dispatch to IndianSMMHub API if not already dispatched
     if (!order.providerOrderId || order.providerOrderId.startsWith('TG-') || order.providerOrderId.startsWith('WA-')) {
-      const apiUrl = persistentStore.settings.peakerrApiUrl || PEAKERR_DEFAULT_API_URL;
-      const apiKey = persistentStore.settings.peakerrApiKey || PEAKERR_DEFAULT_API_KEY;
+      const apiUrl = persistentStore.settings.smmProviderUrl || persistentStore.settings.peakerrApiUrl || INDIANSMM_API_URL;
+      const apiKey = persistentStore.settings.smmApiKey || persistentStore.settings.peakerrApiKey || INDIANSMM_API_KEY;
 
       const payload = {
         key: apiKey,
         action: 'add',
-        service: order.serviceId || 1001,
+        service: order.serviceId || 1529,
         link: order.targetUrl,
         quantity: order.quantity
       };
       if (order.customComments) payload.comments = order.customComments;
 
       try {
-        const peakerrRes = await axios.post(apiUrl, payload, { timeout: 20000 });
-        if (peakerrRes.data && peakerrRes.data.order) {
-          order.providerOrderId = String(peakerrRes.data.order);
-          order.notes = `Dispatched to Peakerr #${order.providerOrderId}`;
+        const provRes = await axios.post(apiUrl, payload, { timeout: 20000 });
+        if (provRes.data && provRes.data.order) {
+          order.providerOrderId = String(provRes.data.order);
+          order.notes = `Dispatched to IndianSMMHub #${order.providerOrderId}`;
         }
-      } catch (peakErr) {
-        console.error('Failed to dispatch approved SMM order to Peakerr:', peakErr.message);
+      } catch (provErr) {
+        console.error('Failed to dispatch approved SMM order to IndianSMMHub:', provErr.message);
       }
     }
 
@@ -4260,7 +4304,6 @@ app.post('/api/owner/smm/orders/:id/approve-upi', async (req, res) => {
     }
 
     // Auto-notify customer via Telegram and WhatsApp
-    const notifMsg = `✅ Your SMM Growth Order ${order.orderId} (UTR: ${order.utrId}) has been APPROVED and dispatched to automated servers! Live delivery in progress.`;
     if (order.userId && order.userId.startsWith('tg_')) {
       const tgChatId = order.userId.replace('tg_', '');
       sendTelegramDirectMessage(tgChatId, `🎉 *SMM ORDER PAYMENT APPROVED!* 🎉\n\n` +
@@ -4283,33 +4326,32 @@ app.post('/api/owner/smm/orders/:id/approve-upi', async (req, res) => {
     // Auto-send Email Invoice & PDF Bill upon payment approval
     sendSmmInvoiceEmail(order).catch(e => console.warn('Invoice email dispatch error:', e.message));
 
-    return res.json({ success: true, message: `Order ${order.orderId} approved and dispatched to Peakerr!`, order });
+    return res.json({ success: true, message: `Order ${order.orderId} approved and dispatched to IndianSMMHub!`, order });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
 });
 
 // -------------------------------------------------------------
-// OWNER SMM & PEAKERR MANAGEMENT API ENDPOINTS
+// OWNER SMM & INDIANSMMHUB MANAGEMENT API ENDPOINTS
 // -------------------------------------------------------------
 
-// Owner: Get Peakerr Overview & Live KPIs
+// Owner: Get SMM Overview & Live KPIs
 app.get('/api/owner/smm/overview', async (req, res) => {
   try {
-    const apiUrl = persistentStore.settings.peakerrApiUrl || PEAKERR_DEFAULT_API_URL;
-    const apiKey = persistentStore.settings.peakerrApiKey || PEAKERR_DEFAULT_API_KEY;
-    const profitMargin = parseFloat(persistentStore.settings.peakerrProfitMargin) || parseFloat(process.env.PEAKERR_PROFIT_MARGIN) || 1.45;
-    const usdToInr = parseFloat(persistentStore.settings.peakerrUsdToInr) || parseFloat(process.env.PEAKERR_USD_TO_INR) || 88.00;
+    const apiUrl = persistentStore.settings.smmProviderUrl || persistentStore.settings.peakerrApiUrl || INDIANSMM_API_URL;
+    const apiKey = persistentStore.settings.smmApiKey || persistentStore.settings.peakerrApiKey || INDIANSMM_API_KEY;
+    const profitMargin = parseFloat(persistentStore.settings.smmProfitMargin) || parseFloat(persistentStore.settings.peakerrProfitMargin) || 1.30;
 
     let balance = '0.00';
-    let currency = 'USD';
+    let currency = 'INR';
     let apiStatus = 'Connected';
 
     try {
       const balRes = await axios.post(apiUrl, { key: apiKey, action: 'balance' }, { timeout: 10000 });
       if (balRes.data && balRes.data.balance !== undefined) {
         balance = balRes.data.balance;
-        currency = balRes.data.currency || 'USD';
+        currency = balRes.data.currency || 'INR';
       }
     } catch (e) {
       apiStatus = 'Error: ' + e.message;
@@ -4325,21 +4367,20 @@ app.get('/api/owner/smm/overview', async (req, res) => {
       apiStatus,
       totalOrders: orders.length,
       totalRevenue,
-      servicesCount: peakerrServicesCache.length,
-      categoriesCount: peakerrCategoriesCache.length,
+      servicesCount: smmServicesCache.length,
+      categoriesCount: smmCategoriesCache.length,
       profitMargin,
-      usdToInr,
-      lastSync: lastPeakerrSyncTime
+      lastSync: lastSmmSyncTime
     });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
 });
 
-// Owner: Trigger Live Sync from Peakerr API
+// Owner: Trigger Live Sync from IndianSMMHub API
 app.post('/api/owner/smm/sync', async (req, res) => {
   try {
-    const result = await syncPeakerrServices(true);
+    const result = await syncIndianSmmServices(true);
     return res.json(result);
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
@@ -4349,14 +4390,14 @@ app.post('/api/owner/smm/sync', async (req, res) => {
 // Owner: Get All SMM Services (for management table)
 app.get('/api/owner/smm/services', async (req, res) => {
   try {
-    if (peakerrServicesCache.length === 0) {
-      await syncPeakerrServices();
+    if (smmServicesCache.length === 0) {
+      await syncIndianSmmServices();
     }
     return res.json({
       success: true,
-      total: peakerrServicesCache.length,
-      categories: peakerrCategoriesCache,
-      services: peakerrServicesCache
+      total: smmServicesCache.length,
+      categories: smmCategoriesCache,
+      services: smmServicesCache
     });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
@@ -4425,7 +4466,7 @@ app.post('/api/owner/smm/orders/:id/status', async (req, res) => {
   }
 });
 
-// Owner: Sync Live Status from Peakerr for an Order
+// Owner: Sync Live Status from IndianSMMHub for an Order
 app.post('/api/owner/smm/orders/:id/sync-status', async (req, res) => {
   try {
     const { id } = req.params;
@@ -4435,11 +4476,11 @@ app.post('/api/owner/smm/orders/:id/sync-status', async (req, res) => {
     }
 
     if (!order.providerOrderId || isNaN(Number(order.providerOrderId))) {
-      return res.status(400).json({ success: false, message: "This order is waiting for Peakerr dispatch. Please use 'Retry Dispatch' after adding balance on Peakerr." });
+      return res.status(400).json({ success: false, message: "This order is waiting for IndianSMMHub dispatch. Please use 'Retry Dispatch' after checking balance on IndianSMMHub." });
     }
 
-    const apiUrl = persistentStore.settings.peakerrApiUrl || PEAKERR_DEFAULT_API_URL;
-    const apiKey = persistentStore.settings.peakerrApiKey || PEAKERR_DEFAULT_API_KEY;
+    const apiUrl = persistentStore.settings.smmProviderUrl || persistentStore.settings.peakerrApiUrl || INDIANSMM_API_URL;
+    const apiKey = persistentStore.settings.smmApiKey || persistentStore.settings.peakerrApiKey || INDIANSMM_API_KEY;
 
     const statusRes = await axios.post(apiUrl, {
       key: apiKey,
@@ -4460,16 +4501,16 @@ app.post('/api/owner/smm/orders/:id/sync-status', async (req, res) => {
         } catch (e) {}
       }
 
-      return res.json({ success: true, message: `Live status synced from Peakerr: ${order.status}`, status: order.status, data: statusRes.data });
+      return res.json({ success: true, message: `Live status synced from IndianSMMHub: ${order.status}`, status: order.status, data: statusRes.data });
     } else {
-      return res.status(400).json({ success: false, message: statusRes.data?.error || 'Failed to sync status from Peakerr' });
+      return res.status(400).json({ success: false, message: statusRes.data?.error || 'Failed to sync status from IndianSMMHub' });
     }
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
 });
 
-// Owner: Retry Dispatching SMM Order to Peakerr API
+// Owner: Retry Dispatching SMM Order to IndianSMMHub API
 app.post('/api/owner/smm/orders/:id/retry-dispatch', async (req, res) => {
   try {
     const { id } = req.params;
@@ -4478,24 +4519,24 @@ app.post('/api/owner/smm/orders/:id/retry-dispatch', async (req, res) => {
       return res.status(404).json({ success: false, message: "SMM Order not found." });
     }
 
-    const apiUrl = persistentStore.settings.peakerrApiUrl || PEAKERR_DEFAULT_API_URL;
-    const apiKey = persistentStore.settings.peakerrApiKey || PEAKERR_DEFAULT_API_KEY;
+    const apiUrl = persistentStore.settings.smmProviderUrl || persistentStore.settings.peakerrApiUrl || INDIANSMM_API_URL;
+    const apiKey = persistentStore.settings.smmApiKey || persistentStore.settings.peakerrApiKey || INDIANSMM_API_KEY;
 
     const payload = {
       key: apiKey,
       action: 'add',
-      service: order.serviceId || 31850,
+      service: order.serviceId || 1529,
       link: order.targetUrl,
       quantity: order.quantity
     };
     if (order.customComments) payload.comments = order.customComments;
 
-    const peakerrRes = await axios.post(apiUrl, payload, { timeout: 25000 });
-    if (peakerrRes.data && peakerrRes.data.order) {
-      order.providerOrderId = String(peakerrRes.data.order);
+    const orderRes = await axios.post(apiUrl, payload, { timeout: 25000 });
+    if (orderRes.data && orderRes.data.order) {
+      order.providerOrderId = String(orderRes.data.order);
       order.paymentStatus = 'PAID';
       order.status = 'Processing';
-      order.notes = `Dispatched to Peakerr #${order.providerOrderId}`;
+      order.notes = `Dispatched to IndianSMMHub #${order.providerOrderId}`;
       order.updatedAt = new Date();
 
       saveLocalDB();
@@ -4508,20 +4549,20 @@ app.post('/api/owner/smm/orders/:id/retry-dispatch', async (req, res) => {
       // Auto-send Email Invoice & PDF Bill
       sendSmmInvoiceEmail(order).catch(e => console.warn('Invoice email dispatch error:', e.message));
 
-      return res.json({ success: true, message: `🎉 Order successfully dispatched to Peakerr! Order ID: #${order.providerOrderId}`, order });
-    } else if (peakerrRes.data && peakerrRes.data.error) {
-      order.notes = `Peakerr API Notice: ${peakerrRes.data.error}`;
+      return res.json({ success: true, message: `🎉 Order successfully dispatched to IndianSMMHub! Order ID: #${order.providerOrderId}`, order });
+    } else if (orderRes.data && orderRes.data.error) {
+      order.notes = `IndianSMMHub API Notice: ${orderRes.data.error}`;
       saveLocalDB();
-      return res.status(400).json({ success: false, message: `Peakerr API Notice: ${peakerrRes.data.error}` });
+      return res.status(400).json({ success: false, message: `IndianSMMHub API Notice: ${orderRes.data.error}` });
     }
 
-    return res.status(500).json({ success: false, message: 'Unexpected response from Peakerr API' });
+    return res.status(500).json({ success: false, message: 'Unexpected response from IndianSMMHub API' });
   } catch (err) {
-    res.status(500).json({ success: false, message: 'Peakerr API Connection Error: ' + err.message });
+    res.status(500).json({ success: false, message: 'IndianSMMHub API Connection Error: ' + err.message });
   }
 });
 
-// Owner: Force Trigger Refill on Peakerr Order
+// Owner: Force Trigger Refill on IndianSMMHub Order
 app.post('/api/owner/smm/orders/:id/refill', async (req, res) => {
   try {
     const { id } = req.params;
@@ -4531,8 +4572,8 @@ app.post('/api/owner/smm/orders/:id/refill', async (req, res) => {
     }
 
     let refillId = 'OWNER-REF-' + Date.now().toString().slice(-5);
-    const apiUrl = persistentStore.settings.peakerrApiUrl || PEAKERR_DEFAULT_API_URL;
-    const apiKey = persistentStore.settings.peakerrApiKey || PEAKERR_DEFAULT_API_KEY;
+    const apiUrl = persistentStore.settings.smmProviderUrl || persistentStore.settings.peakerrApiUrl || INDIANSMM_API_URL;
+    const apiKey = persistentStore.settings.smmApiKey || persistentStore.settings.peakerrApiKey || INDIANSMM_API_KEY;
 
     if (order.providerOrderId) {
       try {
@@ -4566,13 +4607,12 @@ app.post('/api/owner/smm/orders/:id/refill', async (req, res) => {
   }
 });
 
-// Owner: Get Peakerr SMM Settings
+// Owner: Get IndianSMMHub Settings
 app.get('/api/owner/smm/settings', (req, res) => {
   try {
-    const url = persistentStore.settings.peakerrApiUrl || PEAKERR_DEFAULT_API_URL;
-    const key = persistentStore.settings.peakerrApiKey || PEAKERR_DEFAULT_API_KEY;
-    const profitMargin = parseFloat(persistentStore.settings.peakerrProfitMargin) || parseFloat(process.env.PEAKERR_PROFIT_MARGIN) || 1.45;
-    const usdToInr = parseFloat(persistentStore.settings.peakerrUsdToInr) || parseFloat(process.env.PEAKERR_USD_TO_INR) || 88.00;
+    const url = persistentStore.settings.smmProviderUrl || persistentStore.settings.peakerrApiUrl || INDIANSMM_API_URL;
+    const key = persistentStore.settings.smmApiKey || persistentStore.settings.peakerrApiKey || INDIANSMM_API_KEY;
+    const profitMargin = parseFloat(persistentStore.settings.smmProfitMargin) || parseFloat(persistentStore.settings.peakerrProfitMargin) || parseFloat(process.env.SMM_PROFIT_MARGIN) || 1.30;
     const masked = key ? (key.length > 8 ? key.slice(0, 4) + '••••••••' + key.slice(-4) : '••••••••') : '';
 
     return res.json({
@@ -4582,29 +4622,35 @@ app.get('/api/owner/smm/settings', (req, res) => {
       hasApiKey: Boolean(key),
       maskedApiKey: masked,
       profitMargin,
-      usdToInr
+      currency: 'INR'
     });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
 });
 
-// Owner: Update Peakerr SMM Settings
+// Owner: Update IndianSMMHub Settings
 app.post('/api/owner/smm/settings', async (req, res) => {
   try {
-    const { peakerrApiUrl, peakerrApiKey, profitMargin, usdToInr, smmProviderUrl, smmApiKey } = req.body;
+    const { peakerrApiUrl, peakerrApiKey, profitMargin, smmProviderUrl, smmApiKey, smmProfitMargin } = req.body;
 
-    if (peakerrApiUrl !== undefined) persistentStore.settings.peakerrApiUrl = peakerrApiUrl.trim();
-    if (smmProviderUrl !== undefined) persistentStore.settings.peakerrApiUrl = smmProviderUrl.trim();
+    const targetUrl = smmProviderUrl || peakerrApiUrl;
+    const targetKey = smmApiKey || peakerrApiKey;
+    const targetMargin = smmProfitMargin !== undefined ? smmProfitMargin : profitMargin;
 
-    if (peakerrApiKey !== undefined && peakerrApiKey.trim() !== '') persistentStore.settings.peakerrApiKey = peakerrApiKey.trim();
-    if (smmApiKey !== undefined && smmApiKey.trim() !== '') persistentStore.settings.peakerrApiKey = smmApiKey.trim();
-
-    if (profitMargin !== undefined && !isNaN(parseFloat(profitMargin))) {
-      persistentStore.settings.peakerrProfitMargin = parseFloat(profitMargin);
+    if (targetUrl !== undefined && targetUrl.trim() !== '') {
+      persistentStore.settings.smmProviderUrl = targetUrl.trim();
+      persistentStore.settings.peakerrApiUrl = targetUrl.trim();
     }
-    if (usdToInr !== undefined && !isNaN(parseFloat(usdToInr))) {
-      persistentStore.settings.peakerrUsdToInr = parseFloat(usdToInr);
+
+    if (targetKey !== undefined && targetKey.trim() !== '') {
+      persistentStore.settings.smmApiKey = targetKey.trim();
+      persistentStore.settings.peakerrApiKey = targetKey.trim();
+    }
+
+    if (targetMargin !== undefined && !isNaN(parseFloat(targetMargin))) {
+      persistentStore.settings.smmProfitMargin = parseFloat(targetMargin);
+      persistentStore.settings.peakerrProfitMargin = parseFloat(targetMargin);
     }
 
     saveLocalDB();
@@ -4615,10 +4661,12 @@ app.post('/api/owner/smm/settings', async (req, res) => {
           {},
           {
             $set: {
-              peakerrApiUrl: persistentStore.settings.peakerrApiUrl,
-              peakerrApiKey: persistentStore.settings.peakerrApiKey,
-              peakerrProfitMargin: persistentStore.settings.peakerrProfitMargin,
-              peakerrUsdToInr: persistentStore.settings.peakerrUsdToInr
+              smmProviderUrl: persistentStore.settings.smmProviderUrl,
+              smmApiKey: persistentStore.settings.smmApiKey,
+              smmProfitMargin: persistentStore.settings.smmProfitMargin,
+              peakerrApiUrl: persistentStore.settings.smmProviderUrl,
+              peakerrApiKey: persistentStore.settings.smmApiKey,
+              peakerrProfitMargin: persistentStore.settings.smmProfitMargin
             }
           },
           { upsert: true }
@@ -4627,11 +4675,11 @@ app.post('/api/owner/smm/settings', async (req, res) => {
     }
 
     // Trigger background sync with updated profit/rates
-    syncPeakerrServices(true).catch(() => {});
+    syncIndianSmmServices(true).catch(() => {});
 
     return res.json({
       success: true,
-      message: "Peakerr SMM settings saved & services re-calculated successfully!"
+      message: "IndianSMMHub API settings saved & services re-calculated successfully!"
     });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
@@ -4675,7 +4723,7 @@ app.post('/api/owner/smm/service/override', async (req, res) => {
     }
 
     // Refresh memory cache
-    await syncPeakerrServices(true);
+    await syncIndianSmmServices(true);
 
     return res.json({
       success: true,
@@ -4704,7 +4752,7 @@ app.delete('/api/owner/smm/service/override/:serviceId', async (req, res) => {
         } catch (e) {}
       }
 
-      await syncPeakerrServices(true);
+      await syncIndianSmmServices(true);
     }
     return res.json({ success: true, message: `Service #${srvId} reset to standard profit rate.` });
   } catch (err) {
@@ -4775,3 +4823,5 @@ app.listen(PORT, () => {
   console.log(`👑 Owner Admin Portal:   http://localhost:${PORT}/owner`);
   console.log(`=================================================`);
 });
+
+module.exports = { app, syncIndianSmmServices };

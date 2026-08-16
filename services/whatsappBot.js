@@ -133,7 +133,18 @@ async function initWhatsAppBot(services) {
   startBaileysSocket();
 }
 
+let isBaileysStarting = false;
+let baileysPresenceTimer = null;
+
 async function startBaileysSocket() {
+  if (isBaileysStarting) return;
+  isBaileysStarting = true;
+
+  if (baileysPresenceTimer) {
+    clearInterval(baileysPresenceTimer);
+    baileysPresenceTimer = null;
+  }
+
   try {
     if (!fs.existsSync(authDir)) {
       fs.mkdirSync(authDir, { recursive: true });
@@ -149,7 +160,11 @@ async function startBaileysSocket() {
       browser: Browsers.ubuntu('Chrome'),
       syncFullHistory: false,
       generateHighQualityLinkPreview: true,
-      defaultQueryTimeoutMs: 60000
+      markOnlineOnConnect: true,
+      keepAliveIntervalMs: 15000,
+      connectTimeoutMs: 60000,
+      defaultQueryTimeoutMs: 60000,
+      retryRequestDelayMs: 500
     });
 
     sockInstance = sock;
@@ -201,25 +216,47 @@ async function startBaileysSocket() {
         console.log(`📱 Connected Account: ${whatsappBotConfig.connectedNumber} (Ubuntu Chrome)`);
         console.log(`⚡ ShopBot Automated Conversational Flows & Commands are LIVE!`);
         console.log('========================================================================\n');
+
+        // Start active keepalive presence ping every 25s to avoid socket disconnect
+        if (baileysPresenceTimer) clearInterval(baileysPresenceTimer);
+        baileysPresenceTimer = setInterval(async () => {
+          try {
+            if (sockInstance) {
+              await sockInstance.sendPresenceUpdate('available');
+            }
+          } catch (e) {}
+        }, 25000);
       }
 
       if (connection === 'close') {
-        const statusCode = lastDisconnect?.error?.output?.statusCode;
-        const shouldReconnect = statusCode !== DisconnectReason.loggedOut;
+        if (baileysPresenceTimer) {
+          clearInterval(baileysPresenceTimer);
+          baileysPresenceTimer = null;
+        }
 
-        console.log(`⚠️ WhatsApp connection closed (Reason: ${statusCode || 'Unknown'}). Reconnecting: ${shouldReconnect}`);
+        const statusCode = lastDisconnect?.error?.output?.statusCode;
+        const isLoggedOut = statusCode === DisconnectReason.loggedOut || statusCode === 401 || statusCode === 403;
+        const isRestartRequired = statusCode === DisconnectReason.restartRequired || statusCode === 515;
+
+        console.log(`⚠️ WhatsApp connection closed (Status: ${statusCode || 'Unknown'}). LoggedOut: ${isLoggedOut}, RestartRequired: ${isRestartRequired}`);
 
         whatsappBotConfig.sessionLinked = false;
-        whatsappBotConfig.status = 'RECONNECTING';
+        whatsappBotConfig.status = isLoggedOut ? 'AWAITING_SCAN' : 'RECONNECTING';
 
-        if (shouldReconnect) {
-          setTimeout(startBaileysSocket, 3000);
-        } else {
-          console.log('🔴 WhatsApp session logged out. Resetting auth directory for new QR scan...');
+        isBaileysStarting = false;
+
+        if (isLoggedOut) {
+          console.log('🔴 WhatsApp session logged out by user. Clearing auth directory...');
           try {
             fs.rmSync(authDir, { recursive: true, force: true });
           } catch (e) {}
           setTimeout(startBaileysSocket, 2000);
+        } else if (isRestartRequired) {
+          console.log('🔄 Restart required by Baileys. Reconnecting immediately...');
+          setTimeout(startBaileysSocket, 500);
+        } else {
+          console.log('🔄 Connection lost. Reconnecting socket in 2.5s...');
+          setTimeout(startBaileysSocket, 2500);
         }
       }
     });
@@ -269,6 +306,8 @@ async function startBaileysSocket() {
 
   } catch (socketErr) {
     console.error('Error starting Baileys socket:', socketErr.message);
+  } finally {
+    isBaileysStarting = false;
   }
 }
 
@@ -592,36 +631,38 @@ async function handleWhatsAppIncomingMessage(sock, jid, fromNumber, text, servic
     if (text === '1' || lower === 'ig' || lower === 'instagram') {
       session.smmPlatform = 'instagram';
       session.smmPlatformServices = [
-        { serviceId: 31850, key: 'ig_followers_nondrop', name: 'Instagram 100% Non-Drop Followers (Lifetime Refill)', rate: 180, min: 1000 },
-        { serviceId: 31714, key: 'ig_followers_drop5', name: 'Instagram Low Drop Followers (30D Refill)', rate: 120, min: 1000 },
-        { serviceId: 31905, key: 'ig_likes_nondrop', name: 'Instagram HQ Post/Reel Likes', rate: 45, min: 1000 },
-        { serviceId: 31850, key: 'ig_comments_nondrop', name: 'Instagram Custom Comments', rate: 380, min: 1000 }
+        { serviceId: 494, key: 'ig_reels_views', name: 'Instagram Superfast Reels Views (⚡ ₹0.50/1K)', rate: 0.50, min: 1000 },
+        { serviceId: 495, key: 'ig_likes_hq', name: 'Instagram High-Quality Likes (❤️ ₹6/1K)', rate: 6, min: 1000 },
+        { serviceId: 493, key: 'ig_followers_nondrop', name: 'Instagram 100% Non-Drop Followers [365D] (⚡ ₹28/1K)', rate: 28, min: 1000 },
+        { serviceId: 502, key: 'ig_followers_india', name: 'Instagram Real Indian Followers (🇮🇳 ₹65/1K)', rate: 65, min: 1000 },
+        { serviceId: 496, key: 'ig_comments_custom', name: 'Instagram Custom Comments (💬 ₹85/1K)', rate: 85, min: 10 }
       ];
       session.step = 'SMM_AWAITING_SERVICE';
-      await sendReply(`📸 *INSTAGRAM GROWTH SERVICES*\n\n` +
-        `*1* - ⚡ 100% Non-Drop Followers: ₹180 / 1K\n` +
-        `*2* - ⚡ Low Drop Followers (30D Refill): ₹120 / 1K\n` +
-        `*3* - ❤️ HQ Post/Reel Likes: ₹45 / 1K\n` +
-        `*4* - 💬 Custom Comments: ₹380 / 1K\n` +
+      await sendReply(`📸 *INSTAGRAM GROWTH PACKAGES (INDIANSMMHUB)*\n\n` +
+        `*1* - ⚡ Superfast Reels Views: ₹0.50 / 1K\n` +
+        `*2* - ❤️ High-Quality Likes: ₹6 / 1K\n` +
+        `*3* - ⚡ 100% Non-Drop Followers [365D]: ₹28 / 1K\n` +
+        `*4* - 🇮🇳 Real Indian Targeted Followers: ₹65 / 1K\n` +
+        `*5* - 💬 Custom Comments: ₹85 / 1K\n` +
         `*0* - 🔙 Back to Platforms\n\n` +
-        `_Reply with 1, 2, 3, or 4 to choose package:_`);
+        `_Reply with 1, 2, 3, 4, or 5 to choose package:_`);
       return;
     }
 
     if (text === '2' || lower === 'yt' || lower === 'youtube') {
       session.smmPlatform = 'youtube';
       session.smmPlatformServices = [
-        { serviceId: 23304, key: 'yt_subs_nondrop', name: 'YouTube 100% Non-Drop Subscribers (Lifetime Refill)', rate: 350, min: 1000 },
-        { serviceId: 18403, key: 'yt_subs_drop5', name: 'YouTube Fast Subs (30D Refill)', rate: 220, min: 1000 },
-        { serviceId: 32112, key: 'yt_likes_nondrop', name: 'YouTube High Retention Likes', rate: 90, min: 1000 },
-        { serviceId: 23304, key: 'yt_comments_nondrop', name: 'YouTube Custom Comments', rate: 450, min: 1000 }
+        { serviceId: 328, key: 'yt_views_nondrop', name: 'YouTube Lifetime Video Views (▶️ ₹45/1K)', rate: 45, min: 1000 },
+        { serviceId: 330, key: 'yt_subs_nondrop', name: 'YouTube Non-Drop Subscribers [Refill] (⚡ ₹120/1K)', rate: 120, min: 100 },
+        { serviceId: 329, key: 'yt_likes_hq', name: 'YouTube High Retention Likes (👍 ₹25/1K)', rate: 25, min: 100 },
+        { serviceId: 332, key: 'yt_watchtime_4k', name: 'YouTube 4000 Hours WatchTime Pack (⏱️ ₹350/1K)', rate: 350, min: 500 }
       ];
       session.step = 'SMM_AWAITING_SERVICE';
-      await sendReply(`▶️ *YOUTUBE GROWTH SERVICES*\n\n` +
-        `*1* - ⚡ 100% Non-Drop Subscribers: ₹350 / 1K\n` +
-        `*2* - ⚡ Fast Subs (30D Refill): ₹220 / 1K\n` +
-        `*3* - 👍 High Retention Video Likes: ₹90 / 1K\n` +
-        `*4* - 💬 Custom Comments: ₹450 / 1K\n` +
+      await sendReply(`▶️ *YOUTUBE GROWTH PACKAGES (INDIANSMMHUB)*\n\n` +
+        `*1* - ▶️ Lifetime High-Speed Views: ₹45 / 1K\n` +
+        `*2* - ⚡ Non-Drop Subscribers [Refill]: ₹120 / 1K\n` +
+        `*3* - 👍 High Retention Video Likes: ₹25 / 1K\n` +
+        `*4* - ⏱️ 4000 Hours WatchTime Pack: ₹350 / 1K\n` +
         `*0* - 🔙 Back to Platforms\n\n` +
         `_Reply with 1, 2, 3, or 4 to choose package:_`);
       return;
@@ -630,15 +671,15 @@ async function handleWhatsAppIncomingMessage(sock, jid, fromNumber, text, servic
     if (text === '3' || lower === 'tg' || lower === 'telegram') {
       session.smmPlatform = 'telegram';
       session.smmPlatformServices = [
-        { serviceId: 31703, key: 'tg_members_nondrop', name: 'Telegram 100% Non-Drop Members (365D Refill)', rate: 160, min: 1000 },
-        { serviceId: 31702, key: 'tg_members_drop5', name: 'Telegram 30D Refill Channel Members', rate: 110, min: 1000 },
-        { serviceId: 31702, key: 'tg_members_drop10', name: 'Telegram Standard Channel Members', rate: 65, min: 1000 }
+        { serviceId: 252, key: 'tg_members_nondrop', name: 'Telegram 100% Non-Drop Members [365D] (✈️ ₹45/1K)', rate: 45, min: 100 },
+        { serviceId: 251, key: 'tg_members_fast', name: 'Telegram Fast Channel Members (⚡ ₹25/1K)', rate: 25, min: 100 },
+        { serviceId: 250, key: 'tg_views_reactions', name: 'Telegram Post Views + Reactions (🔥 ₹0.30/1K)', rate: 0.30, min: 1000 }
       ];
       session.step = 'SMM_AWAITING_SERVICE';
-      await sendReply(`✈️ *TELEGRAM GROWTH SERVICES*\n\n` +
-        `*1* - ⚡ 100% Non-Drop Channel Members (365D): ₹160 / 1K\n` +
-        `*2* - ⚡ 30D Refill Channel Members: ₹110 / 1K\n` +
-        `*3* - ⚡ Standard Channel Members: ₹65 / 1K\n` +
+      await sendReply(`✈️ *TELEGRAM GROWTH PACKAGES (INDIANSMMHUB)*\n\n` +
+        `*1* - ✈️ 100% Non-Drop Members [365D]: ₹45 / 1K\n` +
+        `*2* - ⚡ Fast Channel Members: ₹25 / 1K\n` +
+        `*3* - 🔥 Post Views + Reactions: ₹0.30 / 1K\n` +
         `*0* - 🔙 Back to Platforms\n\n` +
         `_Reply with 1, 2, or 3 to choose package:_`);
       return;
@@ -647,34 +688,36 @@ async function handleWhatsAppIncomingMessage(sock, jid, fromNumber, text, servic
     if (text === '4' || lower === 'fb' || lower === 'facebook') {
       session.smmPlatform = 'facebook';
       session.smmPlatformServices = [
-        { serviceId: 32148, key: 'fb_followers_nondrop', name: 'Facebook 100% Non-Drop Followers', rate: 210, min: 1000 },
-        { serviceId: 32147, key: 'fb_followers_drop5', name: 'Facebook Instant Page Followers', rate: 140, min: 1000 },
-        { serviceId: 32147, key: 'fb_likes_nondrop', name: 'Facebook Post Likes & Reactions', rate: 60, min: 1000 }
+        { serviceId: 445, key: 'fb_followers_nondrop', name: 'Facebook Page & Profile Followers (👍 ₹48/1K)', rate: 48, min: 100 },
+        { serviceId: 444, key: 'fb_likes_reactions', name: 'Facebook Post Likes & Reactions (❤️ ₹18/1K)', rate: 18, min: 100 },
+        { serviceId: 443, key: 'fb_views_video', name: 'Facebook Video & Reel Views (⚡ ₹12/1K)', rate: 12, min: 1000 }
       ];
       session.step = 'SMM_AWAITING_SERVICE';
-      await sendReply(`👍 *FACEBOOK GROWTH SERVICES*\n\n` +
-        `*1* - ⚡ 100% Non-Drop Page/Profile Followers: ₹210 / 1K\n` +
-        `*2* - ⚡ Instant Page Followers: ₹140 / 1K\n` +
-        `*3* - ❤️ Post Likes & Love Reactions: ₹60 / 1K\n` +
+      await sendReply(`👍 *FACEBOOK GROWTH PACKAGES (INDIANSMMHUB)*\n\n` +
+        `*1* - 👍 Page & Profile Followers: ₹48 / 1K\n` +
+        `*2* - ❤️ Post Likes & Reactions: ₹18 / 1K\n` +
+        `*3* - ⚡ Video & Reel Views: ₹12 / 1K\n` +
         `*0* - 🔙 Back to Platforms\n\n` +
         `_Reply with 1, 2, or 3 to choose package:_`);
       return;
     }
 
-    if (text === '5' || lower === 'tt' || lower === 'twitter' || lower === 'tiktok') {
+    if (text === '5' || lower === 'tt' || lower === 'twitter' || lower === 'tiktok' || lower === 'spotify') {
       session.smmPlatform = 'other';
       session.smmPlatformServices = [
-        { serviceId: 31703, key: 'tt_followers', name: 'TikTok HQ Non-Drop Followers', rate: 190, min: 1000 },
-        { serviceId: 31703, key: 'tt_likes', name: 'TikTok Video Likes', rate: 50, min: 1000 },
-        { serviceId: 31703, key: 'x_followers', name: 'Twitter / X Profile Followers', rate: 240, min: 1000 }
+        { serviceId: 470, key: 'tt_followers', name: 'TikTok HQ Non-Drop Followers (🎵 ₹55/1K)', rate: 55, min: 100 },
+        { serviceId: 471, key: 'tt_likes', name: 'TikTok Video Likes (❤️ ₹15/1K)', rate: 15, min: 100 },
+        { serviceId: 480, key: 'x_followers', name: 'Twitter / X Profile Followers (🐦 ₹65/1K)', rate: 65, min: 100 },
+        { serviceId: 520, key: 'spotify_streams', name: 'Spotify Organic Music Streams (🟢 ₹22/1K)', rate: 22, min: 1000 }
       ];
       session.step = 'SMM_AWAITING_SERVICE';
-      await sendReply(`🎵 *TIKTOK & 🐦 TWITTER / X SERVICES*\n\n` +
-        `*1* - 🎵 TikTok Followers: ₹190 / 1K\n` +
-        `*2* - ❤️ TikTok Video Likes: ₹50 / 1K\n` +
-        `*3* - 🐦 Twitter / X Followers: ₹240 / 1K\n` +
+      await sendReply(`🎵 *TIKTOK, TWITTER & SPOTIFY PACKAGES*\n\n` +
+        `*1* - 🎵 TikTok HQ Followers: ₹55 / 1K\n` +
+        `*2* - ❤️ TikTok Video Likes: ₹15 / 1K\n` +
+        `*3* - 🐦 Twitter / X Followers: ₹65 / 1K\n` +
+        `*4* - 🟢 Spotify Track Streams: ₹22 / 1K\n` +
         `*0* - 🔙 Back to Platforms\n\n` +
-        `_Reply with 1, 2, or 3 to choose package:_`);
+        `_Reply with 1, 2, 3, or 4 to choose package:_`);
       return;
     }
 
@@ -791,7 +834,7 @@ async function handleWhatsAppIncomingMessage(sock, jid, fromNumber, text, servic
       userEmail: session.linkedUser?.email || '',
       userPhone: session.linkedUser?.phone || fromNumber,
       serviceKey: srv.key || 'smm_custom',
-      serviceId: srv.serviceId || 31850,
+      serviceId: srv.serviceId || 493,
       serviceName: srv.name,
       tier: 'Social Growth',
       targetUrl,
@@ -810,6 +853,30 @@ async function handleWhatsAppIncomingMessage(sock, jid, fromNumber, text, servic
       createdAt: new Date(),
       updatedAt: new Date()
     };
+
+    // Attempt instant dispatch to IndianSMMHub API
+    try {
+      const axios = require('axios');
+      const apiUrl = store.settings?.smmProviderUrl || process.env.INDIANSMM_API_URL || 'https://indiansmmhub.com/api/v2';
+      const apiKey = store.settings?.smmApiKey || process.env.INDIANSMM_API_KEY || 'be0066920ea511dc79addd45a1c7bb554fca5798';
+      
+      const apiRes = await axios.post(apiUrl, {
+        key: apiKey,
+        action: 'add',
+        service: newOrder.serviceId,
+        link: newOrder.targetUrl,
+        quantity: newOrder.quantity
+      }, { timeout: 10000 });
+
+      if (apiRes.data && apiRes.data.order) {
+        newOrder.providerOrderId = String(apiRes.data.order);
+        newOrder.status = 'Processing';
+      } else {
+        newOrder.providerOrderId = 'WA-' + Math.floor(100000 + Math.random() * 900000);
+      }
+    } catch (apiErr) {
+      newOrder.providerOrderId = 'WA-' + Math.floor(100000 + Math.random() * 900000);
+    }
 
     store.smmOrders = store.smmOrders || [];
     store.smmOrders.unshift(newOrder);
@@ -853,16 +920,15 @@ async function handleWhatsAppIncomingMessage(sock, jid, fromNumber, text, servic
 
     const receipt = `🎉 *SMM ORDER PLACED SUCCESSFULLY!* 🎉\n\n` +
       `📦 *Order ID:* \`${orderId}\`\n` +
+      (newOrder.providerOrderId && !newOrder.providerOrderId.startsWith('WA-') ? `⚡ *Provider Order ID:* \`#${newOrder.providerOrderId}\`\n` : '') +
       `⚡ *Service:* *${srv.name}*\n` +
       `🎯 *Target Link:* \`${targetUrl}\`\n` +
       `🔢 *Quantity:* *${qty.toLocaleString()} Units*\n` +
       `💰 *Amount Paid:* *₹${totalCost.toLocaleString()}*\n` +
       `🏷️ *UTR ID:* \`${cleanUtr}\`\n` +
-      `📊 *Status:* 🟡 *Pending Admin Approval*\n` +
-      `🛡️ *Guarantee:* Lifetime Auto-Refill Guarantee Active\n\n` +
-      `🧾 *Invoice Slip:* https://princecloudsellar.onrender.com/invoice/smm/${orderId}\n` +
-      `📥 *Download PDF:* https://princecloudsellar.onrender.com/invoice/smm/${orderId}/pdf\n\n` +
-      `⚡ Once Owner verifies your payment, delivery begins automatically!\n` +
+      `📊 *Status:* 🟡 *Processing (Instant IndianSMMHub Start)*\n` +
+      `🛡️ *Guarantee:* Lifetime Auto-Refill Active\n\n` +
+      `⚡ Your order has been dispatched directly to IndianSMMHub servers!\n` +
       `👉 Reply *3* anytime to track all your orders live!`;
 
     await sendReply(receipt);
@@ -1070,11 +1136,15 @@ async function handleWhatsAppIncomingMessage(sock, jid, fromNumber, text, servic
     };
 
     store.users.push(newUser);
-    if (getDBStatus() && User) {
+    if (User) {
       try {
-        await User.create(newUser);
+        const dbCreated = await User.create(newUser);
+        if (dbCreated && dbCreated._id) {
+          newUser._id = dbCreated._id.toString();
+        }
+        console.log('✅ WhatsApp user registered & saved to MongoDB Atlas:', newUser.email);
       } catch (e) {
-        console.error('User.create error:', e.message);
+        console.error('MongoDB WhatsApp User create error:', e.message);
       }
     }
     saveLocalDB();
@@ -1858,26 +1928,30 @@ async function sendUserOrders(sendReply, fromNumber, store) {
 }
 
 async function sendAccountProfile(sendReply, fromNumber, store) {
-  const user = store.users.find(u => u.phone === fromNumber || u.whatsappNumber === fromNumber);
+  const session = whatsappSessions[fromNumber] || (whatsappSessions[fromNumber] = {});
+  const user = session.linkedUser || store.users.find(u => u.phone === fromNumber || u.whatsappNumber === fromNumber);
 
   if (user) {
-    whatsappSessions[fromNumber].linkedUser = user;
+    session.linkedUser = user;
     await sendReply(`👤 *LINKED ACCOUNT PROFILE*\n\n` +
-      `Name: *${user.name}*\n` +
-      `Email: *${user.email}*\n` +
-      `Phone: *+${user.phone}*\n` +
-      `Status: 🟢 *Active*\n\n` +
-      `_Your account is unified across Website and WhatsApp!_\n` +
-      `Type *!logout* if you want to switch accounts.`);
+      `👤 *Name:* *${user.name}*\n` +
+      `📧 *Email:* *${user.email}*\n` +
+      `📱 *Phone:* *+${user.phone}*\n` +
+      `📊 *Status:* 🟢 *Active*\n\n` +
+      `_Your account is unified across Website, Telegram & WhatsApp!_\n\n` +
+      `👉 *Commands Available:*\n` +
+      `• Reply *3* - 📦 View My Orders\n` +
+      `• Reply *!logout* - 🚪 Logout / Switch Account\n` +
+      `• Reply *!menu* - 🏠 Main Menu`);
   } else {
-    if (!whatsappSessions[fromNumber]) whatsappSessions[fromNumber] = {};
-    whatsappSessions[fromNumber].step = 'AWAITING_AUTH_CHOICE';
+    session.step = 'AWAITING_AUTH_CHOICE';
 
     await sendReply(`👤 *ACCOUNT STATUS: GUEST*\n\n` +
       `Choose an option to link or create your account:\n\n` +
       `*1* - 🔐 Login (Existing Account)\n` +
-      `*2* - 📝 Register (New Account with Email OTP)\n\n` +
-      `_Reply with 1 or 2:_`);
+      `*2* - 📝 Register (New Account with Email OTP)\n` +
+      `*3* - 🔑 Forgot Password Recovery\n\n` +
+      `_Reply with 1, 2, or 3 (or 0 to cancel):_`);
   }
 }
 

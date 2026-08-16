@@ -5,4 +5,6 @@ data/*.json
 *.log
 data/baileys_auth/
 data/baileys_auth
+auth_baileys/
+auth_baileys
 scripts/

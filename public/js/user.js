@@ -2349,7 +2349,7 @@ function switchStoreView(view) {
 }
 
 // ============================================================
-// PEAKERR LIVE SMM SERVICES & SOCIAL GROWTH AUTOMATION ENGINE
+// INDIANSMMHUB LIVE SMM SERVICES & SOCIAL GROWTH AUTOMATION ENGINE
 // ============================================================
 
 let allPeakerrServices = [];
@@ -2359,7 +2359,7 @@ let currentSelectedCategory = '';
 let currentSearchQuery = '';
 let selectedSmmServiceObj = null;
 
-// Fetch live Peakerr SMM Services from Backend API
+// Fetch live IndianSMMHub Services from Backend API
 async function fetchSmmServices() {
   try {
     const res = await fetch('/api/smm/services');
@@ -2376,7 +2376,7 @@ async function fetchSmmServices() {
       selectSmmPlatform(currentSmmPlatform);
     }
   } catch (err) {
-    console.error('Peakerr services fetch error:', err.message);
+    console.error('IndianSMM services fetch error:', err.message);
   }
 }
 
@@ -2393,8 +2393,12 @@ function selectSmmPlatform(platform) {
     'Telegram': 'smm-plat-telegram',
     'YouTube': 'smm-plat-youtube',
     'Facebook': 'smm-plat-facebook',
-    'TikTok': 'smm-plat-tiktok',
     'Twitter / X': 'smm-plat-twitter',
+    'TikTok': 'smm-plat-tiktok',
+    'Spotify': 'smm-plat-spotify',
+    'Threads': 'smm-plat-threads',
+    'Website Traffic': 'smm-plat-traffic',
+    'WhatsApp': 'smm-plat-whatsapp',
     'ALL': 'smm-plat-all'
   };
 
@@ -2413,16 +2417,28 @@ function selectSmmPlatform(platform) {
     if (linkLabel) linkLabel.innerText = 'Telegram Channel / Group Link';
   } else if (platform === 'YouTube') {
     if (linkInput) linkInput.placeholder = 'https://youtube.com/@channel or https://youtu.be/video_id';
-    if (linkLabel) linkLabel.innerText = 'YouTube Channel / Video URL';
+    if (linkLabel) linkLabel.innerText = 'YouTube Channel / Video / Shorts URL';
   } else if (platform === 'Facebook') {
     if (linkInput) linkInput.placeholder = 'https://facebook.com/page or post URL';
-    if (linkLabel) linkLabel.innerText = 'Facebook Page / Profile / Post URL';
+    if (linkLabel) linkLabel.innerText = 'Facebook Page / Profile / Post / Reel URL';
   } else if (platform === 'TikTok') {
     if (linkInput) linkInput.placeholder = 'https://tiktok.com/@username/video/...';
     if (linkLabel) linkLabel.innerText = 'TikTok Profile / Video URL';
   } else if (platform === 'Twitter / X') {
     if (linkInput) linkInput.placeholder = 'https://x.com/username or https://x.com/status/...';
     if (linkLabel) linkLabel.innerText = 'Twitter / X Profile or Tweet URL';
+  } else if (platform === 'Spotify') {
+    if (linkInput) linkInput.placeholder = 'https://open.spotify.com/artist/... or playlist URL';
+    if (linkLabel) linkLabel.innerText = 'Spotify Artist / Track / Playlist URL';
+  } else if (platform === 'Threads') {
+    if (linkInput) linkInput.placeholder = 'https://www.threads.net/@username or post URL';
+    if (linkLabel) linkLabel.innerText = 'Threads Profile / Post URL';
+  } else if (platform === 'Website Traffic') {
+    if (linkInput) linkInput.placeholder = 'https://yourwebsite.com';
+    if (linkLabel) linkLabel.innerText = 'Target Website URL';
+  } else if (platform === 'WhatsApp') {
+    if (linkInput) linkInput.placeholder = 'https://chat.whatsapp.com/... or channel link';
+    if (linkLabel) linkLabel.innerText = 'WhatsApp Channel / Group Link';
   } else {
     if (linkInput) linkInput.placeholder = 'https://... (Target Link)';
     if (linkLabel) linkLabel.innerText = 'Target Link (URL)';
@@ -2813,7 +2829,7 @@ async function confirmSmmOrderPlacement(paymentMethod) {
   const submitBtn = paymentMethod === 'UPI' ? document.getElementById('btn-submit-smm-upi') : document.getElementById('btn-submit-smm-crypto');
   if (submitBtn) {
     submitBtn.disabled = true;
-    submitBtn.innerText = '⏳ Placing Peakerr Order...';
+    submitBtn.innerText = '⏳ Placing SMM Order...';
   }
 
   try {
@@ -2847,13 +2863,13 @@ async function confirmSmmOrderPlacement(paymentMethod) {
       const succLink = document.getElementById('smm-success-link');
       const succQty = document.getElementById('smm-success-qty');
 
-      if (succOrderId) succOrderId.innerText = data.orderId || 'PK-ORDER';
+      if (succOrderId) succOrderId.innerText = data.orderId || 'SMM-ORDER';
       if (succService) succService.innerText = `[ID #${selectedSmmServiceObj.service}] ${selectedSmmServiceObj.name}`;
       if (succLink) succLink.innerText = targetUrl;
       if (succQty) succQty.innerText = `${qty.toLocaleString()} Units`;
 
       openModal('smm-success-modal');
-      showToast(data.message || `🎉 SMM Order placed on Peakerr! Order ID: ${data.orderId}`, 'success');
+      showToast(data.message || `🎉 SMM Order placed successfully! Order ID: ${data.orderId}`, 'success');
 
       // Clear link input
       const linkInput = document.getElementById('smm-target-url');
@@ -2881,7 +2897,7 @@ async function fetchUserSmmOrders() {
   const container = document.getElementById('smm-tracker-orders-list');
   if (!container) return;
 
-  container.innerHTML = `<div style="text-align:center; color:var(--text-muted); padding:30px;">🔍 Fetching your Peakerr growth orders...</div>`;
+  container.innerHTML = `<div style="text-align:center; color:var(--text-muted); padding:30px;">🔍 Fetching your social growth orders...</div>`;
 
   try {
     const userId = currentUser ? currentUser._id : 'guest';
@@ -2911,7 +2927,7 @@ async function fetchUserSmmOrders() {
             <div class="smm-order-item-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
               <div>
                 <strong style="color:var(--yellow-primary); font-family:monospace; font-size:0.95rem;">${escapeHtml(o.orderId)}</strong>
-                ${o.providerOrderId ? `<span style="font-size:0.75rem; color:#38bdf8; font-family:monospace; margin-left:6px;">[Peakerr #${escapeHtml(o.providerOrderId)}]</span>` : ''}
+                ${o.providerOrderId ? `<span style="font-size:0.75rem; color:#38bdf8; font-family:monospace; margin-left:6px;">[IndianSMM #${escapeHtml(o.providerOrderId)}]</span>` : ''}
                 <span style="font-size:0.75rem; color:var(--text-dim); margin-left:8px;">${dateStr}</span>
               </div>
               <div style="display:flex; gap:6px; align-items:center;">

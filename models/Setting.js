@@ -9,11 +9,9 @@ const settingSchema = new mongoose.Schema({
   telegramBotUrl: { type: String, default: '' },
   whatsappGroupUrl: { type: String, default: '' },
   telegramGroupUrl: { type: String, default: '' },
-  defaultBep20Address: { type: String, default: '0xD3D65940718F769E66E1e5c425AcFf76C2D9bFf2' },
-  smmProviderUrl: { type: String, default: 'https://peakerr.com/api/v2' },
-  smmApiKey: { type: String, default: '' },
-  peakerrProfitMargin: { type: Number, default: 1.45 },
-  peakerrUsdToInr: { type: Number, default: 88.0 },
+  smmProviderUrl: { type: String, default: 'https://indiansmmhub.com/api/v2' },
+  smmApiKey: { type: String, default: 'be0066920ea511dc79addd45a1c7bb554fca5798' },
+  smmProfitMargin: { type: Number, default: 1.30 },
   customServiceRates: { type: mongoose.Schema.Types.Mixed, default: {} },
   updatedAt: { type: Date, default: Date.now }
 }, { strict: false });
