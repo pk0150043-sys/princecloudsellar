@@ -545,6 +545,17 @@ async function handleWhatsAppIncomingMessage(sock, jid, fromNumber, text, servic
     return;
   }
 
+  // Direct SMM Search Command: !smm <query> or !growth <query>
+  if (lower.startsWith('!smm ') || lower.startsWith('/smm ') || lower.startsWith('!growth ') || lower.startsWith('/growth ') || lower === '!smm' || lower === '/smm' || lower === '!growth' || lower === '/growth') {
+    const query = text.replace(/^(!smm|\/smm|!growth|\/growth)\s*/i, '').trim();
+    if (query) {
+      await handleWhatsAppSmmSearch(sendReply, fromNumber, query, store);
+    } else {
+      await sendWhatsAppSmmGrowthMenu(sendReply, fromNumber, store);
+    }
+    return;
+  }
+
   // Direct Registration Command: /register or !register or register
   if (lower === '!register' || lower === '/register' || lower === 'register' || lower === 'signup') {
     session.step = 'REG_NAME';
@@ -683,96 +694,64 @@ async function handleWhatsAppIncomingMessage(sock, jid, fromNumber, text, servic
       return;
     }
 
+    const allSrv = store.smmServices || [];
+    let title = 'Instagram Growth Services';
+    let filterFn = s => (s.platform && s.platform.toLowerCase() === 'instagram') || (s.category && s.category.toLowerCase().includes('instagram'));
+
     if (text === '1' || lower === 'ig' || lower === 'instagram') {
-      session.smmPlatform = 'instagram';
-      session.smmPlatformServices = [
-        { serviceId: 1529, key: 'ig_reels_views', name: 'Instagram Superfast Reels Views (⚡ ₹0.50/1K)', rate: 0.50, min: 1000 },
-        { serviceId: 17, key: 'ig_likes_hq', name: 'Instagram High-Quality Likes [365D Refill] (❤️ ₹6/1K)', rate: 6, min: 10 },
-        { serviceId: 105, key: 'ig_followers_nondrop', name: 'Instagram 100% Non-Drop Followers (⚡ ₹28/1K)', rate: 28, min: 100 },
-        { serviceId: 1532, key: 'ig_followers_india', name: 'Instagram HQ Followers [30D Refill] (🇮🇳 ₹65/1K)', rate: 65, min: 150 },
-        { serviceId: 66, key: 'ig_comments_custom', name: 'Instagram Custom Comments (💬 ₹320/1K)', rate: 320, min: 20 }
-      ];
-      session.step = 'SMM_AWAITING_SERVICE';
-      await sendReply(`📸 *INSTAGRAM GROWTH PACKAGES (INDIANSMMHUB)*\n\n` +
-        `*1* - ⚡ Superfast Reels Views: ₹0.50 / 1K\n` +
-        `*2* - ❤️ High-Quality Likes [365D]: ₹6 / 1K\n` +
-        `*3* - ⚡ 100% Non-Drop Followers: ₹28 / 1K\n` +
-        `*4* - 🇮🇳 HQ Followers [30D Refill]: ₹65 / 1K\n` +
-        `*5* - 💬 Custom Comments: ₹320 / 1K\n` +
-        `*0* - 🔙 Back to Platforms\n\n` +
-        `_Reply with 1, 2, 3, 4, or 5 to choose package:_`);
+      title = '📸 *INSTAGRAM GROWTH SERVICES (INDIANSMMHUB)*';
+      filterFn = s => (s.platform && s.platform.toLowerCase() === 'instagram') || (s.category && s.category.toLowerCase().includes('instagram'));
+    } else if (text === '2' || lower === 'yt' || lower === 'youtube') {
+      title = '▶️ *YOUTUBE GROWTH SERVICES (INDIANSMMHUB)*';
+      filterFn = s => (s.platform && s.platform.toLowerCase() === 'youtube') || (s.category && s.category.toLowerCase().includes('youtube'));
+    } else if (text === '3' || lower === 'tg' || lower === 'telegram') {
+      title = '✈️ *TELEGRAM GROWTH SERVICES (INDIANSMMHUB)*';
+      filterFn = s => (s.platform && s.platform.toLowerCase() === 'telegram') || (s.category && s.category.toLowerCase().includes('telegram'));
+    } else if (text === '4' || lower === 'fb' || lower === 'facebook') {
+      title = '👍 *FACEBOOK GROWTH SERVICES (INDIANSMMHUB)*';
+      filterFn = s => (s.platform && s.platform.toLowerCase() === 'facebook') || (s.category && s.category.toLowerCase().includes('facebook'));
+    } else if (text === '5' || lower === 'tt' || lower === 'tiktok') {
+      title = '🎵 *TIKTOK GROWTH SERVICES (INDIANSMMHUB)*';
+      filterFn = s => (s.platform && s.platform.toLowerCase() === 'tiktok') || (s.category && s.category.toLowerCase().includes('tiktok'));
+    } else if (text === '6' || lower === 'x' || lower === 'twitter') {
+      title = '🐦 *TWITTER / X GROWTH SERVICES (INDIANSMMHUB)*';
+      filterFn = s => (s.platform && s.platform.toLowerCase() === 'twitter') || (s.category && s.category.toLowerCase().includes('twitter'));
+    } else if (text === '7' || lower === 'spotify' || lower === 'music') {
+      title = '🟢 *SPOTIFY & MUSIC PROMOTION (INDIANSMMHUB)*';
+      filterFn = s => (s.platform && s.platform.toLowerCase() === 'spotify') || (s.category && s.category.toLowerCase().includes('spotify'));
+    } else if (text === '8' || lower === 'traffic' || lower === 'seo' || lower === 'website') {
+      title = '🌐 *WEBSITE TRAFFIC & SEO VISITORS (INDIANSMMHUB)*';
+      filterFn = s => (s.platform && s.platform.toLowerCase() === 'traffic') || (s.category && s.category.toLowerCase().includes('traffic'));
+    } else if (text === '9' || lower === 'other' || lower === 'discord' || lower === 'linkedin') {
+      title = '💬 *DISCORD, LINKEDIN & OTHER PLATFORMS*';
+      filterFn = s => !['instagram', 'youtube', 'telegram', 'facebook', 'tiktok', 'twitter', 'spotify', 'traffic'].includes((s.platform || '').toLowerCase());
+    } else {
+      await sendWhatsAppSmmGrowthMenu(sendReply, fromNumber, store);
       return;
     }
 
-    if (text === '2' || lower === 'yt' || lower === 'youtube') {
-      session.smmPlatform = 'youtube';
-      session.smmPlatformServices = [
-        { serviceId: 258, key: 'yt_views_nondrop', name: 'YouTube High Retention Views (▶️ ₹160/1K)', rate: 160, min: 1000 },
-        { serviceId: 252, key: 'yt_subs_nondrop', name: 'YouTube Instant Subscribers (⚡ ₹130/1K)', rate: 130, min: 100 },
-        { serviceId: 258, key: 'yt_likes_hq', name: 'YouTube High-Speed Views (👍 ₹160/1K)', rate: 160, min: 1000 }
-      ];
-      session.step = 'SMM_AWAITING_SERVICE';
-      await sendReply(`▶️ *YOUTUBE GROWTH PACKAGES (INDIANSMMHUB)*\n\n` +
-        `*1* - ▶️ High Retention Views: ₹160 / 1K\n` +
-        `*2* - ⚡ Instant Subscribers: ₹130 / 1K\n` +
-        `*3* - 👍 High-Speed Views: ₹160 / 1K\n` +
-        `*0* - 🔙 Back to Platforms\n\n` +
-        `_Reply with 1, 2, or 3 to choose package:_`);
-      return;
-    }
+    let matched = allSrv.filter(filterFn);
+    if (matched.length === 0) matched = allSrv.slice(0, 8);
 
-    if (text === '3' || lower === 'tg' || lower === 'telegram') {
-      session.smmPlatform = 'telegram';
-      session.smmPlatformServices = [
-        { serviceId: 349, key: 'tg_members_nondrop', name: 'Telegram Non-Drop Members [Lifetime] (✈️ ₹135/1K)', rate: 135, min: 10 },
-        { serviceId: 349, key: 'tg_members_fast', name: 'Telegram Fast Channel Members (⚡ ₹135/1K)', rate: 135, min: 10 },
-        { serviceId: 352, key: 'tg_views_reactions', name: 'Telegram Post Views (🔥 ₹1.50/1K)', rate: 1.50, min: 10 }
-      ];
-      session.step = 'SMM_AWAITING_SERVICE';
-      await sendReply(`✈️ *TELEGRAM GROWTH PACKAGES (INDIANSMMHUB)*\n\n` +
-        `*1* - ✈️ Non-Drop Members [Lifetime]: ₹135 / 1K\n` +
-        `*2* - ⚡ Fast Channel Members: ₹135 / 1K\n` +
-        `*3* - 🔥 Post Views: ₹1.50 / 1K\n` +
-        `*0* - 🔙 Back to Platforms\n\n` +
-        `_Reply with 1, 2, or 3 to choose package:_`);
-      return;
-    }
+    const topServices = matched.slice(0, 8);
+    session.smmPlatformServices = topServices;
+    session.step = 'SMM_AWAITING_SERVICE';
 
-    if (text === '4' || lower === 'fb' || lower === 'facebook') {
-      session.smmPlatform = 'facebook';
-      session.smmPlatformServices = [
-        { serviceId: 158, key: 'fb_followers_nondrop', name: 'Facebook Page & Profile Followers [30D] (👍 ₹95/1K)', rate: 95, min: 10 },
-        { serviceId: 123, key: 'fb_likes_reactions', name: 'Facebook Post Likes (❤️ ₹85/1K)', rate: 85, min: 100 }
-      ];
-      session.step = 'SMM_AWAITING_SERVICE';
-      await sendReply(`👍 *FACEBOOK GROWTH PACKAGES (INDIANSMMHUB)*\n\n` +
-        `*1* - 👍 Page & Profile Followers [30D]: ₹95 / 1K\n` +
-        `*2* - ❤️ Post Likes: ₹85 / 1K\n` +
-        `*0* - 🔙 Back to Platforms\n\n` +
-        `_Reply with 1 or 2 to choose package:_`);
-      return;
-    }
+    let out = `${title}\n\n` +
+      `⚡ *High Retention Non-Drop Followers, Likes & Subscribers*\n` +
+      `📌 *Direct IndianSMMHub Provider Services (${matched.length} Available)*\n\n` +
+      `👉 *Reply with the number of your chosen package:*\n\n`;
 
-    if (text === '5' || lower === 'tt' || lower === 'twitter' || lower === 'tiktok' || lower === 'spotify') {
-      session.smmPlatform = 'other';
-      session.smmPlatformServices = [
-        { serviceId: 458, key: 'tt_followers', name: 'TikTok HQ Non-Drop Followers (🎵 ₹340/1K)', rate: 340, min: 50 },
-        { serviceId: 447, key: 'tt_likes', name: 'TikTok Video Views (❤️ ₹12/1K)', rate: 12, min: 100 },
-        { serviceId: 490, key: 'x_followers', name: 'Twitter / X Profile Followers (🐦 ₹250/1K)', rate: 250, min: 100 },
-        { serviceId: 513, key: 'spotify_streams', name: 'Spotify Music Followers (🟢 ₹85/1K)', rate: 85, min: 100 }
-      ];
-      session.step = 'SMM_AWAITING_SERVICE';
-      await sendReply(`🎵 *TIKTOK, TWITTER & SPOTIFY PACKAGES*\n\n` +
-        `*1* - 🎵 TikTok Followers: ₹340 / 1K\n` +
-        `*2* - ❤️ TikTok Video Views: ₹12 / 1K\n` +
-        `*3* - 🐦 Twitter / X Followers: ₹250 / 1K\n` +
-        `*4* - 🟢 Spotify Followers: ₹85 / 1K\n` +
-        `*0* - 🔙 Back to Platforms\n\n` +
-        `_Reply with 1, 2, 3, or 4 to choose package:_`);
-      return;
-    }
+    topServices.forEach((srv, i) => {
+      const sId = srv.serviceId || srv.service;
+      const rate = srv.rate || srv.rateInr || 10;
+      out += `*${i + 1}* - [#${sId}] ${srv.name.slice(0, 38)}: *₹${rate} / 1K*\n`;
+    });
 
-    await sendWhatsAppSmmGrowthMenu(sendReply, fromNumber, store);
+    out += `*0* - 🔙 Back to Platforms\n\n` +
+      `_Tip: You can also search any of the 500+ services by replying: \`!smm <keyword>\` (e.g. \`!smm reels\`)_`;
+
+    await sendReply(out);
     return;
   }
 
@@ -2225,19 +2204,73 @@ async function sendWhatsAppSmmGrowthMenu(sendReply, fromNumber, store) {
     whatsappSessions[fromNumber].step = 'SMM_AWAITING_PLATFORM';
   }
 
-  const text = `🚀 *SOCIAL GROWTH & SMM AUTOMATION* 🚀\n\n` +
-    `⚡ *High Retention Non-Drop Followers, Likes, Subs & Views*\n` +
+  const totalCount = (store.smmServices || []).length || 534;
+
+  const text = `🚀 *PRINCE CLOUD SELLAR - SOCIAL GROWTH & SMM* 🚀\n\n` +
+    `⚡ *High Retention Non-Drop Followers, Likes, Subs, Views & Comments*\n` +
+    `🌐 *Live IndianSMMHub Provider Catalog:* *${totalCount}+ Real Services Available*\n` +
     `📌 *Minimum Order:* 1,000 Units (Auto-Refill Guarantee)\n\n` +
-    `👉 *Select a Platform to Order:* (Reply with number):\n\n` +
-    `*1* - 📸 Instagram Growth (Followers, Likes, Comments)\n` +
-    `*2* - ▶️ YouTube Growth (Subscribers, Likes, WatchTime)\n` +
-    `*3* - ✈️ Telegram Growth (Channel Members, Views)\n` +
-    `*4* - 👍 Facebook Growth (Page Followers, Reactions)\n` +
-    `*5* - 🎵 TikTok & 🐦 Twitter / X Growth\n` +
+    `👉 *Select a Platform to Order (Reply with number):*\n\n` +
+    `*1* - 📸 Instagram Services (Reels Views, Likes, Followers, India HQ)\n` +
+    `*2* - ▶️ YouTube Services (Subscribers, 4K WatchTime, Views)\n` +
+    `*3* - ✈️ Telegram Services (Channel Members, Post Views, Reactions)\n` +
+    `*4* - 👍 Facebook Services (Page Followers, Likes, Views)\n` +
+    `*5* - 🎵 TikTok Services (Followers, Video Views, Likes)\n` +
+    `*6* - 🐦 Twitter / X Services (Followers, Retweets, Views)\n` +
+    `*7* - 🟢 Spotify & Music Promotion\n` +
+    `*8* - 🌐 Website Traffic & SEO Organic Visitors\n` +
+    `*9* - 💬 Discord, LinkedIn, Threads & Other Services\n` +
     `*0* - 🏠 Main Menu\n\n` +
-    `_Reply with 1, 2, 3, 4, or 5 to select platform & view packages:_`;
+    `🔍 *Search Any 500+ Service:* Reply \`!smm <query>\`\n` +
+    `_(Example: \`!smm reels\` or \`!smm subscribers\` or \`!smm 1529\`)_`;
 
   await sendReply(text);
+}
+
+async function handleWhatsAppSmmSearch(sendReply, fromNumber, query, store) {
+  const allServices = store.smmServices || [];
+  const cleanQ = query.toLowerCase().trim();
+  const isNumeric = /^\d+$/.test(cleanQ);
+  const targetId = isNumeric ? parseInt(cleanQ, 10) : 0;
+
+  const matches = allServices.filter(s => {
+    if (targetId && (s.serviceId === targetId || s.service === targetId)) return true;
+    return (s.name && s.name.toLowerCase().includes(cleanQ)) ||
+           (s.category && s.category.toLowerCase().includes(cleanQ)) ||
+           (s.platform && s.platform.toLowerCase().includes(cleanQ));
+  });
+
+  if (matches.length === 0) {
+    await sendReply(`🔍 *No IndianSMMHub services found matching "*${query}*"*\n\n` +
+      `Try searching for common terms like:\n` +
+      `• \`!smm reels\`\n` +
+      `• \`!smm followers\`\n` +
+      `• \`!smm youtube\`\n` +
+      `• \`!smm telegram\`\n` +
+      `• \`!smm 1529\` (Exact Service ID)\n\n` +
+      `_Or reply *2* to browse all platform categories!_`);
+    return;
+  }
+
+  const topMatches = matches.slice(0, 8);
+  const session = whatsappSessions[fromNumber] || (whatsappSessions[fromNumber] = {});
+  session.smmPlatformServices = topMatches;
+  session.step = 'SMM_AWAITING_SERVICE';
+
+  let out = `🔍 *FOUND ${matches.length} SERVICES FOR "*${query}*"*\n\n` +
+    `⚡ *Direct IndianSMMHub Server Wholesale Rates*\n\n` +
+    `👉 *Reply with the number of your chosen package:*\n\n`;
+
+  topMatches.forEach((srv, i) => {
+    const sId = srv.serviceId || srv.service;
+    const rate = srv.rate || srv.rateInr || 10;
+    out += `*${i + 1}* - [#${sId}] ${srv.name.slice(0, 38)}: *₹${rate} / 1K*\n`;
+  });
+
+  out += `*0* - 🔙 Main Menu\n\n` +
+    `_Reply with 1 to ${topMatches.length} to select your service:_`;
+
+  await sendReply(out);
 }
 
 module.exports = {

@@ -3682,6 +3682,9 @@ async function syncIndianSmmServices(force = false) {
 
       smmCategoriesCache = Object.values(categoriesMap);
       lastSmmSyncTime = Date.now();
+      persistentStore.smmServices = smmServicesCache;
+      persistentStore.smmCategories = smmCategoriesCache;
+      saveLocalDB();
       console.log(`✅ IndianSMMHub Services Synced: ${smmServicesCache.length} active services across ${smmCategoriesCache.length} categories.`);
       isSmmSyncing = false;
       return { success: true, total: smmServicesCache.length, categories: smmCategoriesCache, cached: false };
