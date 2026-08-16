@@ -4268,38 +4268,55 @@ app.post('/api/owner/smm/orders/:id/approve-upi', async (req, res) => {
     }
 
     order.paymentStatus = 'PAID';
-    order.status = 'Processing';
     order.updatedAt = new Date();
 
-    // Dispatch to IndianSMMHub API if not already dispatched
-    if (!order.providerOrderId || order.providerOrderId.startsWith('TG-') || order.providerOrderId.startsWith('WA-')) {
-      const apiUrl = persistentStore.settings.smmProviderUrl || persistentStore.settings.peakerrApiUrl || INDIANSMM_API_URL;
-      const apiKey = persistentStore.settings.smmApiKey || persistentStore.settings.peakerrApiKey || INDIANSMM_API_KEY;
+    let dispatchMsg = '';
+    let isDispatched = false;
 
-      const payload = {
-        key: apiKey,
-        action: 'add',
-        service: order.serviceId || 1529,
-        link: order.targetUrl,
-        quantity: order.quantity
-      };
-      if (order.customComments) payload.comments = order.customComments;
+    // Dispatch to IndianSMMHub API
+    const apiUrl = persistentStore.settings.smmProviderUrl || persistentStore.settings.peakerrApiUrl || INDIANSMM_API_URL;
+    const apiKey = persistentStore.settings.smmApiKey || persistentStore.settings.peakerrApiKey || INDIANSMM_API_KEY;
 
-      try {
-        const provRes = await axios.post(apiUrl, payload, { timeout: 20000 });
-        if (provRes.data && provRes.data.order) {
-          order.providerOrderId = String(provRes.data.order);
-          order.notes = `Dispatched to IndianSMMHub #${order.providerOrderId}`;
-        }
-      } catch (provErr) {
-        console.error('Failed to dispatch approved SMM order to IndianSMMHub:', provErr.message);
+    const payload = {
+      key: apiKey,
+      action: 'add',
+      service: order.serviceId || 1529,
+      link: order.targetUrl,
+      quantity: order.quantity
+    };
+    if (order.customComments) payload.comments = order.customComments;
+
+    try {
+      const provRes = await axios.post(apiUrl, payload, { timeout: 20000 });
+      if (provRes.data && provRes.data.order) {
+        order.providerOrderId = String(provRes.data.order);
+        order.status = 'Processing';
+        order.notes = `Live Dispatched to IndianSMMHub #${order.providerOrderId}`;
+        dispatchMsg = `Order ${order.orderId} approved and live dispatched to IndianSMMHub (#${order.providerOrderId})!`;
+        isDispatched = true;
+      } else if (provRes.data && provRes.data.error) {
+        order.status = 'Pending Funds (Low IndianSMMHub Balance)';
+        order.notes = `⚠️ IndianSMMHub Alert: ${provRes.data.error}`;
+        dispatchMsg = `Payment approved! Note: IndianSMMHub returned "${provRes.data.error}". Please add funds to IndianSMMHub and click 'Retry Dispatch'.`;
+      } else {
+        order.status = 'Processing';
+        order.notes = 'Approved by Owner (Queued for IndianSMMHub)';
+        dispatchMsg = `Payment approved and order queued for delivery!`;
       }
+    } catch (provErr) {
+      console.error('Failed to dispatch approved SMM order to IndianSMMHub:', provErr.message);
+      order.status = 'Pending Funds (Low IndianSMMHub Balance)';
+      order.notes = `⚠️ Dispatch Error: ${provErr.message}`;
+      dispatchMsg = `Payment approved! Note: Could not reach IndianSMMHub (${provErr.message}). You can click 'Retry Dispatch' anytime.`;
     }
 
     saveLocalDB();
     if (getDBStatus()) {
       try {
-        await SmmOrder.updateOne({ _id: order._id }, { $set: { paymentStatus: 'PAID', status: 'Processing', providerOrderId: order.providerOrderId, updatedAt: new Date() } });
+        await SmmOrder.updateOne(
+          { _id: order._id },
+          { $set: { paymentStatus: 'PAID', status: order.status, providerOrderId: order.providerOrderId, notes: order.notes, updatedAt: new Date() } }
+        );
       } catch (e) {}
     }
 
@@ -4310,7 +4327,7 @@ app.post('/api/owner/smm/orders/:id/approve-upi', async (req, res) => {
         `📦 *Order ID:* \`${order.orderId}\`\n` +
         `⚡ *Service:* *${order.serviceName}*\n` +
         `🔢 *Quantity:* *${order.quantity.toLocaleString()} Units*\n` +
-        `📊 *Status:* 🟢 *Processing (Live Delivery Active)*\n\n` +
+        `📊 *Status:* 🟢 *${order.status}*\n\n` +
         `⚡ Your growth package is now running! Track via /orders.`);
     }
 
@@ -4319,14 +4336,214 @@ app.post('/api/owner/smm/orders/:id/approve-upi', async (req, res) => {
         `📦 *Order ID:* ${order.orderId}\n` +
         `⚡ *Service:* ${order.serviceName}\n` +
         `🔢 *Quantity:* ${order.quantity.toLocaleString()} Units\n` +
-        `📊 *Status:* 🟢 Processing (Live Delivery Active)\n\n` +
+        `📊 *Status:* 🟢 ${order.status}\n\n` +
         `⚡ Your growth package is now running! Reply *3* to track live status.`);
     }
 
     // Auto-send Email Invoice & PDF Bill upon payment approval
     sendSmmInvoiceEmail(order).catch(e => console.warn('Invoice email dispatch error:', e.message));
 
-    return res.json({ success: true, message: `Order ${order.orderId} approved and dispatched to IndianSMMHub!`, order });
+    return res.json({ success: true, message: dispatchMsg, order, isDispatched });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// 8b. Owner: Retry Dispatching SMM Order to IndianSMMHub (After Adding Funds)
+app.post('/api/owner/smm/orders/:id/retry-dispatch', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const order = (persistentStore.smmOrders || []).find(o => o.orderId === id || o._id === id);
+    if (!order) {
+      return res.status(404).json({ success: false, message: "SMM Order not found." });
+    }
+
+    const apiUrl = persistentStore.settings.smmProviderUrl || persistentStore.settings.peakerrApiUrl || INDIANSMM_API_URL;
+    const apiKey = persistentStore.settings.smmApiKey || persistentStore.settings.peakerrApiKey || INDIANSMM_API_KEY;
+
+    const payload = {
+      key: apiKey,
+      action: 'add',
+      service: order.serviceId || 1529,
+      link: order.targetUrl,
+      quantity: order.quantity
+    };
+    if (order.customComments) payload.comments = order.customComments;
+
+    const provRes = await axios.post(apiUrl, payload, { timeout: 20000 });
+    if (provRes.data && provRes.data.order) {
+      order.providerOrderId = String(provRes.data.order);
+      order.status = 'Processing';
+      order.paymentStatus = 'PAID';
+      order.notes = `Live Dispatched to IndianSMMHub #${order.providerOrderId}`;
+      order.updatedAt = new Date();
+
+      saveLocalDB();
+      if (getDBStatus()) {
+        await SmmOrder.updateOne(
+          { _id: order._id },
+          { $set: { providerOrderId: order.providerOrderId, status: 'Processing', notes: order.notes, updatedAt: new Date() } }
+        ).catch(() => {});
+      }
+
+      return res.json({ success: true, message: `🚀 Successfully dispatched to IndianSMMHub (#${order.providerOrderId})!`, order });
+    } else {
+      const errMsg = provRes.data?.error || 'Unknown error from IndianSMMHub';
+      order.notes = `⚠️ IndianSMMHub Alert: ${errMsg}`;
+      order.updatedAt = new Date();
+      saveLocalDB();
+      return res.status(400).json({ success: false, message: `IndianSMMHub Error: ${errMsg}`, order });
+    }
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Dispatch failed: ' + err.message });
+  }
+});
+
+// 8c. Owner: Cancel / Reject SMM Order
+app.post('/api/owner/smm/orders/:id/cancel', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { reason } = req.body || {};
+    const order = (persistentStore.smmOrders || []).find(o => o.orderId === id || o._id === id);
+    if (!order) {
+      return res.status(404).json({ success: false, message: "SMM Order not found." });
+    }
+
+    order.status = 'Canceled';
+    order.notes = reason ? `Cancelled by Owner: ${reason}` : 'Cancelled by Owner';
+    order.updatedAt = new Date();
+
+    saveLocalDB();
+    if (getDBStatus()) {
+      await SmmOrder.updateOne(
+        { _id: order._id },
+        { $set: { status: 'Canceled', notes: order.notes, updatedAt: new Date() } }
+      ).catch(() => {});
+    }
+
+    // Notify Customer
+    if (order.userId && order.userId.startsWith('tg_')) {
+      const tgChatId = order.userId.replace('tg_', '');
+      sendTelegramDirectMessage(tgChatId, `❌ *SMM ORDER CANCELLED*\n\n` +
+        `📦 *Order ID:* \`${order.orderId}\`\n` +
+        `⚡ *Service:* ${order.serviceName}\n` +
+        `📌 *Reason:* ${reason || 'Order cancelled by Admin / Invalid Payment.'}\n\n` +
+        `For questions, contact customer support.`);
+    }
+
+    if (order.userPhone) {
+      sendWhatsAppDirectMessage(order.userPhone, `❌ *SMM ORDER CANCELLED*\n\n` +
+        `📦 *Order ID:* ${order.orderId}\n` +
+        `⚡ *Service:* ${order.serviceName}\n` +
+        `📌 *Reason:* ${reason || 'Order cancelled by Admin / Invalid Payment.'}\n\n` +
+        `For questions, contact customer support.`);
+    }
+
+    return res.json({ success: true, message: `Order #${order.orderId} marked as Cancelled.`, order });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// 8d. Customer: Cancel Pending SMM Order
+app.post('/api/smm/orders/:id/cancel', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const order = (persistentStore.smmOrders || []).find(o => o.orderId === id || o._id === id);
+    if (!order) {
+      return res.status(404).json({ success: false, message: "SMM Order not found." });
+    }
+
+    if (order.status === 'Completed' || order.status === 'In Progress' || (order.providerOrderId && !order.providerOrderId.startsWith('TG-') && !order.providerOrderId.startsWith('WA-'))) {
+      return res.status(400).json({ success: false, message: "This order is already active on IndianSMMHub servers and cannot be cancelled automatically." });
+    }
+
+    order.status = 'Canceled';
+    order.notes = 'Cancelled by Customer';
+    order.updatedAt = new Date();
+
+    saveLocalDB();
+    if (getDBStatus()) {
+      await SmmOrder.updateOne(
+        { _id: order._id },
+        { $set: { status: 'Canceled', notes: order.notes, updatedAt: new Date() } }
+      ).catch(() => {});
+    }
+
+    return res.json({ success: true, message: `Order #${order.orderId} cancelled successfully.`, order });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// 8e. Owner: Cancel / Reject Cloud Account Order
+app.post('/api/owner/orders/:id/cancel', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { reason } = req.body || {};
+    let order = persistentStore.orders.find(o => String(o._id) === String(id));
+    if (!order && getDBStatus() && Order) {
+      const dbOrder = await Order.findOne({ _id: id }).lean();
+      if (dbOrder) {
+        order = { ...dbOrder, _id: String(dbOrder._id) };
+        persistentStore.orders.unshift(order);
+      }
+    }
+
+    if (!order) {
+      return res.status(404).json({ success: false, message: `Order #${id} not found.` });
+    }
+
+    order.deliveryStatus = 'CANCELLED';
+    order.ownerNotes = reason ? `Cancelled by Owner: ${reason}` : 'Cancelled by Owner';
+
+    saveLocalDB();
+    if (getDBStatus() && Order) {
+      await Order.findOneAndUpdate(
+        { _id: order._id },
+        { deliveryStatus: 'CANCELLED', ownerNotes: order.ownerNotes }
+      ).catch(() => {});
+    }
+
+    return res.json({ success: true, message: `Order #${order._id} cancelled.`, order });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// 8f. Customer: Cancel Pending Cloud Account Order
+app.post('/api/orders/:id/cancel', async (req, res) => {
+  try {
+    const { id } = req.params;
+    let order = persistentStore.orders.find(o => String(o._id) === String(id));
+    if (!order && getDBStatus() && Order) {
+      const dbOrder = await Order.findOne({ _id: id }).lean();
+      if (dbOrder) {
+        order = { ...dbOrder, _id: String(dbOrder._id) };
+        persistentStore.orders.unshift(order);
+      }
+    }
+
+    if (!order) {
+      return res.status(404).json({ success: false, message: `Order #${id} not found.` });
+    }
+
+    if (order.deliveryStatus === 'DELIVERED') {
+      return res.status(400).json({ success: false, message: "Order is already delivered and cannot be cancelled." });
+    }
+
+    order.deliveryStatus = 'CANCELLED';
+    order.ownerNotes = 'Cancelled by Customer';
+
+    saveLocalDB();
+    if (getDBStatus() && Order) {
+      await Order.findOneAndUpdate(
+        { _id: order._id },
+        { deliveryStatus: 'CANCELLED', ownerNotes: order.ownerNotes }
+      ).catch(() => {});
+    }
+
+    return res.json({ success: true, message: `Order #${order._id} cancelled successfully.`, order });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }

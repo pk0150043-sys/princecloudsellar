@@ -2864,23 +2864,34 @@ function renderOwnerSmmOrdersTable() {
           <span class="badge ${statusClass}">
             ${escapeHtml(o.status || 'Processing')}
           </span>
+          ${o.paymentStatus === 'PENDING_UPI_VERIFICATION' ? `<span class="badge badge-yellow" style="font-size:0.65rem; display:block; margin-top:2px;">⚠️ Pending UPI (${escapeHtml(o.utrId || 'No UTR')})</span>` : ''}
         </td>
         <td style="text-align:right;">
-          <div style="display:flex; justify-content:flex-end; gap:6px;">
+          <div style="display:flex; justify-content:flex-end; gap:5px; flex-wrap:wrap;">
+            ${(o.paymentStatus === 'PENDING_UPI_VERIFICATION' || o.status === 'Pending Admin Approval') ? `
+              <button type="button" class="btn btn-primary" onclick="approveOwnerSmmOrder('${o.orderId}')" style="padding:3px 7px; font-size:0.72rem; font-weight:700; background:#22c55e; color:#000;" title="Verify UPI & Dispatch Order">
+                ✅ Approve
+              </button>
+            ` : ''}
             ${(!o.providerOrderId || isNaN(Number(o.providerOrderId))) ? `
-              <button type="button" class="btn btn-primary" onclick="retryOwnerSmmDispatch('${o.orderId}')" style="padding:4px 8px; font-size:0.75rem; font-weight:700;" title="Dispatch order to IndianSMMHub">
+              <button type="button" class="btn btn-primary" onclick="retryOwnerSmmDispatch('${o.orderId}')" style="padding:3px 7px; font-size:0.72rem; font-weight:700;" title="Dispatch order to IndianSMMHub">
                 🚀 Dispatch
               </button>
             ` : `
-              <button type="button" class="btn btn-secondary" onclick="syncSinglePeakerrOrderStatus('${o.orderId}')" style="padding:4px 8px; font-size:0.75rem;" title="Sync Live Status directly from IndianSMMHub">
+              <button type="button" class="btn btn-secondary" onclick="syncSinglePeakerrOrderStatus('${o.orderId}')" style="padding:3px 7px; font-size:0.72rem;" title="Sync Live Status from IndianSMMHub">
                 🔄 Sync
               </button>
             `}
-            <button type="button" class="btn btn-secondary" onclick="openOwnerSmmOrderModal('${o.orderId}')" style="padding:4px 8px; font-size:0.75rem;">
+            ${o.status !== 'Canceled' && o.status !== 'Completed' ? `
+              <button type="button" class="btn btn-danger" onclick="cancelOwnerSmmOrder('${o.orderId}')" style="padding:3px 7px; font-size:0.72rem; background:rgba(239,68,68,0.2); border:1px solid #ef4444; color:#ef4444;" title="Cancel / Reject Order">
+                ❌ Cancel
+              </button>
+            ` : ''}
+            <button type="button" class="btn btn-secondary" onclick="openOwnerSmmOrderModal('${o.orderId}')" style="padding:3px 7px; font-size:0.72rem;">
               🔍 Details
             </button>
             ${o.refillable ? `
-              <button type="button" class="btn btn-secondary" onclick="triggerOwnerSmmRefill('${o.orderId}')" style="padding:4px 8px; font-size:0.75rem; border-color:var(--yellow-primary); color:var(--yellow-primary);" title="Trigger Refill">
+              <button type="button" class="btn btn-secondary" onclick="triggerOwnerSmmRefill('${o.orderId}')" style="padding:3px 7px; font-size:0.72rem; border-color:var(--yellow-primary); color:var(--yellow-primary);" title="Trigger Refill">
                 🛡️
               </button>
             ` : ''}
@@ -2889,6 +2900,54 @@ function renderOwnerSmmOrdersTable() {
       </tr>
     `;
   }).join('');
+}
+
+// Approve SMM UPI Payment & Auto-Dispatch to IndianSMMHub
+async function approveOwnerSmmOrder(orderId) {
+  if (!confirm(`Are you sure you want to APPROVE SMM Order #${orderId}?\n\nThis will verify payment and immediately dispatch the order to IndianSMMHub automated servers.`)) {
+    return;
+  }
+
+  try {
+    showToast('⚡ Approving UPI payment and dispatching to IndianSMMHub...', 'info');
+    const res = await fetch(`/api/owner/smm/orders/${orderId}/approve-upi`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' }
+    });
+    const data = await res.json();
+    if (data.success) {
+      showToast(data.message, 'success');
+      fetchOwnerSmmOrders();
+    } else {
+      showToast(data.message || 'Approval notice', 'error');
+    }
+  } catch (err) {
+    showToast('Approval error: ' + err.message, 'error');
+  }
+}
+
+// Cancel / Reject SMM Order by Owner
+async function cancelOwnerSmmOrder(orderId) {
+  const reason = prompt(`Enter cancellation reason for SMM Order #${orderId}:`, 'Payment unverified / invalid UPI UTR');
+  if (reason === null) return;
+
+  try {
+    showToast('Cancelling SMM order...', 'info');
+    const res = await fetch(`/api/owner/smm/orders/${orderId}/cancel`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ reason })
+    });
+    const data = await res.json();
+    if (data.success) {
+      showToast(data.message, 'info');
+      fetchOwnerSmmOrders();
+    } else {
+      showToast(data.message || 'Failed to cancel order.', 'error');
+    }
+  } catch (err) {
+    showToast('Cancel error: ' + err.message, 'error');
+  }
 }
 
 // Retry or send dispatch directly to IndianSMMHub API

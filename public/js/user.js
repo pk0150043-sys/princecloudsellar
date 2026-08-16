@@ -1711,13 +1711,18 @@ function renderCombinedOrdersView() {
             <div class="code-box" style="margin:4px 0 0 0; white-space:pre-wrap;">${escapeHtml(ord.deliveredItem)}</div>
           </div>
           <div style="display:flex; gap:8px; margin-top:12px; flex-wrap:wrap;">
-            <a href="/invoice/${ord._id}" target="_blank" class="btn btn-secondary" style="flex:1; min-width:140px; padding:7px 12px; font-size:0.82rem; text-decoration:none; text-align:center; display:inline-flex; align-items:center; justify-content:center; gap:6px;">
+            <a href="/invoice/${ord._id}" target="_blank" class="btn btn-secondary" style="flex:1; min-width:130px; padding:7px 12px; font-size:0.82rem; text-decoration:none; text-align:center; display:inline-flex; align-items:center; justify-content:center; gap:6px;">
               🧾 Invoice Slip
             </a>
-            <a href="/invoice/${ord._id}/pdf" target="_blank" class="btn btn-secondary" style="flex:1; min-width:140px; padding:7px 12px; font-size:0.82rem; text-decoration:none; text-align:center; display:inline-flex; align-items:center; justify-content:center; gap:6px; border-color:var(--yellow-primary); color:var(--yellow-primary);">
-              📥 Download PDF
+            <a href="/invoice/${ord._id}/pdf" target="_blank" class="btn btn-secondary" style="flex:1; min-width:130px; padding:7px 12px; font-size:0.82rem; text-decoration:none; text-align:center; display:inline-flex; align-items:center; justify-content:center; gap:6px; border-color:var(--yellow-primary); color:var(--yellow-primary);">
+              📥 PDF Invoice
             </a>
-            <button type="button" class="btn btn-secondary" onclick="reportOrderIssue('${escapeHtml(ord._id)}', '${escapeHtml(ord.productId)}', '${escapeHtml(ord.productName)}', '${escapeHtml(ord.subProduct || '')}', '${escapeHtml(ord.country || '')}', '${escapeHtml(ord.txHash || '')}', '${escapeHtml(ord.totalPaid)}')" style="flex:1; min-width:140px; padding:7px 12px; font-size:0.82rem; border-color:#f87171; color:#f87171; font-weight:700; display:flex; align-items:center; justify-content:center; gap:6px;">
+            ${(!isDelivered && !isRejected && ord.deliveryStatus !== 'CANCELLED') ? `
+              <button type="button" class="btn btn-secondary" onclick="cancelCustomerCloudOrder('${escapeHtml(ord._id)}')" style="flex:1; min-width:110px; padding:7px 12px; font-size:0.82rem; border-color:#ef4444; color:#ef4444; font-weight:700;">
+                ❌ Cancel Order
+              </button>
+            ` : ''}
+            <button type="button" class="btn btn-secondary" onclick="reportOrderIssue('${escapeHtml(ord._id)}', '${escapeHtml(ord.productId)}', '${escapeHtml(ord.productName)}', '${escapeHtml(ord.subProduct || '')}', '${escapeHtml(ord.country || '')}', '${escapeHtml(ord.txHash || '')}', '${escapeHtml(ord.totalPaid)}')" style="flex:1; min-width:130px; padding:7px 12px; font-size:0.82rem; border-color:#f87171; color:#f87171; font-weight:700; display:flex; align-items:center; justify-content:center; gap:6px;">
               ⚠️ Report Issue
             </button>
           </div>
@@ -1787,6 +1792,11 @@ function renderCombinedOrdersView() {
           <a href="/invoice/smm/${escapeHtml(ord.orderId || ord._id)}/pdf" target="_blank" class="btn btn-secondary" style="flex:1; min-width:110px; padding:7px 12px; font-size:0.82rem; text-decoration:none; text-align:center; display:inline-flex; align-items:center; justify-content:center; gap:6px; border-color:#facc15; color:#facc15;">
             📥 PDF Bill
           </a>
+          ${(!isCompleted && ord.status !== 'Canceled' && (!ord.providerOrderId || ord.providerOrderId.startsWith('TG-') || ord.providerOrderId.startsWith('WA-'))) ? `
+            <button type="button" onclick="cancelCustomerSmmOrder('${escapeHtml(ord.orderId || ord._id)}')" class="btn btn-secondary" style="flex:1; min-width:100px; padding:7px 12px; font-size:0.82rem; border-color:#ef4444; color:#ef4444; font-weight:700;">
+              ❌ Cancel
+            </button>
+          ` : ''}
           <a href="https://wa.me/919507325677?text=Hello%20Owner%20I%20have%20an%20inquiry%20regarding%20SMM%20Order%20${escapeHtml(ord.orderId)}" target="_blank" class="btn btn-secondary" style="flex:1; min-width:110px; padding:7px 12px; font-size:0.82rem; text-decoration:none; text-align:center; display:inline-flex; align-items:center; justify-content:center; gap:6px;">
             💬 Support
           </a>
@@ -1796,6 +1806,40 @@ function renderCombinedOrdersView() {
   }).join('');
 
   container.innerHTML = headerTabs + smmHtml;
+}
+
+async function cancelCustomerCloudOrder(orderId) {
+  if (!confirm(`Are you sure you want to CANCEL Order #${orderId}?`)) return;
+
+  try {
+    const res = await fetch(`/api/orders/${orderId}/cancel`, { method: 'POST' });
+    const data = await res.json();
+    if (data.success) {
+      showToast('✅ Order cancelled successfully.', 'info');
+      handleOpenMyOrdersModal();
+    } else {
+      showToast(data.message || 'Failed to cancel order.', 'error');
+    }
+  } catch (err) {
+    showToast('Cancellation error: ' + err.message, 'error');
+  }
+}
+
+async function cancelCustomerSmmOrder(orderId) {
+  if (!confirm(`Are you sure you want to CANCEL SMM Order #${orderId}?`)) return;
+
+  try {
+    const res = await fetch(`/api/smm/orders/${orderId}/cancel`, { method: 'POST' });
+    const data = await res.json();
+    if (data.success) {
+      showToast('✅ SMM Order cancelled successfully.', 'info');
+      handleOpenMyOrdersModal();
+    } else {
+      showToast(data.message || 'Failed to cancel SMM order.', 'error');
+    }
+  } catch (err) {
+    showToast('Cancellation error: ' + err.message, 'error');
+  }
 }
 
 async function syncCustomerSmmOrderStatus(orderId) {

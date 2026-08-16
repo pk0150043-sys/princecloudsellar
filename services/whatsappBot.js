@@ -498,6 +498,53 @@ async function handleWhatsAppIncomingMessage(sock, jid, fromNumber, text, servic
     return;
   }
 
+  // Direct Cancel Order Command: !cancel <orderId> or /cancel <orderId>
+  if (lower.startsWith('!cancel ') || lower.startsWith('/cancel ') || lower.startsWith('cancel ')) {
+    const targetId = text.replace(/^(!cancel|\/cancel|cancel)\s+/i, '').trim();
+    if (!targetId) {
+      await sendReply(`ℹ️ *How to cancel a pending order:*\nReply: \`!cancel <OrderID>\` (e.g. \`!cancel SMM-XYZ\` or \`!cancel ord_123\`).`);
+      return;
+    }
+
+    // 1. Check SMM orders
+    const smmOrd = (store.smmOrders || []).find(o => (o.orderId === targetId || o._id === targetId));
+    if (smmOrd) {
+      if (smmOrd.status === 'Completed' || smmOrd.status === 'In Progress' || (smmOrd.providerOrderId && !smmOrd.providerOrderId.startsWith('TG-') && !smmOrd.providerOrderId.startsWith('WA-'))) {
+        await sendReply(`⚠️ *Cannot Cancel Order:* This order is already active or completed on IndianSMMHub servers.`);
+        return;
+      }
+      smmOrd.status = 'Canceled';
+      smmOrd.notes = 'Cancelled by Customer via WhatsApp';
+      smmOrd.updatedAt = new Date();
+      saveLocalDB();
+      if (getDBStatus() && SmmOrder) {
+        SmmOrder.updateOne({ _id: smmOrd._id }, { $set: { status: 'Canceled', notes: smmOrd.notes, updatedAt: new Date() } }).catch(() => {});
+      }
+      await sendReply(`✅ *Order #${targetId} has been cancelled successfully.*`);
+      return;
+    }
+
+    // 2. Check Cloud orders
+    const cloudOrd = (store.orders || []).find(o => String(o._id) === targetId);
+    if (cloudOrd) {
+      if (cloudOrd.deliveryStatus === 'DELIVERED') {
+        await sendReply(`⚠️ *Cannot Cancel Order:* This order has already been delivered.`);
+        return;
+      }
+      cloudOrd.deliveryStatus = 'CANCELLED';
+      cloudOrd.ownerNotes = 'Cancelled by Customer via WhatsApp';
+      saveLocalDB();
+      if (getDBStatus() && Order) {
+        Order.findOneAndUpdate({ _id: cloudOrd._id }, { deliveryStatus: 'CANCELLED', ownerNotes: cloudOrd.ownerNotes }).catch(() => {});
+      }
+      await sendReply(`✅ *Order #${targetId} has been cancelled successfully.*`);
+      return;
+    }
+
+    await sendReply(`⚠️ *Order #${targetId} not found.* Please check your Order ID by replying *3*.`);
+    return;
+  }
+
   // Direct Registration Command: /register or !register or register
   if (lower === '!register' || lower === '/register' || lower === 'register' || lower === 'signup') {
     session.step = 'REG_NAME';
@@ -631,19 +678,19 @@ async function handleWhatsAppIncomingMessage(sock, jid, fromNumber, text, servic
     if (text === '1' || lower === 'ig' || lower === 'instagram') {
       session.smmPlatform = 'instagram';
       session.smmPlatformServices = [
-        { serviceId: 494, key: 'ig_reels_views', name: 'Instagram Superfast Reels Views (⚡ ₹0.50/1K)', rate: 0.50, min: 1000 },
-        { serviceId: 495, key: 'ig_likes_hq', name: 'Instagram High-Quality Likes (❤️ ₹6/1K)', rate: 6, min: 1000 },
-        { serviceId: 493, key: 'ig_followers_nondrop', name: 'Instagram 100% Non-Drop Followers [365D] (⚡ ₹28/1K)', rate: 28, min: 1000 },
-        { serviceId: 502, key: 'ig_followers_india', name: 'Instagram Real Indian Followers (🇮🇳 ₹65/1K)', rate: 65, min: 1000 },
-        { serviceId: 496, key: 'ig_comments_custom', name: 'Instagram Custom Comments (💬 ₹85/1K)', rate: 85, min: 10 }
+        { serviceId: 1529, key: 'ig_reels_views', name: 'Instagram Superfast Reels Views (⚡ ₹0.50/1K)', rate: 0.50, min: 1000 },
+        { serviceId: 17, key: 'ig_likes_hq', name: 'Instagram High-Quality Likes [365D Refill] (❤️ ₹6/1K)', rate: 6, min: 10 },
+        { serviceId: 105, key: 'ig_followers_nondrop', name: 'Instagram 100% Non-Drop Followers (⚡ ₹28/1K)', rate: 28, min: 100 },
+        { serviceId: 1532, key: 'ig_followers_india', name: 'Instagram HQ Followers [30D Refill] (🇮🇳 ₹65/1K)', rate: 65, min: 150 },
+        { serviceId: 66, key: 'ig_comments_custom', name: 'Instagram Custom Comments (💬 ₹320/1K)', rate: 320, min: 20 }
       ];
       session.step = 'SMM_AWAITING_SERVICE';
       await sendReply(`📸 *INSTAGRAM GROWTH PACKAGES (INDIANSMMHUB)*\n\n` +
         `*1* - ⚡ Superfast Reels Views: ₹0.50 / 1K\n` +
-        `*2* - ❤️ High-Quality Likes: ₹6 / 1K\n` +
-        `*3* - ⚡ 100% Non-Drop Followers [365D]: ₹28 / 1K\n` +
-        `*4* - 🇮🇳 Real Indian Targeted Followers: ₹65 / 1K\n` +
-        `*5* - 💬 Custom Comments: ₹85 / 1K\n` +
+        `*2* - ❤️ High-Quality Likes [365D]: ₹6 / 1K\n` +
+        `*3* - ⚡ 100% Non-Drop Followers: ₹28 / 1K\n` +
+        `*4* - 🇮🇳 HQ Followers [30D Refill]: ₹65 / 1K\n` +
+        `*5* - 💬 Custom Comments: ₹320 / 1K\n` +
         `*0* - 🔙 Back to Platforms\n\n` +
         `_Reply with 1, 2, 3, 4, or 5 to choose package:_`);
       return;
@@ -652,34 +699,32 @@ async function handleWhatsAppIncomingMessage(sock, jid, fromNumber, text, servic
     if (text === '2' || lower === 'yt' || lower === 'youtube') {
       session.smmPlatform = 'youtube';
       session.smmPlatformServices = [
-        { serviceId: 328, key: 'yt_views_nondrop', name: 'YouTube Lifetime Video Views (▶️ ₹45/1K)', rate: 45, min: 1000 },
-        { serviceId: 330, key: 'yt_subs_nondrop', name: 'YouTube Non-Drop Subscribers [Refill] (⚡ ₹120/1K)', rate: 120, min: 100 },
-        { serviceId: 329, key: 'yt_likes_hq', name: 'YouTube High Retention Likes (👍 ₹25/1K)', rate: 25, min: 100 },
-        { serviceId: 332, key: 'yt_watchtime_4k', name: 'YouTube 4000 Hours WatchTime Pack (⏱️ ₹350/1K)', rate: 350, min: 500 }
+        { serviceId: 258, key: 'yt_views_nondrop', name: 'YouTube High Retention Views (▶️ ₹160/1K)', rate: 160, min: 1000 },
+        { serviceId: 252, key: 'yt_subs_nondrop', name: 'YouTube Instant Subscribers (⚡ ₹130/1K)', rate: 130, min: 100 },
+        { serviceId: 258, key: 'yt_likes_hq', name: 'YouTube High-Speed Views (👍 ₹160/1K)', rate: 160, min: 1000 }
       ];
       session.step = 'SMM_AWAITING_SERVICE';
       await sendReply(`▶️ *YOUTUBE GROWTH PACKAGES (INDIANSMMHUB)*\n\n` +
-        `*1* - ▶️ Lifetime High-Speed Views: ₹45 / 1K\n` +
-        `*2* - ⚡ Non-Drop Subscribers [Refill]: ₹120 / 1K\n` +
-        `*3* - 👍 High Retention Video Likes: ₹25 / 1K\n` +
-        `*4* - ⏱️ 4000 Hours WatchTime Pack: ₹350 / 1K\n` +
+        `*1* - ▶️ High Retention Views: ₹160 / 1K\n` +
+        `*2* - ⚡ Instant Subscribers: ₹130 / 1K\n` +
+        `*3* - 👍 High-Speed Views: ₹160 / 1K\n` +
         `*0* - 🔙 Back to Platforms\n\n` +
-        `_Reply with 1, 2, 3, or 4 to choose package:_`);
+        `_Reply with 1, 2, or 3 to choose package:_`);
       return;
     }
 
     if (text === '3' || lower === 'tg' || lower === 'telegram') {
       session.smmPlatform = 'telegram';
       session.smmPlatformServices = [
-        { serviceId: 252, key: 'tg_members_nondrop', name: 'Telegram 100% Non-Drop Members [365D] (✈️ ₹45/1K)', rate: 45, min: 100 },
-        { serviceId: 251, key: 'tg_members_fast', name: 'Telegram Fast Channel Members (⚡ ₹25/1K)', rate: 25, min: 100 },
-        { serviceId: 250, key: 'tg_views_reactions', name: 'Telegram Post Views + Reactions (🔥 ₹0.30/1K)', rate: 0.30, min: 1000 }
+        { serviceId: 349, key: 'tg_members_nondrop', name: 'Telegram Non-Drop Members [Lifetime] (✈️ ₹135/1K)', rate: 135, min: 10 },
+        { serviceId: 349, key: 'tg_members_fast', name: 'Telegram Fast Channel Members (⚡ ₹135/1K)', rate: 135, min: 10 },
+        { serviceId: 352, key: 'tg_views_reactions', name: 'Telegram Post Views (🔥 ₹1.50/1K)', rate: 1.50, min: 10 }
       ];
       session.step = 'SMM_AWAITING_SERVICE';
       await sendReply(`✈️ *TELEGRAM GROWTH PACKAGES (INDIANSMMHUB)*\n\n` +
-        `*1* - ✈️ 100% Non-Drop Members [365D]: ₹45 / 1K\n` +
-        `*2* - ⚡ Fast Channel Members: ₹25 / 1K\n` +
-        `*3* - 🔥 Post Views + Reactions: ₹0.30 / 1K\n` +
+        `*1* - ✈️ Non-Drop Members [Lifetime]: ₹135 / 1K\n` +
+        `*2* - ⚡ Fast Channel Members: ₹135 / 1K\n` +
+        `*3* - 🔥 Post Views: ₹1.50 / 1K\n` +
         `*0* - 🔙 Back to Platforms\n\n` +
         `_Reply with 1, 2, or 3 to choose package:_`);
       return;
@@ -688,34 +733,32 @@ async function handleWhatsAppIncomingMessage(sock, jid, fromNumber, text, servic
     if (text === '4' || lower === 'fb' || lower === 'facebook') {
       session.smmPlatform = 'facebook';
       session.smmPlatformServices = [
-        { serviceId: 445, key: 'fb_followers_nondrop', name: 'Facebook Page & Profile Followers (👍 ₹48/1K)', rate: 48, min: 100 },
-        { serviceId: 444, key: 'fb_likes_reactions', name: 'Facebook Post Likes & Reactions (❤️ ₹18/1K)', rate: 18, min: 100 },
-        { serviceId: 443, key: 'fb_views_video', name: 'Facebook Video & Reel Views (⚡ ₹12/1K)', rate: 12, min: 1000 }
+        { serviceId: 158, key: 'fb_followers_nondrop', name: 'Facebook Page & Profile Followers [30D] (👍 ₹95/1K)', rate: 95, min: 10 },
+        { serviceId: 123, key: 'fb_likes_reactions', name: 'Facebook Post Likes (❤️ ₹85/1K)', rate: 85, min: 100 }
       ];
       session.step = 'SMM_AWAITING_SERVICE';
       await sendReply(`👍 *FACEBOOK GROWTH PACKAGES (INDIANSMMHUB)*\n\n` +
-        `*1* - 👍 Page & Profile Followers: ₹48 / 1K\n` +
-        `*2* - ❤️ Post Likes & Reactions: ₹18 / 1K\n` +
-        `*3* - ⚡ Video & Reel Views: ₹12 / 1K\n` +
+        `*1* - 👍 Page & Profile Followers [30D]: ₹95 / 1K\n` +
+        `*2* - ❤️ Post Likes: ₹85 / 1K\n` +
         `*0* - 🔙 Back to Platforms\n\n` +
-        `_Reply with 1, 2, or 3 to choose package:_`);
+        `_Reply with 1 or 2 to choose package:_`);
       return;
     }
 
     if (text === '5' || lower === 'tt' || lower === 'twitter' || lower === 'tiktok' || lower === 'spotify') {
       session.smmPlatform = 'other';
       session.smmPlatformServices = [
-        { serviceId: 470, key: 'tt_followers', name: 'TikTok HQ Non-Drop Followers (🎵 ₹55/1K)', rate: 55, min: 100 },
-        { serviceId: 471, key: 'tt_likes', name: 'TikTok Video Likes (❤️ ₹15/1K)', rate: 15, min: 100 },
-        { serviceId: 480, key: 'x_followers', name: 'Twitter / X Profile Followers (🐦 ₹65/1K)', rate: 65, min: 100 },
-        { serviceId: 520, key: 'spotify_streams', name: 'Spotify Organic Music Streams (🟢 ₹22/1K)', rate: 22, min: 1000 }
+        { serviceId: 458, key: 'tt_followers', name: 'TikTok HQ Non-Drop Followers (🎵 ₹340/1K)', rate: 340, min: 50 },
+        { serviceId: 447, key: 'tt_likes', name: 'TikTok Video Views (❤️ ₹12/1K)', rate: 12, min: 100 },
+        { serviceId: 490, key: 'x_followers', name: 'Twitter / X Profile Followers (🐦 ₹250/1K)', rate: 250, min: 100 },
+        { serviceId: 513, key: 'spotify_streams', name: 'Spotify Music Followers (🟢 ₹85/1K)', rate: 85, min: 100 }
       ];
       session.step = 'SMM_AWAITING_SERVICE';
       await sendReply(`🎵 *TIKTOK, TWITTER & SPOTIFY PACKAGES*\n\n` +
-        `*1* - 🎵 TikTok HQ Followers: ₹55 / 1K\n` +
-        `*2* - ❤️ TikTok Video Likes: ₹15 / 1K\n` +
-        `*3* - 🐦 Twitter / X Followers: ₹65 / 1K\n` +
-        `*4* - 🟢 Spotify Track Streams: ₹22 / 1K\n` +
+        `*1* - 🎵 TikTok Followers: ₹340 / 1K\n` +
+        `*2* - ❤️ TikTok Video Views: ₹12 / 1K\n` +
+        `*3* - 🐦 Twitter / X Followers: ₹250 / 1K\n` +
+        `*4* - 🟢 Spotify Followers: ₹85 / 1K\n` +
         `*0* - 🔙 Back to Platforms\n\n` +
         `_Reply with 1, 2, 3, or 4 to choose package:_`);
       return;
@@ -834,7 +877,7 @@ async function handleWhatsAppIncomingMessage(sock, jid, fromNumber, text, servic
       userEmail: session.linkedUser?.email || '',
       userPhone: session.linkedUser?.phone || fromNumber,
       serviceKey: srv.key || 'smm_custom',
-      serviceId: srv.serviceId || 493,
+      serviceId: srv.serviceId || 1529,
       serviceName: srv.name,
       tier: 'Social Growth',
       targetUrl,
@@ -844,39 +887,15 @@ async function handleWhatsAppIncomingMessage(sock, jid, fromNumber, text, servic
       paymentMethod: 'UPI',
       paymentStatus: 'PENDING_UPI_VERIFICATION',
       utrId: cleanUtr,
-      status: 'Processing',
+      status: 'Pending Admin Approval',
       remains: qty,
       startCount: 0,
       refillable: true,
       refillStatus: 'Eligible',
-      notes: 'Placed via WhatsApp Shop Bot',
+      notes: 'Awaiting Owner UPI Approval',
       createdAt: new Date(),
       updatedAt: new Date()
     };
-
-    // Attempt instant dispatch to IndianSMMHub API
-    try {
-      const axios = require('axios');
-      const apiUrl = store.settings?.smmProviderUrl || process.env.INDIANSMM_API_URL || 'https://indiansmmhub.com/api/v2';
-      const apiKey = store.settings?.smmApiKey || process.env.INDIANSMM_API_KEY || 'be0066920ea511dc79addd45a1c7bb554fca5798';
-      
-      const apiRes = await axios.post(apiUrl, {
-        key: apiKey,
-        action: 'add',
-        service: newOrder.serviceId,
-        link: newOrder.targetUrl,
-        quantity: newOrder.quantity
-      }, { timeout: 10000 });
-
-      if (apiRes.data && apiRes.data.order) {
-        newOrder.providerOrderId = String(apiRes.data.order);
-        newOrder.status = 'Processing';
-      } else {
-        newOrder.providerOrderId = 'WA-' + Math.floor(100000 + Math.random() * 900000);
-      }
-    } catch (apiErr) {
-      newOrder.providerOrderId = 'WA-' + Math.floor(100000 + Math.random() * 900000);
-    }
 
     store.smmOrders = store.smmOrders || [];
     store.smmOrders.unshift(newOrder);
@@ -895,7 +914,7 @@ async function handleWhatsAppIncomingMessage(sock, jid, fromNumber, text, servic
       recipientType: 'ADMIN',
       userId: '',
       userEmail: '',
-      title: `⚡ New WhatsApp SMM Growth Order: ₹${totalCost}`,
+      title: `🏦 New WhatsApp SMM Growth Order: ₹${totalCost}`,
       message: `WhatsApp customer +${fromNumber} placed SMM order for ${qty}x ${srv.name} (UTR: ${cleanUtr}). Target: ${targetUrl}`,
       type: 'SMM_ORDER',
       orderId,
@@ -918,17 +937,24 @@ async function handleWhatsAppIncomingMessage(sock, jid, fromNumber, text, servic
     session.smmLink = null;
     session.smmQty = null;
 
-    const receipt = `🎉 *SMM ORDER PLACED SUCCESSFULLY!* 🎉\n\n` +
+    const ownerWaNum = (store.settings && store.settings.ownerWhatsApp) ? store.settings.ownerWhatsApp : '9507325677';
+    const waSupportUrl = `https://wa.me/91${ownerWaNum}?text=Hello%20Owner%2C%20I%20have%20paid%20Rs.${totalCost}%20via%20UPI%20for%20SMM%20Order%3A%0AOrder%20ID%3A%20${orderId}%0AService%3A%20${encodeURIComponent(srv.name)}%0ATarget%3A%20${encodeURIComponent(targetUrl)}%0AQty%3A%20${qty}%0AUTR%20ID%3A%20${cleanUtr}%0APlease%20verify%20and%20start%20my%20order.`;
+
+    const receipt = `🧾 *OFFICIAL SMM ORDER INVOICE & RECEIPT* 🧾\n` +
+      `━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
       `📦 *Order ID:* \`${orderId}\`\n` +
-      (newOrder.providerOrderId && !newOrder.providerOrderId.startsWith('WA-') ? `⚡ *Provider Order ID:* \`#${newOrder.providerOrderId}\`\n` : '') +
       `⚡ *Service:* *${srv.name}*\n` +
       `🎯 *Target Link:* \`${targetUrl}\`\n` +
       `🔢 *Quantity:* *${qty.toLocaleString()} Units*\n` +
-      `💰 *Amount Paid:* *₹${totalCost.toLocaleString()}*\n` +
-      `🏷️ *UTR ID:* \`${cleanUtr}\`\n` +
-      `📊 *Status:* 🟡 *Processing (Instant IndianSMMHub Start)*\n` +
-      `🛡️ *Guarantee:* Lifetime Auto-Refill Active\n\n` +
-      `⚡ Your order has been dispatched directly to IndianSMMHub servers!\n` +
+      `💰 *Total Amount:* *₹${totalCost.toLocaleString()}*\n` +
+      `🏷️ *Submitted UTR:* \`${cleanUtr}\`\n` +
+      `📊 *Status:* 🟡 *PENDING OWNER UPI VERIFICATION*\n` +
+      `━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n` +
+      `⚠️ *NEXT STEP TO GET INSTANT START:*\n` +
+      `Please send your *Payment Screenshot* along with your *Order ID* to Customer Support on WhatsApp:\n\n` +
+      `👉 *WhatsApp Support:* ${waSupportUrl}\n` +
+      `📞 *Support Hotline:* +91 9507325677\n\n` +
+      `_⚡ Once Owner verifies your UTR in the Owner Panel, automated boosting will start immediately on IndianSMMHub!_\n\n` +
       `👉 Reply *3* anytime to track all your orders live!`;
 
     await sendReply(receipt);
